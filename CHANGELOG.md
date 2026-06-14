@@ -6,11 +6,19 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Added
+- Configuración de despliegue en **Vercel**: `vercel.json` declara `framework`,
+  `buildCommand`, `outputDirectory` e `installCommand` explícitos (Vite → `dist`).
+- `.env.example` documentando las variables requeridas (`VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL_LOCAL`) para cargar en Vercel.
 - `confirmMpPayment` en `orderService` + llamada desde `CheckoutResult`: al volver
   de Mercado Pago con pago aprobado, el front llama a `POST /api/orders/mp-confirm`
   para que el backend verifique el pago contra MP y marque la venta como `pagado`.
 - `extractCloudinaryPublicId` en `utils/cloudinary.ts`: deriva el `public_id`
   real (con carpeta, sin versión ni extensión) desde una URL de Cloudinary.
+
+### Removed
+- `.github/workflows/deploy.yml` (despliegue a GitHub Pages en cada push),
+  reemplazado por el despliegue continuo de Vercel.
 
 ### Changed
 - URL base del API centralizada: `API_BASE_URL` se exporta desde `utils/apiFetch.ts`
