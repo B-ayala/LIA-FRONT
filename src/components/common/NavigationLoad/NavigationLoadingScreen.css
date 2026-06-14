@@ -1,0 +1,136 @@
+.navigation-loading-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  opacity: 1;
+  pointer-events: auto;
+  padding-top: 30vh;
+}
+
+.navigation-loading-screen.exit {
+  animation: nav-loading-fade-out 150ms ease-in forwards;
+}
+
+@keyframes nav-loading-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nav-loading-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.navigation-loading-screen__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.navigation-loading-screen__icon-wrapper {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+}
+
+.navigation-loading-screen__icon {
+  position: relative;
+  font-size: 2rem;
+  color: #b8377d;
+  animation: nav-loading-icon-float 1.6s ease-in-out infinite;
+  z-index: 2;
+}
+
+.navigation-loading-screen__spinner {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(184, 165, 200, 0.15);
+  border-top-color: rgba(184, 55, 125, 0.35);
+  border-right-color: rgba(184, 55, 125, 0.35);
+  border-radius: 50%;
+  animation: nav-loading-spin 1s linear infinite;
+  z-index: 1;
+}
+
+.navigation-loading-screen__text {
+  font-size: 0.9rem;
+  color: rgba(47, 35, 56, 0.65);
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+@keyframes nav-loading-icon-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes nav-loading-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduce motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .navigation-loading-screen {
+    animation: none;
+  }
+
+  .navigation-loading-screen__icon {
+    animation: none;
+  }
+
+  .navigation-loading-screen__spinner {
+    animation: none;
+    border: 3px solid rgba(184, 55, 125, 0.3);
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .navigation-loading-screen__content {
+    gap: 16px;
+    padding: 30px 20px;
+  }
+
+  .navigation-loading-screen__icon-wrapper {
+    width: 70px;
+    height: 70px;
+  }
+
+  .navigation-loading-screen__icon {
+    font-size: 2rem;
+  }
+
+  .navigation-loading-screen__text {
+    font-size: 0.9rem;
+  }
+}

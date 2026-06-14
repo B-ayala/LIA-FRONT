@@ -1,0 +1,237 @@
+.cloudinary-storage-card {
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border: 1px solid #e0e0e0;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.storage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.storage-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #212121;
+  margin: 0 0 8px 0;
+}
+
+.storage-subtitle {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+}
+
+.storage-refresh-btn {
+  background: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.storage-refresh-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #bbb;
+  color: #333;
+}
+
+.storage-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.storage-refresh-btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading state */
+.storage-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+.storage-loading .spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* Error state */
+.storage-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  border-left: 4px solid #c62828;
+}
+
+/* Alerts */
+.storage-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 4px solid;
+}
+
+.storage-alert-normal {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-left-color: #1565c0;
+}
+
+.storage-alert-warning {
+  background: #fff3e0;
+  color: #e65100;
+  border-left-color: #f57c00;
+}
+
+.storage-alert-critical {
+  background: #ffebee;
+  color: #c62828;
+  border-left-color: #d32f2f;
+}
+
+.storage-alert svg {
+  flex-shrink: 0;
+}
+
+/* Progress bar */
+.storage-bar-container {
+  margin-bottom: 16px;
+}
+
+.storage-bar {
+  width: 100%;
+  height: 24px;
+  background: #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid #d0d0d0;
+}
+
+.storage-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 11px;
+  background: linear-gradient(90deg, #4caf50 0%, #8bc34a 100%);
+}
+
+.storage-bar-normal .storage-bar-fill {
+  background: linear-gradient(90deg, #4caf50 0%, #8bc34a 100%);
+}
+
+.storage-bar-warning .storage-bar-fill {
+  background: linear-gradient(90deg, #ff9800 0%, #fbc02d 100%);
+}
+
+.storage-bar-critical .storage-bar-fill {
+  background: linear-gradient(90deg, #f44336 0%, #e91e63 100%);
+}
+
+/* Stats */
+.storage-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.storage-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.storage-stat-label {
+  color: #999;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.storage-stat-value {
+  font-weight: 600;
+  color: #212121;
+  font-size: 15px;
+}
+
+.storage-stat-separator {
+  color: #ddd;
+  margin: 0 4px;
+  font-weight: 300;
+}
+
+.storage-stat-percentage {
+  margin-left: auto;
+}
+
+.storage-stat-percentage .storage-stat-label {
+  display: none;
+}
+
+/* Info text */
+.storage-info-text {
+  font-size: 12px;
+  color: #777;
+  margin: 0;
+  line-height: 1.5;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .cloudinary-storage-card {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .storage-header {
+    margin-bottom: 16px;
+  }
+
+  .storage-title {
+    font-size: 16px;
+  }
+
+  .storage-stats {
+    gap: 6px;
+  }
+
+  .storage-stat-value {
+    font-size: 14px;
+  }
+}

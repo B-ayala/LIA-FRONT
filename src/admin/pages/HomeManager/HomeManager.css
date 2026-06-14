@@ -1,0 +1,33 @@
+/* Mobile-first HomeManager */
+.admin-home-manager {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.admin-page-header {
+    margin-bottom: 0.25rem;
+}
+
+.home-manager-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .admin-home-manager {
+        gap: 1.5rem;
+    }
+
+    .home-manager-grid {
+        gap: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .home-manager-grid {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+    }
+}

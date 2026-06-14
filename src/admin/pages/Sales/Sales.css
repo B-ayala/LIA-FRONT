@@ -1,0 +1,170 @@
+.admin-sales-page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Toolbar */
+.sales-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.sales-toolbar .search-input-wrapper {
+    width: 100%;
+}
+
+/* filter-select base from index.css — only override min-width */
+.sales-toolbar .filter-select {
+    min-width: 150px;
+}
+
+.summary-badge.total   { border-left: 4px solid #6366f1; }
+.summary-badge.pending { border-left: 4px solid #f59e0b; }
+.summary-badge.paid    { border-left: 4px solid #22c55e; }
+.summary-badge.no-stock { border-left: 4px solid #ef4444; }
+
+.sale-card-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+/* Payment status badge (clickable toggle) */
+.payment-badge.expirado  { background: #f3f4f6; color: #6b7280; cursor: default; }
+.payment-badge.fallido   { background: #fee2e2; color: #991b1b; cursor: default; }
+.payment-badge.cancelado { background: #f3f4f6; color: #6b7280; cursor: default; }
+.payment-badge.expirado:hover,
+.payment-badge.fallido:hover,
+.payment-badge.cancelado:hover { opacity: 1; transform: none; }
+
+/* Desktop table — hidden on mobile */
+.sales-table { display: none; }
+
+/* Buyer info — mobile card */
+
+/* Stock alerts */
+.stock-alerts-card {
+    padding: 1rem 0.75rem;
+}
+
+.stock-alerts-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 0.75rem;
+}
+
+.stock-alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stock-alert-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    border-left: 4px solid;
+}
+
+.stock-alert-row.out { background: #fff5f5; border-color: #ef4444; }
+.stock-alert-row.low { background: #fffbeb; border-color: #f59e0b; }
+
+.stock-alert-img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.stock-alert-img-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background: #e2e8f0;
+    flex-shrink: 0;
+}
+
+.stock-alert-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    flex: 1;
+}
+
+.stock-alert-category {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+/* Tablet (640px+) */
+@media (min-width: 640px) {
+    .admin-sales-page { gap: 1rem; }
+
+    .sales-toolbar {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 0.75rem 1.5rem;
+        gap: 0.75rem;
+    }
+
+    .sales-toolbar .search-input-wrapper {
+        width: auto;
+        flex: 1;
+        min-width: 180px;
+        max-width: 28rem;
+    }
+
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+    .admin-sales-page { gap: 1.5rem; }
+
+    /* Hide mobile cards, show table */
+    .sales-card-list { display: none; }
+    .sales-table { display: table; }
+
+}
+
+/* ── Confirm dialog ── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-dialog {
+  background: var(--admin-card-bg, #1e1e2e);
+  border: 1px solid var(--admin-border, #2e2e3e);
+  border-radius: 12px;
+  padding: 28px 32px;
+  max-width: 420px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.confirm-message {
+  font-size: 0.95rem;
+  color: var(--admin-text, #e2e8f0);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}

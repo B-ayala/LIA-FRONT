@@ -1,0 +1,55 @@
+/* Body - Better spacing and typography */
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    color: var(--text-light);
+    font-size: 1rem;
+    line-height: 1.7;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: var(--primary-alpha10);
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+.modal-body p {
+    margin-bottom: 1.25rem;
+    color: var(--text-light);
+}
+
+.modal-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* ============================================
+   TABLET & DESKTOP BREAKPOINTS
+   ============================================ */
+
+@media (min-width: 640px) {
+    .modal-body {
+        padding: 2rem;
+    }
+}
+
+@media (min-width: 768px) {
+    /* No changes needed for .modal-body at this breakpoint */
+}
+
+@media (min-width: 1024px) {
+    /* No changes needed for .modal-body at this breakpoint */
+}

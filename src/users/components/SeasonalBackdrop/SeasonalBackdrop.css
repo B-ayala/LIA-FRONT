@@ -1,0 +1,179 @@
+/* ─── Seasonal backdrop ─────────────────────────────────────────────────────
+ * Capa decorativa fijada detrás del contenido (pointer-events: none) con
+ * partículas estacionales. Optimizaciones aplicadas:
+ *
+ *  - SÓLO animamos transform + opacity (compositor-only, sin repaint).
+ *  - Sin `filter: drop-shadow` ni `text-shadow`: fuerzan repaint por frame.
+ *  - `contain: layout paint style` aísla el backdrop del resto del árbol,
+ *    así un cambio aquí no invalida el paint del resto de la página.
+ *  - `transform: translateZ(0)` en el contenedor promueve una sola capa
+ *    compositor desde el arranque (sin "salto" cuando empieza la animación).
+ *  - `will-change: transform` sólo en las partículas activas — no lo usamos
+ *    en el contenedor porque reserva memoria GPU sin beneficio.
+ *  - `animation-play-state: paused` cuando el documento está oculto
+ *    (reduce uso de GPU cuando el usuario no está mirando la pestaña).
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.seasonal-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+  contain: layout paint style;
+  transform: translateZ(0);
+}
+
+.seasonal-particle {
+  position: absolute;
+  top: -10vh;
+  font-size: 1.6rem;
+  opacity: 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  user-select: none;
+}
+
+/* Pausa las animaciones cuando el tab no está visible — el browser ya
+ * throttlea, pero esto las congela del todo y libera trabajo de compositor. */
+:root[data-page-hidden='true'] .seasonal-particle {
+  animation-play-state: paused;
+}
+
+/* ─── Otoño — hojas que caen con balanceo lateral ─────────────────────────── */
+[data-season='autumn'] .seasonal-particle {
+  animation: leaf-fall linear infinite;
+}
+
+@keyframes leaf-fall {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate3d(40px, 50vh, 0) rotate(180deg);
+  }
+  90% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate3d(-30px, 110vh, 0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* ─── Invierno — copos cayendo suave ──────────────────────────────────────── */
+[data-season='winter'] .seasonal-particle {
+  animation: snow-fall linear infinite;
+  color: #ffffff;
+}
+
+@keyframes snow-fall {
+  0% {
+    transform: translate3d(0, -10vh, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate3d(20px, 50vh, 0);
+  }
+  90% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(-10px, 110vh, 0);
+    opacity: 0;
+  }
+}
+
+/* ─── Primavera — pétalos flotando ────────────────────────────────────────── */
+[data-season='spring'] .seasonal-particle {
+  animation: petal-float linear infinite;
+}
+
+@keyframes petal-float {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(60px, 50vh, 0) rotate(120deg);
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(-40px, 110vh, 0) rotate(240deg);
+    opacity: 0;
+  }
+}
+
+/* ─── Verano — destellos cálidos ascendentes ──────────────────────────────── */
+[data-season='summer'] .seasonal-particle {
+  top: auto;
+  bottom: -5vh;
+  animation: spark-rise linear infinite;
+  color: #F4A100;
+}
+
+@keyframes spark-rise {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.7);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate3d(20px, -55vh, 0) scale(1);
+  }
+  85% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate3d(-10px, -115vh, 0) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* Posiciones y ritmos distintos por partícula para evitar el efecto "grid" */
+.seasonal-particle:nth-child(1)  { left: 5%;  animation-duration: 11s; animation-delay: 0s;    font-size: 1.4rem; }
+.seasonal-particle:nth-child(2)  { left: 14%; animation-duration: 14s; animation-delay: 1.5s;  font-size: 1.8rem; }
+.seasonal-particle:nth-child(3)  { left: 23%; animation-duration: 12s; animation-delay: 3s;    font-size: 1.2rem; }
+.seasonal-particle:nth-child(4)  { left: 32%; animation-duration: 16s; animation-delay: 0.5s;  font-size: 1.6rem; }
+.seasonal-particle:nth-child(5)  { left: 41%; animation-duration: 13s; animation-delay: 2.5s;  font-size: 2rem; }
+.seasonal-particle:nth-child(6)  { left: 50%; animation-duration: 15s; animation-delay: 4s;    font-size: 1.3rem; }
+.seasonal-particle:nth-child(7)  { left: 59%; animation-duration: 11s; animation-delay: 1s;    font-size: 1.7rem; }
+.seasonal-particle:nth-child(8)  { left: 68%; animation-duration: 14s; animation-delay: 3.5s;  font-size: 1.5rem; }
+.seasonal-particle:nth-child(9)  { left: 77%; animation-duration: 12s; animation-delay: 2s;    font-size: 1.9rem; }
+.seasonal-particle:nth-child(10) { left: 86%; animation-duration: 17s; animation-delay: 0.8s;  font-size: 1.4rem; }
+.seasonal-particle:nth-child(11) { left: 92%; animation-duration: 13s; animation-delay: 4.5s;  font-size: 1.6rem; }
+.seasonal-particle:nth-child(12) { left: 97%; animation-duration: 15s; animation-delay: 2.2s;  font-size: 1.3rem; }
+
+/* Accesibilidad — si el usuario pidió menos movimiento, ocultamos todo. */
+@media (prefers-reduced-motion: reduce) {
+  .seasonal-backdrop {
+    display: none;
+  }
+}
+
+/* En pantallas chicas bajamos la cantidad y tamaño — menos trabajo para GPUs
+ * móviles y menos ruido visual. */
+@media (max-width: 600px) {
+  .seasonal-particle:nth-child(n+7) {
+    display: none;
+  }
+  .seasonal-particle {
+    font-size: 1.1rem;
+  }
+}
