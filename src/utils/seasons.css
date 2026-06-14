@@ -1,0 +1,160 @@
+/* ─── Temas estacionales ─────────────────────────────────────────────────────
+ * Cada bloque sobreescribe las variables de marca, los colores de botones
+ * principales (--button-dark, --brand-green) y el acento — eso garantiza que
+ * CTAs, precios y secciones de destacados cambien visiblemente según la
+ * estación, no sólo los detalles menores.
+ *
+ * Las variables --season-gradient y --season-soft se usan en el fondo de
+ * secciones decorativas (home, top-navbar, placeholder del carousel) para
+ * reforzar el cambio sin quebrar el layout.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+body {
+  transition:
+    background-color var(--transition-base) var(--transition-curve),
+    color var(--transition-base) var(--transition-curve);
+}
+
+:root[data-season] .admin-sidebar,
+:root[data-season] .admin-header,
+:root[data-season] .nav-bar,
+:root[data-season] .footer-section,
+:root[data-season] button,
+:root[data-season] a {
+  transition:
+    background-color var(--transition-base) var(--transition-curve),
+    color var(--transition-base) var(--transition-curve),
+    border-color var(--transition-base) var(--transition-curve),
+    box-shadow var(--transition-base) var(--transition-curve);
+}
+
+/* ─── Clásico (marca LIA original) ───────────────────────────────────────── */
+:root[data-season='default'] {
+  --primary-color: #B8A5C8;
+  --primary-light: #D4C9E0;
+  --primary-dark: #9A86AC;
+  --primary-bg: #F5F0FA;
+  --primary-accent: #B8377D;
+  --bg-light: #F5F0FA;
+
+  --brand-green: #2c5f2d;
+  --button-dark: #050505;
+  --button-dark-hover: #234a24;
+
+  --season-gradient: linear-gradient(135deg, #9A86AC 0%, #B8A5C8 50%, #B8377D 100%);
+  --season-soft: linear-gradient(180deg, #F5F0FA 0%, #FDF0F8 100%);
+  --season-ribbon: linear-gradient(90deg, #9A86AC, #B8A5C8, #B8377D);
+
+  --shadow-primary: 0 10px 30px rgba(184, 165, 200, 0.4);
+  --shadow-primary-hover: 0 15px 40px rgba(184, 165, 200, 0.6);
+  --shadow-2xl: 0 25px 80px -20px rgba(184, 165, 200, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Primavera ────────────────────────────────────────────────────────────── */
+:root[data-season='spring'] {
+  --primary-color: #7BB661;
+  --primary-light: #B8E0A6;
+  --primary-dark: #4F8C3A;
+  --primary-bg: #F2FBEC;
+  --primary-accent: #E58FB8;
+  --bg-light: #F2FBEC;
+
+  --brand-green: #4F8C3A;
+  --button-dark: #4F8C3A;
+  --button-dark-hover: #7BB661;
+
+  --season-gradient: linear-gradient(135deg, #7BB661 0%, #E58FB8 100%);
+  --season-soft: linear-gradient(180deg, #F2FBEC 0%, #FFF4FA 100%);
+  --season-ribbon: linear-gradient(90deg, #4F8C3A, #7BB661, #E58FB8);
+
+  --shadow-primary: 0 10px 30px rgba(123, 182, 97, 0.35);
+  --shadow-primary-hover: 0 15px 40px rgba(123, 182, 97, 0.5);
+  --shadow-2xl: 0 25px 80px -20px rgba(123, 182, 97, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Verano ───────────────────────────────────────────────────────────────── */
+:root[data-season='summer'] {
+  --primary-color: #F4A100;
+  --primary-light: #FFD371;
+  --primary-dark: #C97A00;
+  --primary-bg: #FFF8E8;
+  --primary-accent: #E2522C;
+  --bg-light: #FFF8E8;
+
+  --brand-green: #C97A00;
+  --button-dark: #C97A00;
+  --button-dark-hover: #F4A100;
+
+  --season-gradient: linear-gradient(135deg, #F4A100 0%, #E2522C 100%);
+  --season-soft: linear-gradient(180deg, #FFF8E8 0%, #FFE9D4 100%);
+  --season-ribbon: linear-gradient(90deg, #E2522C, #F4A100, #FFD371);
+
+  --shadow-primary: 0 10px 30px rgba(244, 161, 0, 0.35);
+  --shadow-primary-hover: 0 15px 40px rgba(244, 161, 0, 0.5);
+  --shadow-2xl: 0 25px 80px -20px rgba(244, 161, 0, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Otoño ────────────────────────────────────────────────────────────────── */
+:root[data-season='autumn'] {
+  --primary-color: #B8612C;
+  --primary-light: #E29A6A;
+  --primary-dark: #7E3F18;
+  --primary-bg: #FBF1E6;
+  --primary-accent: #8B3A1F;
+  --bg-light: #FBF1E6;
+
+  --brand-green: #7E3F18;
+  --button-dark: #7E3F18;
+  --button-dark-hover: #B8612C;
+
+  --season-gradient: linear-gradient(135deg, #7E3F18 0%, #B8612C 50%, #E29A6A 100%);
+  --season-soft: linear-gradient(180deg, #FBF1E6 0%, #F4DFC5 100%);
+  --season-ribbon: linear-gradient(90deg, #7E3F18, #B8612C, #E29A6A);
+
+  --shadow-primary: 0 10px 30px rgba(184, 97, 44, 0.35);
+  --shadow-primary-hover: 0 15px 40px rgba(184, 97, 44, 0.5);
+  --shadow-2xl: 0 25px 80px -20px rgba(184, 97, 44, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Invierno ─────────────────────────────────────────────────────────────── */
+:root[data-season='winter'] {
+  --primary-color: #4F86C6;
+  --primary-light: #A8C8E8;
+  --primary-dark: #2E5A94;
+  --primary-bg: #EEF5FB;
+  --primary-accent: #1F3F66;
+  --bg-light: #EEF5FB;
+
+  --brand-green: #2E5A94;
+  --button-dark: #2E5A94;
+  --button-dark-hover: #4F86C6;
+
+  --season-gradient: linear-gradient(135deg, #2E5A94 0%, #4F86C6 60%, #A8C8E8 100%);
+  --season-soft: linear-gradient(180deg, #EEF5FB 0%, #DCEAF6 100%);
+  --season-ribbon: linear-gradient(90deg, #1F3F66, #4F86C6, #A8C8E8);
+
+  --shadow-primary: 0 10px 30px rgba(79, 134, 198, 0.35);
+  --shadow-primary-hover: 0 15px 40px rgba(79, 134, 198, 0.5);
+  --shadow-2xl: 0 25px 80px -20px rgba(79, 134, 198, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* Fallback cuando no hay data-season (o estación no reconocida) — evita que
+ * los componentes que ya usan --season-gradient/--season-soft queden sin fondo. */
+:root {
+  --season-gradient: linear-gradient(135deg, #B8A5C8 0%, #B8377D 100%);
+  --season-soft: linear-gradient(180deg, #F5F0FA 0%, #FDF0F8 100%);
+  --season-ribbon: linear-gradient(90deg, #9A86AC, #B8A5C8, #B8377D);
+}
+
+/* Respeta la preferencia del usuario por menos movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  body,
+  :root[data-season] .admin-sidebar,
+  :root[data-season] .admin-header,
+  :root[data-season] .nav-bar,
+  :root[data-season] .footer-section,
+  :root[data-season] button,
+  :root[data-season] a {
+    transition: none;
+  }
+}

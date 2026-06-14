@@ -1,0 +1,225 @@
+@import './utils/seasons.css';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Screen-reader only — visually hidden but accessible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:root {
+  /* ─── BRAND / PRIMARY ─── */
+  --primary-color: #B8A5C8;
+  --primary-light: #D4C9E0;
+  --primary-dark: #9A86AC;
+  --primary-bg: #F5F0FA;
+  --primary-accent: #B8377D;
+
+  /* ─── NEUTRALS / GRAYS ─── */
+  --white: #ffffff;
+  --off-white: #fafafa;
+  --gray-50: #fdfdfd;
+  --gray-75: #f9fafb;
+  --gray-100: #f8f8f8;
+  --gray-125: #f7f7f7;
+  --gray-150: #f5f5f5;
+  --gray-175: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #dddddd;
+  --gray-400: #ccc;
+  --gray-500: #999999;
+  --gray-600: #666666;
+  --gray-700: #555555;
+  --text-dark: #333;
+  --text-light: #666;
+  --black: #000000;
+
+  /* ─── SEMANTIC ─── */
+  --brand-green: #2c5f2d;
+  --success: #00a650;
+  --error: #ef4444;
+  --info: #3483fa;
+  --info-hover: #2968c8;
+  --info-dark: #1f62c2;
+  --info-secondary: #009ee3;
+
+  /* ─── LEGACY ALIASES (backwards compatibility) ─── */
+  --bg-light: #F5F0FA;
+
+  /* ─── ADDITIONAL SEMANTIC COLORS ─── */
+  --dark-bg: #1a1a1a;
+  --button-dark: #050505;
+  --button-dark-hover: #234a24;
+
+  /* ─── BORDER RADIUS ─── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 50px;
+
+  /* ─── SHADOWS ─── */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 15px 40px rgba(0, 0, 0, 0.2);
+  --shadow-2xl: 0 25px 80px -20px rgba(184, 165, 200, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+  --shadow-primary: 0 10px 30px rgba(184, 165, 200, 0.4);
+  --shadow-primary-hover: 0 15px 40px rgba(184, 165, 200, 0.6);
+  --shadow-dark: 0 5px 20px rgba(0, 0, 0, 0.2);
+  --shadow-footer: 0 4px 15px rgba(0, 0, 0, 0.3);
+
+  /* ─── TRANSITIONS ─── */
+  --transition-fast: 0.2s;
+  --transition-base: 0.3s;
+  --transition-slow: 0.4s;
+  --transition-curve: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-ease: ease;
+
+  /* ─── BREAKPOINTS (reference) ─── */
+  /* mobile: < 480px | tablet: 480px - 768px | desktop: 768px - 1024px | wide: >= 1024px */
+}
+
+body {
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.6;
+  color: var(--text-dark);
+  background-color: #fff;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}
+
+/* ─── GLOBAL FORM STYLES ─── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-group > label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.form-group > input:not([type='checkbox']):not([type='radio']),
+.form-group > select,
+.form-group > textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  outline: none;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #0f172a;
+  background: var(--white);
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group > textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-group > input:not([type='checkbox']):not([type='radio']):focus,
+.form-group > select:focus,
+.form-group > textarea:focus {
+  border-color: var(--primary-dark);
+  box-shadow: 0 0 0 3px rgba(184, 165, 200, 0.15);
+}
+
+.form-group > input[type='checkbox'],
+.form-group > input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #0f172a;
+}
+
+/* ─── GLOBAL FILTER SELECT ─── */
+.filter-select {
+  flex: 1;
+  min-width: 130px;
+}
+
+@media (min-width: 768px) {
+  .form-group > label {
+    font-size: 0.875rem;
+  }
+
+  .form-group > input:not([type='checkbox']):not([type='radio']),
+  .form-group > select,
+  .form-group > textarea {
+    padding: 0.75rem 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .form-group > input:not([type='checkbox']):not([type='radio']),
+  .form-group > select,
+  .form-group > textarea {
+    font-size: 0.9375rem;
+  }
+}

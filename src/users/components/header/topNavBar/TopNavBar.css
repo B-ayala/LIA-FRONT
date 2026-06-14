@@ -1,0 +1,50 @@
+.top-navbar {
+  position: relative;
+  width: 100%;
+  background: var(--season-gradient, linear-gradient(135deg, #1a1a1a 0%, #000 100%));
+  color: #fff;
+  padding: 8px 0;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.top-navbar-track {
+  display: flex;
+  width: max-content;
+  animation: scroll-infinite 20s linear infinite;
+}
+
+.top-navbar-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  padding-right: 100vw;
+}
+
+@keyframes scroll-infinite {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@media (max-width: 768px) {
+  .top-navbar-text {
+    font-size: 0.75rem;
+  }
+
+  .top-navbar {
+    padding: 6px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-navbar-text {
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+  }
+}

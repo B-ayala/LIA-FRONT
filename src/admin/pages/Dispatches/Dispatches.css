@@ -1,0 +1,156 @@
+.admin-dispatches-page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Toolbar */
+.dispatch-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.toolbar-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* filter-select base from index.css — only override min-width */
+.dispatch-toolbar .filter-select {
+    min-width: 180px;
+}
+
+.dispatch-badge.total { border-left: 4px solid #6366f1; }
+.dispatch-badge.pend  { border-left: 4px solid #94a3b8; }
+.dispatch-badge.prep  { border-left: 4px solid #f97316; }
+.dispatch-badge.done  { border-left: 4px solid #22c55e; }
+
+.dispatch-card-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.dispatch-card-field.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Shipping icon + label */
+.dispatch-shipping-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.shipping-icon { flex-shrink: 0; }
+.shipping-icon.correo { color: #6366f1; }
+.shipping-icon.moto   { color: #f97316; }
+.shipping-icon.local  { color: #22c55e; }
+
+/* Payment status badge (clickable) */
+/* Dispatch status badge */
+.dispatch-status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.dispatch-status-badge.pendiente        { background: #f1f5f9; color: #64748b; }
+.dispatch-status-badge.en_preparacion   { background: #ffedd5; color: #c2410c; }
+.dispatch-status-badge.despachado       { background: #dbeafe; color: #1d4ed8; }
+.dispatch-status-badge.listo_para_retiro { background: #dcfce7; color: #166534; }
+.dispatch-status-badge.entregado         { background: #f3e8ff; color: #7c3aed; }
+
+/* Advance button (mobile) */
+.dispatch-status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.dispatch-advance-btn {
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.dispatch-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+.dispatch-empty-icon { color: #cbd5e1; margin-bottom: 0.25rem; }
+
+.dispatch-empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #475569;
+    margin: 0;
+}
+
+.dispatch-empty-subtitle {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin: 0;
+    max-width: 340px;
+}
+
+/* Secondary button */
+.dispatch-btn-secondary {
+    min-height: 38px;
+    padding: 0 1rem;
+    white-space: nowrap;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.dispatch-btn-secondary:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* Tablet */
+@media (min-width: 640px) {
+    .admin-dispatches-page { gap: 1rem; }
+
+    .dispatch-btn-secondary { width: auto; }
+
+    .dispatch-toolbar {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 0.75rem 1.5rem;
+        gap: 0.75rem;
+    }
+
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+    .admin-dispatches-page { gap: 1.5rem; }
+
+    .dispatch-card-list { display: none; }
+    .dispatch-table { display: table; }
+
+}
