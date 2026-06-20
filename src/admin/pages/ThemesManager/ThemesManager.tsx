@@ -90,10 +90,10 @@ const ThemesManager = () => {
     <div className="themes-manager">
       <div className="admin-page-header">
         <h1 className="admin-page-title">
-          <Palette size={22} aria-hidden="true" /> Temas estacionales
+          <Palette size={22} aria-hidden="true" /> Temas del sitio
         </h1>
         <p className="admin-page-subtitle">
-          Cambiá la identidad visual del sitio según la estación del año. Los cambios se aplican en tiempo real.
+          Cambiá la identidad visual del sitio: elegí un tema fijo o seguí la estación del año. Los cambios se aplican en tiempo real.
         </p>
       </div>
 
@@ -102,7 +102,7 @@ const ThemesManager = () => {
           <h2 id="themes-mode-title">Modo de selección</h2>
           <p>
             <strong>Automático</strong> sigue la fecha actual ({SEASONS[detectedSeason].label}).
-            <strong> Manual</strong> mantiene la estación que elijas.
+            <strong> Manual</strong> mantiene el tema que elijas.
           </p>
         </div>
         <div className="themes-mode-toggle" role="radiogroup" aria-label="Modo de selección de tema">
@@ -129,7 +129,7 @@ const ThemesManager = () => {
 
       <section aria-labelledby="themes-grid-title">
         <h2 id="themes-grid-title" className="themes-grid-title">
-          Estaciones disponibles
+          Temas disponibles
           {isPreviewing && (
             <span className="themes-preview-badge" aria-live="polite">
               Previsualizando — pasá el mouse fuera para volver
@@ -249,8 +249,8 @@ const ThemesManager = () => {
             <Globe size={18} aria-hidden="true" /> Aplicar a todos los usuarios
           </h2>
           <p>
-            Publica la estación seleccionada (<strong>{SEASONS[storedSeason].label}</strong>) como predeterminada
-            para todos los visitantes. Cada usuario podrá seguir personalizándola desde su navegador.
+            Publica el tema seleccionado (<strong>{SEASONS[storedSeason].label}</strong>) como predeterminado
+            para todos los visitantes. Cada usuario podrá seguir personalizándolo desde su navegador.
           </p>
           {remoteError && <p className="themes-error" role="alert">{remoteError}</p>}
           {saved && <p className="themes-success" role="status"><Check size={14} /> Preferencia global guardada.</p>}

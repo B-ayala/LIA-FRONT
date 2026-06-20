@@ -55,7 +55,7 @@
 .navigation-loading-screen__icon {
   position: relative;
   font-size: 2rem;
-  color: #b8377d;
+  color: var(--primary-dark, #b8377d);
   animation: nav-loading-icon-float 1.6s ease-in-out infinite;
   z-index: 2;
 }
@@ -63,9 +63,9 @@
 .navigation-loading-screen__spinner {
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(184, 165, 200, 0.15);
-  border-top-color: rgba(184, 55, 125, 0.35);
-  border-right-color: rgba(184, 55, 125, 0.35);
+  border: 2px solid color-mix(in srgb, var(--primary-color, #B8A5C8) 15%, transparent);
+  border-top-color: color-mix(in srgb, var(--primary-accent, #B8377D) 35%, transparent);
+  border-right-color: color-mix(in srgb, var(--primary-accent, #B8377D) 35%, transparent);
   border-radius: 50%;
   animation: nav-loading-spin 1s linear infinite;
   z-index: 1;
@@ -73,7 +73,7 @@
 
 .navigation-loading-screen__text {
   font-size: 0.9rem;
-  color: rgba(47, 35, 56, 0.65);
+  color: color-mix(in srgb, var(--text-dark, #2f2338) 65%, transparent);
   font-weight: 500;
   margin: 0;
   letter-spacing: 0.3px;
@@ -110,7 +110,7 @@
 
   .navigation-loading-screen__spinner {
     animation: none;
-    border: 3px solid rgba(184, 55, 125, 0.3);
+    border: 3px solid color-mix(in srgb, var(--primary-accent, #B8377D) 30%, transparent);
   }
 }
 

@@ -4,6 +4,7 @@ import type { Product } from '../types/product';
 import { apiFetch, authHeaders, API_BASE_URL } from '../utils/apiFetch';
 import { getProductStockFromVariants, sanitizeProductVariants } from '../utils/productVariants';
 import { extractCloudinaryPublicId } from '../utils/cloudinary';
+import { cleanText, normalizeCategory } from '../utils/formatters';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mapDbRowToProduct = (row: any): Product => {
@@ -15,13 +16,13 @@ export const mapDbRowToProduct = (row: any): Product => {
 
   return {
     id: row.id,
-    name: row.name,
+    name: cleanText(row.name),
     price: row.price,
     originalPrice: row.original_price,
     image: images[0] || '',
     images,
     description: row.description,
-    category: row.category,
+    category: normalizeCategory(row.category),
     discount: row.discount,
     stock: stockFromVariants ?? row.stock,
     condition: row.condition,
@@ -124,16 +125,10 @@ export const deleteCloudinaryImage = async (publicId: string, token: string) => 
 };
 
 export interface CloudinaryUsage {
-  bytes: number;
-  max_bytes: number;
-  uploads: number;
-  resources: number;
-  derived_resources: number;
-  media_limit: number;
-  media_count: number;
-  transformations: number;
-  requests: number;
-  requests_limit: number;
+  credits_used: number;
+  credits_limit: number;
+  credits_used_percent: number;
+  asset_count: number;
 }
 
 // Fetch storage usage from Cloudinary
@@ -168,7 +163,9 @@ export const fetchCategoriesTree = async (): Promise<Category[]> => {
     return [];
   }
 
-  return (data ?? []) as Category[];
+  // El nombre es la clave de match con productos.category (filtro de catálogo y
+  // navbar): se normaliza en origen para que ambos lados comparen texto limpio.
+  return ((data ?? []) as Category[]).map((c) => ({ ...c, name: normalizeCategory(c.name) }));
 };
 
 // Create a new category (or subcategory if parentId is provided)
@@ -177,14 +174,15 @@ export const createCategory = async (
   parentId: string | null,
   level: number
 ): Promise<Category> => {
-  const slug = name
+  const cleanName = normalizeCategory(name);
+  const slug = cleanName
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '');
   const { data, error } = await supabase
     .from('categories')
-    .insert({ name, slug, parent_id: parentId, level })
+    .insert({ name: cleanName, slug, parent_id: parentId, level })
     .select('id, name, slug, parent_id, level')
     .single();
   if (error) throw new Error(error.message);
@@ -211,7 +209,7 @@ export const fetchCategories = async (): Promise<string[]> => {
       .order('name', { ascending: true });
 
     if (!error && data && data.length > 0) {
-      return data.map((c) => c.name) as string[];
+      return (data as { name: string }[]).map((c) => normalizeCategory(c.name));
     }
   } catch {
     // fall through to fallback
@@ -228,7 +226,7 @@ export const fetchCategories = async (): Promise<string[]> => {
     throw error;
   }
 
-  const categories = [...new Set(data?.map((p) => p.category).filter(Boolean))] as string[];
+  const categories = [...new Set(data?.map((p) => normalizeCategory(p.category)).filter(Boolean))];
   return categories.sort();
 };
 
@@ -344,12 +342,12 @@ export const searchProducts = async (query: string): Promise<ProductSearchResult
     const imgs: string[] = row.images && row.images.length > 0 ? row.images : [];
     return {
       id: row.id,
-      name: row.name,
+      name: cleanText(row.name),
       price: row.price,
       originalPrice: row.original_price || undefined,
       discount: row.discount || undefined,
       image: imgs[0] || row.image_url || '',
-      category: row.category,
+      category: normalizeCategory(row.category),
     };
   });
 };
@@ -365,7 +363,9 @@ export const fetchProductById = async (id: string, activeOnly = true) => {
     query = query.eq('status', 'active');
   }
 
-  const { data, error } = await query.single();
+  // maybeSingle: producto inexistente/inactivo devuelve null (sin 406 ni error),
+  // así el caller decide el estado "no disponible" sin ruido en consola.
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     console.error('Fetch product error:', error);
@@ -379,11 +379,13 @@ export const fetchProductById = async (id: string, activeOnly = true) => {
 // internamente. `publicId` se deriva de la URL de Cloudinary (con carpeta y sin
 // extensión) para que el backend pueda hacer cleanup en delete sin recalcularlo.
 const buildProductBody = (product: Partial<AdminProduct>) => ({
-  name: product.name,
+  // Se limpia al guardar para no persistir espacios sobrantes (corta el problema de raíz).
+  name: product.name === undefined ? undefined : cleanText(product.name),
   price: product.price,
   stock: product.stock,
-  category: product.category,
+  category: product.category === undefined ? undefined : normalizeCategory(product.category),
   imageUrl: product.imageUrl,
+  images: product.images,
   publicId: product.imageUrl ? extractCloudinaryPublicId(product.imageUrl) : '',
   description: product.description,
   discount: product.discount,

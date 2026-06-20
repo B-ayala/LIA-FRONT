@@ -21,7 +21,7 @@ import './NavBar.css';
 const staticNavBefore = [{ name: 'Inicio', path: '/' }];
 const staticNavAfter = [
   { name: 'Contacto', path: '/contact' },
-  { name: 'Acerca de', path: '/about' },
+  { name: 'Quienes somos?', path: '/about' },
 ];
 
 function buildChildMap(cats: Category[]): Map<string | null, Category[]> {

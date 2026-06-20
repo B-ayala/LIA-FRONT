@@ -7,7 +7,7 @@ import { extractErrorMessage } from '../../../utils/errorMessage';
 import { createProduct, updateProduct as updateProductApi } from '../../../services/productService';
 import type { Specification, FAQ } from '../../../types/product';
 import { COLOR_MAP } from '../../../utils/constants';
-import { calculateDiscountPercentage } from '../../../utils/pricing';
+import { calculateDiscountPercentage, getProductPricing } from '../../../utils/pricing';
 import { fetchCategoriesTree, createCategory, deleteCategory, type Category } from '../../../services/productService';
 import { getNormalizedVariantOptions, getProductStockFromVariants, isSizeVariant, normalizeVariantOption, sanitizeProductVariants } from '../../../utils/productVariants';
 import { Folder, FolderOpen, Dot, Plus, X, Images } from 'lucide-react';
@@ -97,7 +97,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-    const [inactiveWarning, setInactiveWarning] = useState<string[] | null>(null);
+    const [stockBlock, setStockBlock] = useState(false);
     const managesStockFromVariants = useMemo(
         () => variants.some((variant) => isSizeVariant(variant.name) && getNormalizedVariantOptions(variant.name, variant.optionsText.split(',')).length > 0),
         [variants]
@@ -143,6 +143,17 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                     })),
             }))
     ), [dbCategories]);
+
+    // Misma función que usa la tienda pública: garantiza que la vista previa del
+    // admin coincida exactamente con lo que ve el cliente (precio tachado + final).
+    const pricingPreview = useMemo(() => getProductPricing({
+        price: parseFloat(price) || 0,
+        discount: discount ? parseFloat(discount) : undefined,
+        originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
+    }), [price, discount, originalPrice]);
+
+    const formatMoney = (value: number) =>
+        value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const promotionReferencePrice = useMemo(() => {
         if (product?.originalPrice && product.originalPrice > 0) return product.originalPrice;
@@ -221,7 +232,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 resetForm();
             }
             setError('');
-            setInactiveWarning(null);
         }
     }, [isOpen, product]);
 
@@ -248,7 +258,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         setCustomColorName('');
         setCustomColorHex('#000000');
         setFieldErrors({});
-        setInactiveWarning(null);
     };
 
     const buildPayload = () => {
@@ -287,7 +296,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const executeSave = async () => {
         setSaving(true);
         setError('');
-        setInactiveWarning(null);
 
         try {
             const token = await getAuthToken();
@@ -297,12 +305,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 const savedData = await updateProductApi(product.id, payload, token);
                 const finalStatus = savedData?.data?.status ?? payload.status;
                 updateProduct(product.id, { ...payload, status: finalStatus });
-
-                if (savedData?.autoInactive) {
-                    setInactiveWarning(savedData.missingFields ?? []);
-                    onSaved?.();
-                    return;
-                }
             } else {
                 const savedData = await createProduct(payload, token);
                 const newProduct: AdminProduct = {
@@ -311,12 +313,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                     status: savedData?.data?.status ?? payload.status,
                 };
                 addProduct(newProduct);
-
-                if (savedData?.autoInactive) {
-                    setInactiveWarning(savedData.missingFields ?? []);
-                    onSaved?.();
-                    return;
-                }
             }
 
             resetForm();
@@ -330,12 +326,27 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     };
 
     const handleSave = async () => {
-        // El nombre es el único campo que bloquea el guardado en el frontend.
-        // El resto (precio, talles, descripción) es validado en el backend:
-        // si faltan, el producto se guarda automáticamente como inactivo.
+        // Validación de borde en el cliente (el backend revalida nombre y precio).
         if (!name.trim()) {
             setFieldErrors({ name: 'El nombre es requerido' });
             setActiveTab('Datos Básicos');
+            return;
+        }
+
+        const priceValue = parseFloat(price);
+        if (!Number.isFinite(priceValue) || priceValue <= 0) {
+            setFieldErrors({ price: 'El precio es requerido y debe ser mayor a 0' });
+            setActiveTab('Datos Básicos');
+            return;
+        }
+
+        // Un producto "Activo" sin stock queda oculto en la tienda (el catálogo
+        // público filtra stock > 0), por lo que el estado sería engañoso. Se
+        // bloquea el guardado y se obliga a cargar stock o pasar a "Inactivo".
+        const payload = buildPayload();
+        if (payload.status === 'active' && (payload.stock ?? 0) <= 0) {
+            setActiveTab('Datos Básicos');
+            setStockBlock(true);
             return;
         }
 
@@ -566,18 +577,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                             {error}
                         </div>
                     )}
-                    {inactiveWarning && (
-                        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: '0.375rem', color: '#7c5800', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                            <strong>Producto guardado como inactivo.</strong>
-                            {' '}El producto se guardó en estado inactivo porque faltan completar campos obligatorios. Por favor, completalos para activarlo.
-                            {inactiveWarning.length > 0 && (
-                                <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.25rem' }}>
-                                    {inactiveWarning.map(f => <li key={f} style={{ textTransform: 'capitalize' }}>{f}</li>)}
-                                </ul>
-                            )}
-                        </div>
-                    )}
-
                     {/* ── DATOS BÁSICOS ── */}
                     {activeTab === 'Datos Básicos' && (
                         <div className="tab-pane">
@@ -719,13 +718,8 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                     {fieldErrors.price && <span className="field-error-msg">{fieldErrors.price}</span>}
                                 </div>
                                 <div className={`form-group${fieldErrors.stock ? ' form-group--error' : ''}`}>
-                                    <label>{managesStockFromVariants || !product ? 'Stock total' : 'Stock disponible'}</label>
-                                    {!product ? (
-                                        <div className="stock-derived-card">
-                                            <strong>{derivedVariantStock}</strong>
-                                            <span>Se calcula automáticamente desde las variantes de talle.</span>
-                                        </div>
-                                    ) : managesStockFromVariants ? (
+                                    <label>{managesStockFromVariants ? 'Stock total' : 'Stock disponible'}</label>
+                                    {managesStockFromVariants ? (
                                         <div className="stock-derived-card">
                                             <strong>{derivedVariantStock}</strong>
                                             <span>Se calcula automáticamente desde los talles configurados en Variantes.</span>
@@ -1171,15 +1165,20 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                             }
                                         }}
                                     />
-                                    {originalPrice && price && (
-                                        <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
-                                            Precio original detectado: ${Number(originalPrice).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. El precio actual se guarda como precio final.
-                                        </p>
-                                    )}
-                                    {discount && (
-                                        <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
-                                            Se mostrará como "{discount}% OFF" en la vista del producto
-                                        </p>
+                                    {price && (
+                                        pricingPreview.hasPromotion ? (
+                                            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                                                Vista del cliente:{' '}
+                                                <span style={{ textDecoration: 'line-through' }}>${formatMoney(pricingPreview.originalPrice ?? 0)}</span>
+                                                {' → '}
+                                                <strong>${formatMoney(pricingPreview.finalPrice)}</strong>
+                                                {pricingPreview.discountPercentage ? ` (${pricingPreview.discountPercentage}% OFF)` : ''}
+                                            </p>
+                                        ) : (
+                                            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                                                Sin promoción: el cliente verá ${formatMoney(parseFloat(price) || 0)}
+                                            </p>
+                                        )
                                     )}
                                 </div>
                                 <div className="form-group">
@@ -1610,6 +1609,15 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             </div>
 
         </Modal>
+
+        <ConfirmationModal
+            isOpen={stockBlock}
+            onClose={() => setStockBlock(false)}
+            title="No se puede activar sin stock"
+            message={'El producto está en estado "Activo" pero no tiene stock, así que no se mostraría en la tienda. Agregá stock (o stock por talle en Variantes) o cambiá el estado a "Inactivo" para poder guardarlo.'}
+            status="error"
+            actionButtonText="Entendido"
+        />
 
         <ConfirmationModal
             isOpen={deleteCatConfirm !== null}

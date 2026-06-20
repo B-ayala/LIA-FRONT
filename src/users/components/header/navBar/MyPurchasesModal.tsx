@@ -465,8 +465,9 @@ const MyPurchasesModal = ({ isOpen, onClose, email }: MyPurchasesModalProps) => 
     setDetailLoading(true);
     setDetailProduct(null);
     fetchProductById(String(productId), false)
-      .then((row) => setDetailProduct(mapDbRowToProduct(row)))
-      .catch(() => {/* product may have been deleted — detail will show purchase data only */})
+      // row null = producto borrado: el detalle muestra solo los datos de la compra.
+      .then((row) => setDetailProduct(row ? mapDbRowToProduct(row) : null))
+      .catch(() => {/* error real de red: el detalle muestra solo los datos de la compra */})
       .finally(() => setDetailLoading(false));
   };
 

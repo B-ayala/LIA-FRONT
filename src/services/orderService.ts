@@ -1,4 +1,3 @@
-import { supabase } from '../config/supabaseClient';
 import { apiFetch, API_BASE_URL } from '../utils/apiFetch';
 import type { UnitVariants } from '../store/cartStore';
 
@@ -82,36 +81,58 @@ const normalizeOrderErrorMessage = (message?: string): string => {
   return message;
 };
 
-/** Inserta una venta directamente en Supabase (usado para transferencia bancaria). */
-export const createOrder = async (payload: CreateOrderPayload): Promise<void> => {
+/**
+ * Crea una orden de transferencia bancaria vía backend (POST /api/orders/transfer).
+ * El backend usa credenciales de service role, evitando el bloqueo por RLS de Supabase.
+ * Devuelve los ids de las líneas creadas (para el nudge post-WhatsApp).
+ */
+export const createOrder = async (payload: CreateOrderPayload): Promise<string[]> => {
   const validationError = validateOrderPayload(payload);
   if (validationError) {
     throw new Error(validationError);
   }
 
-  const shippingSurcharge = Number.isFinite(payload.shippingCost) ? Number(payload.shippingCost) : 0;
+  const res = await apiFetch(`${API_BASE_URL}/orders/transfer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      buyerName: payload.buyerName,
+      buyerEmail: payload.buyerEmail,
+      items: payload.items,
+      shippingMethod: payload.shippingMethod,
+      shippingCost: payload.shippingCost,
+      totalPrice: payload.totalPrice,
+    }),
+  });
 
-  const { error } = await supabase.from('ventas').insert(
-    payload.items.map((item, index) => ({
-      buyer_name: payload.buyerName || null,
-      buyer_email: payload.buyerEmail || null,
-      product_id: item.productId ? Number(item.productId) : null,
-      product_name: item.productName,
-      product_image: item.productImage,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      total_price: item.totalPrice + (index === 0 ? shippingSurcharge : 0),
-      units_config: item.unitsConfig,
-      payment_method: payload.paymentMethod,
-      payment_status: 'pendiente',
-      shipping_method: payload.shippingMethod ?? null,
-    }))
-  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(normalizeOrderErrorMessage((err as { message?: string }).message));
+  }
 
-  // Supabase no lanza: devuelve { error }. Antes este fallo era invisible y la
-  // venta se perdía sin que nadie se enterara; el flujo de pago igual continúa.
-  if (error) {
-    console.error('createOrder: no se pudo registrar la venta:', error.message);
+  const data = await res.json().catch(() => null);
+  return ((data?.order_ids ?? []) as string[]);
+};
+
+export type NudgeResponse = 'confirmado' | 'sin_confirmar' | 'abandonado';
+
+/**
+ * Registra la respuesta del nudge post-WhatsApp (checkout transferencia).
+ * 'abandonado' cancela las órdenes y devuelve stock en el backend; el resto solo
+ * deja la señal de conversión. Si falla, el sweep del backend igual las expira.
+ */
+export const recordNudge = async (orderIds: string[], response: NudgeResponse): Promise<void> => {
+  if (orderIds.length === 0) return;
+
+  const res = await apiFetch(`${API_BASE_URL}/orders/nudge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderIds, response }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { message?: string }).message ?? 'No se pudo registrar la respuesta.');
   }
 };
 

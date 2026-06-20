@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Carousel from '../../components/header/Carousel';
 import ProductGrid from '../../components/ProductGrid/ProductGrid';
 import SEO from '../../../components/common/SEO/SEO';
@@ -33,10 +34,20 @@ const Home = () => {
       <section className="home__featured-products">
         <div className="home__container">
           <h2 className="home__section-title">Productos Destacados</h2>
-          <ProductGrid
-            products={products}
-            limit={10}
-          />
+          {!isFeaturedLoading && products.length === 0 ? (
+            <div className="home__featured-empty">
+              <p>Pronto vas a encontrar acá nuestros productos destacados.</p>
+              <Link to="/products" className="home__featured-empty-btn">
+                Ver todo el catálogo
+              </Link>
+            </div>
+          ) : (
+            <ProductGrid
+              products={products}
+              limit={10}
+              loading={isFeaturedLoading}
+            />
+          )}
         </div>
       </section>
     </div>

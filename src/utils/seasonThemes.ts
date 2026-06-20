@@ -11,7 +11,7 @@
 // seasons.css con el mismo id. El resto del flujo (preview, apply, persistencia)
 // es data-driven.
 
-export type SeasonId = 'default' | 'spring' | 'summer' | 'autumn' | 'winter';
+export type SeasonId = 'default' | 'mono' | 'spring' | 'summer' | 'autumn' | 'winter';
 export type ThemeMode = 'auto' | 'manual';
 
 export interface SeasonPalette {
@@ -52,6 +52,23 @@ export const SEASONS: Record<SeasonId, SeasonTheme> = {
       accent: '#B8377D',
       surface: '#FFFFFF',
       textDark: '#333333',
+    },
+    months: [],
+    hasParticles: false,
+  },
+  mono: {
+    id: 'mono',
+    label: 'Blanco y Negro',
+    description: 'Monocromático sobrio — negro, blanco y grises, estilo del panel.',
+    emoji: '🖤',
+    palette: {
+      primary: '#171717',
+      primaryLight: '#E5E5E5',
+      primaryDark: '#000000',
+      primaryBg: '#FAFAFA',
+      accent: '#000000',
+      surface: '#FFFFFF',
+      textDark: '#0A0A0A',
     },
     months: [],
     hasParticles: false,
@@ -128,6 +145,7 @@ export const SEASONS: Record<SeasonId, SeasonTheme> = {
 
 export const SEASON_LIST: SeasonTheme[] = [
   SEASONS.default,
+  SEASONS.mono,
   SEASONS.spring,
   SEASONS.summer,
   SEASONS.autumn,

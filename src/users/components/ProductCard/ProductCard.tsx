@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../../types/product';
 import { parseColorOption } from '../../../utils/constants';
 import { getProductPricing } from '../../../utils/pricing';
-import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+import { productImageSrc } from '../../../utils/cloudinary';
 import './ProductCard.css';
 
 interface ProductCardProps {
@@ -32,7 +32,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore }) => {
           <div className="product-card__discount-badge">-{pricing.discountPercentage}%</div>
         )}
         <img
-          src={buildCloudinaryUrl(product.image, {
+          src={productImageSrc(product.image, {
             width: 400,
             quality: 'auto',
             format: 'auto'

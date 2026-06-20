@@ -1,6 +1,25 @@
 import type { UnitVariants } from '../store/cartStore';
 import { parseColorOption } from './constants';
 
+// ─── Text normalization ──────────────────────────────────────────────────────
+
+// El catálogo a veces trae texto con espacios sobrantes ("Campera ", "sandalias ")
+// cargados desde el admin. Se normaliza en el borde (al leer/guardar) para que el
+// resto de la app trabaje siempre con texto limpio: trim + colapso de espacios internos.
+export const cleanText = (value?: string | null): string =>
+  (value ?? '').trim().replace(/\s+/g, ' ');
+
+// Capitaliza sólo la primera letra, dejando el resto intacto ("campera" → "Campera",
+// "ropa interior" → "Ropa interior").
+export const capitalizeFirst = (value: string): string =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+
+// Las categorías se muestran y persisten con la primera letra en mayúscula y sin
+// espacios sobrantes. El match del filtro compara en minúsculas, así que la
+// capitalización no afecta la coincidencia, sólo la presentación.
+export const normalizeCategory = (value?: string | null): string =>
+  capitalizeFirst(cleanText(value));
+
 // ─── Price formatting ────────────────────────────────────────────────────────
 
 export const formatPrice = (n: number): string =>

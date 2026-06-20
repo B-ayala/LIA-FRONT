@@ -6,16 +6,21 @@ import ProductTable from '../../components/ProductTable/ProductTable';
 import ProductModal from '../../components/ProductModal/ProductModal';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
 import { fetchAllProducts } from '../../../services/productService';
+import { getProductStockFromVariants } from '../../../utils/productVariants';
 import { filterSelectSlotProps } from '../../../utils/labels';
+import { cleanText, normalizeCategory } from '../../../utils/formatters';
 import './Products.css';
 
 const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
     id: String(p.id),
-    name: p.name as string,
+    name: cleanText(p.name as string),
     price: p.price as number,
     originalPrice: (p.original_price as number) || undefined,
-    stock: p.stock as number,
-    category: (p.category as string) || '',
+    // Si el producto trackea stock por talle, la suma de variantes es la fuente de
+    // verdad (igual que la tienda pública). La columna `stock` puede quedar
+    // desincronizada; sólo se usa como fallback para productos sin talles.
+    stock: getProductStockFromVariants(p.variants as AdminProduct['variants']) ?? (p.stock as number),
+    category: normalizeCategory(p.category as string),
     imageUrl: (p.image_url as string) || '',
     images: (p.images as string[]) || undefined,
     description: (p.description as string) || undefined,

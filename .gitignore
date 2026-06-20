@@ -84,6 +84,7 @@ Desktop.ini
 *.tsbuildinfo
 
 # Vite
+.vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 

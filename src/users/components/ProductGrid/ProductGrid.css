@@ -6,6 +6,33 @@
   width: 100%;
 }
 
+/* Skeleton card (loading) — calca la forma de ProductCard */
+.product-card-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.product-card-skeleton__img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+}
+
+.product-card-skeleton__line {
+  height: 14px;
+  border-radius: 6px;
+}
+
+.product-card-skeleton__line--title { width: 70%; }
+.product-card-skeleton__line--price { width: 40%; height: 18px; }
+
+.product-card-skeleton__btn {
+  height: 38px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
 /* Tablet - 2 columns */
 @media (min-width: 768px) and (max-width: 1024px) {
   .product-grid {

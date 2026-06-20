@@ -5,12 +5,179 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Fixed
+- **BUG-001 — Transferencia bancaria bloqueada por RLS**: `createOrder()` ahora llama a `POST /api/orders/transfer` en el backend Express (pool DB con service_role) en lugar de insertar directo a Supabase con anon key. Resuelve el bloqueo RLS que impedía a usuarios estándar crear órdenes por transferencia.
+- **BUG-002 — Opción "Despachado" faltante en panel Despachos**: el filtro de estado ya incluye "Despachado"; el selector de cambio de estado muestra "Despachado" para envíos a domicilio o "Listo para retiro" para retiro en local (lógica condicional por shipping_method).
+- **Admin — editar producto**: verificado que el modal de edición abre correctamente, persiste cambios y los refleja en tabla sin recargar.
+- **Admin — eliminar producto**: dialog de confirmación presente; eliminar remueve el item de la lista inmediatamente.
+
+### Known Issues
+- **HALLAZGO-006** — Texto "Agregar al carrito" cortado ("Agregar al ca...") en la barra sticky inferior del detalle de producto en viewport 375px. Los dos botones no tienen suficiente espacio horizontal.
+
+### Removed
+- **Asistente admin — sección "Recientes"**: se quitó el historial de consultas recientes del
+  panel (chips bajo las acciones rápidas) por ser información redundante; las acciones ya están
+  siempre visibles. Se eliminó también el estado, la persistencia en `localStorage`
+  (`assistant:history`) y el CSS asociado.
+
+### Changed
+- **Asistente admin — labels de acciones más claros**: se renombraron las tres consultas que
+  se confundían entre sí para hacer explícito el solapamiento. "Pendientes de pago" → "Pagos
+  pendientes (todos)" (todo lo impago, cualquier medio); "Retiros por WhatsApp" → "Retiros
+  impagos" (solo el subconjunto de retiro en local por WhatsApp sin pagar); "Retiros por
+  confirmar" → "Retiros a entregar" (ya pagados, falta entrega). Solo cambian textos de UI;
+  los endpoints y filtros del backend no se tocan.
+
 ### Added
+- **Nudge post-WhatsApp en checkout por transferencia**: al volver a la pestaña tras abrir
+  WhatsApp, aparece "¿Pudiste completar tu compra?" con tres respuestas: *Sí, ya envié el
+  comprobante* / *Todavía no* / *No, cancelar mi pedido*. La respuesta se guarda en la nueva
+  columna `ventas.origin` (`wa_confirmado` / `wa_sin_confirmar` / `wa_abandonado`); cancelar
+  además libera el stock en el backend (`POST /api/orders/nudge`, solo dueño o admin). El
+  asistente muestra esa señal en "Pedidos pendientes de pago" y "Retiros por WhatsApp sin
+  confirmar" para distinguir los pendientes reales del ruido. Requiere correr la migración
+  `BACK/lia-store/db/migrations/2026-06-16_add_origin_to_ventas.sql` en Supabase.
+- **Asistente del panel admin**: widget flotante (FAB) disponible en todas las rutas
+  `/admin/*` con acciones rápidas para consultar el negocio en segundos, sin navegar entre
+  pantallas. **7 consultas**: stock bajo, ventas de hoy, pendientes de pago, retiros por
+  WhatsApp sin confirmar, más vendidos, mayor crecimiento y retiros por confirmar (los envíos
+  a domicilio quedan fuera de esta release). Cada resultado se muestra como tarjeta con
+  métricas, filas, indicador de
+  criticidad y acción sugerida (navegar / contactar por email). Incluye estados `loading`
+  (skeleton) / `empty` / `error` (con reintento), historial de consultas recientes y
+  favoritos (persistidos en `localStorage`), badge de alerta en el launcher y cierre con
+  `Escape` / click afuera. Al ejecutar una consulta, el panel **desliza automáticamente al
+  resultado**. Consume los endpoints solo-admin `GET /api/admin/insights/*` vía
+  `services/insightsService.ts`. Registro de acciones data-driven en `assistantConfig.ts`
+  (sumar una consulta = una entrada + endpoint).
+  - **UI mobile-first**: las acciones rápidas van en **una sola columna** (compactas, menos
+    cargado) y el panel ocupa casi toda la pantalla en teléfonos (≤480px).
+  - **Retiros por WhatsApp**: se listan desde el momento en que se genera el pedido (sin
+    esperar 15 min); se mantienen hasta que el admin confirma/cancela o el backend los
+    expira a las 5 h.
+- **Estados de carga (skeleton)** en contenido público que antes aparecía vacío/pop-in al
+  navegar (el loader global solo cubre el primer arranque; el de navegación dura un tiempo
+  fijo y no espera a los datos): productos destacados del Home (`ProductGrid` con prop
+  `loading`), Footer y About. Nueva utilidad `.skeleton` compartida (shimmer) en `index.css`.
+- **Empty state** en "Productos Destacados" del Home: si no hay destacados con stock, se
+  muestra un mensaje + CTA "Ver todo el catálogo" en vez del título con la grilla vacía.
+- Tema **Blanco y Negro** (monocromático) en el panel de Temas: paleta negro/blanco/grises
+  al estilo del panel admin. Se suma a las estaciones existentes (data-driven: entrada en
+  `SEASONS` + bloque `:root[data-season='mono']` en `seasons.css`), sin animación de fondo.
+- Configuración de despliegue en **Vercel**: `vercel.json` declara `framework`,
+  `buildCommand`, `outputDirectory` e `installCommand` explícitos (Vite → `dist`).
+- `.env.example` documentando las variables requeridas (`VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL_LOCAL`) para cargar en Vercel.
 - `confirmMpPayment` en `orderService` + llamada desde `CheckoutResult`: al volver
   de Mercado Pago con pago aprobado, el front llama a `POST /api/orders/mp-confirm`
   para que el backend verifique el pago contra MP y marque la venta como `pagado`.
 - `extractCloudinaryPublicId` en `utils/cloudinary.ts`: deriva el `public_id`
   real (con carpeta, sin versión ni extensión) desde una URL de Cloudinary.
+- Validación en el modal de productos: al intentar guardar un producto en estado
+  **"Activo" con stock total 0** (manual o derivado de talles), se bloquea el guardado
+  y se muestra un popup ("No se puede activar sin stock"). Evita el estado engañoso de
+  un producto "Activo" que el catálogo público oculta por falta de stock. El estado
+  "Inactivo" sigue permitiendo stock 0.
+- Validación inline de **precio** en el modal de productos: precio vacío o ≤ 0
+  marca error en el campo (antes sólo fallaba con un 400 genérico del backend al guardar).
+
+### Changed
+- **Categorías con la primera letra en mayúscula** automáticamente: nueva utilidad
+  `normalizeCategory` (= `capitalizeFirst` + `cleanText`) aplicada al crear (`createCategory`),
+  guardar (`buildProductBody`) y mostrar (catálogo, navbar, breadcrumbs, dropdown y admin). Las
+  categorías cargadas en minúscula (ej. `"campera"`) se ven `"Campera"` sin tocar la base. La
+  capitalización es neutra para el filtro (la coincidencia compara en minúsculas).
+- Campo **Stock** del modal de productos unificado entre crear y editar: si el producto
+  no trackea stock por talle, se muestra un input editable (antes, al **crear** sólo
+  había una tarjeta derivada y no se podía cargar stock manual, naciendo el producto en 0).
+- Vista previa de **Promociones** del modal ahora usa `getProductPricing` (la misma
+  función que la tienda): muestra exactamente el precio tachado y final que verá el
+  cliente, en lugar del `original_price` viejo/contradictorio de la base.
+- La tabla de productos del admin muestra el **stock derivado de variantes** (suma de
+  talles) cuando aplica, igual que el modal y la tienda pública, en vez de la columna
+  `stock` que podía quedar desincronizada.
+- `getAuthToken` devuelve un mensaje humano ("Tu sesión expiró. Volvé a iniciar sesión
+  para continuar.") en lugar del técnico "Token no disponible" cuando no hay sesión.
+- Tarjetas mobile de **Despachos** ahora usan el mismo `<select>` de estado que la tabla
+  desktop (todas las opciones, incluida "Entregado"), en vez del badge + botón "Avanzar"
+  que sólo permitía avanzar de a un paso y no llegaba a estados terminales. Unifica la
+  forma de cambiar el estado de despacho entre mobile y desktop.
+
+### Removed
+- Código muerto del modal de productos: manejo de `autoInactive` / `missingFields` y el
+  aviso "Producto guardado como inactivo". El backend nunca devolvía esos campos, así que
+  la rama no se ejecutaba nunca.
+- Código muerto en **Despachos** tras unificar el control de estado mobile: `handleAdvanceDispatch`,
+  `nextDispatchStatus`, el chequeo `isTerminal` y el import `DISPATCH_STATUS_LABEL` que ya no se usan.
+- **Calculadora de costo de envío** del detalle de producto (sección "Calcular costo de envío"):
+  input de código postal + botón "Calcular" + resultado. Se eliminó el bloque junto con su estado
+  (`postalCode`, `shippingCost`, `shippingDays`), la función `calculateShipping`, el import
+  `API_BASE_URL` (ya no se usaba en el archivo) y los estilos asociados (`.shipping-calculator*`).
+
+### Fixed
+- **Nombres de producto con espacios sobrantes** (ej. `"sandalias "`, `"Campera "` cargados
+  desde el admin) ahora se normalizan: nueva utilidad `cleanText` (trim + colapso de espacios)
+  aplicada al leer el catálogo (`mapDbRowToProduct`, `searchProducts`) y en los mappers del
+  admin, y al **guardar** (`buildProductBody` recorta el nombre, cortando el problema de raíz).
+- **Categorías con espacios sobrantes** normalizadas en ambos lados del match del filtro de
+  catálogo (árbol `fetchCategoriesTree` ↔ `productos.category`), para que la comparación sea
+  siempre texto-limpio ↔ texto-limpio y ningún producto desaparezca de su categoría. Cubre
+  lectura pública/admin, dropdown de categorías, escritura (`buildProductBody`, `createCategory`)
+  y URLs manuales con espacios (`?category=Campera%20`) en `/products`.
+- **Carrito persistente sin caducidad:** un ítem podía quedar meses en `localStorage`. Se le
+  agregó un **TTL deslizante de 30 días** vía storage custom (`expiringStorage`): se restampa en
+  cada cambio y al rehidratar descarta el carrito si la última actividad supera el límite (también
+  limpia entradas con JSON corrupto).
+- Pantallas de carga (inicial y de navegación) ahora **siguen el tema activo** en vez de
+  quedar fijas en la paleta lila/magenta: usan las variables del tema (`--primary-color`,
+  `--primary-accent`, `--primary-dark`, `--season-soft`, `--season-ribbon`, `--text-dark`)
+  vía `color-mix`, con los colores previos como fallback. Así el loader matchea el tema
+  elegido desde el panel (mono, invierno, etc.).
+- Tabs del **modal de producto** ya no se recortan en mobile: la barra de pestañas pasa de
+  scroll horizontal (con scrollbar oculto, última pestaña cortada y 2 pestañas inaccesibles)
+  a **wrap** en dos filas, mostrando las 6 pestañas completas. En desktop sigue como sidebar vertical.
+- Footer del **modal de producto** en pantallas ≤360px: los botones (flex:1 + `overflow:hidden`
+  del shimmer) recortaban "Guardar producto". Ahora se apilan en vertical full-width y la
+  etiqueta se ve completa.
+- Al abrir el **menú mobile** desde el detalle de producto, la barra de acciones fija
+  ("Comprar ahora / Agregar al carrito") ya no queda por encima del overlay: se bajó su
+  `z-index` (200 → 90) por debajo del stacking context del navbar, así el overlay/slider la tapan.
+- Botón flotante de **WhatsApp** ahora es responsive (CSS en vez de estilos inline): en mobile
+  se achica (60→50px) y se pega a la esquina (bottom/right 40→18/16px) para no tapar contenido
+  interactivo (p. ej. la primera opción de envío en checkout).
+- Tarjetas de producto sin imagen ya no renderizan `<img src="">` (warning de React y
+  re-descarga de página): nuevo helper `productImageSrc` que cae a un placeholder SVG.
+- Panel de **Cloudinary** ("Consumo de tu plan") ya no muestra créditos negativos
+  (ej. "-0.01"): se clampea el consumo y el porcentaje a 0 como mínimo.
+- **Detalle de producto** inactivo/retirado/inexistente —y también **sin stock** (accesible
+  solo por link directo; el catálogo ya lo oculta)— ya no redirige en silencio al catálogo:
+  muestra un estado claro "Producto no disponible" con CTA "Volver al catálogo".
+  Además `fetchProductById` usa `maybeSingle()`, eliminando los errores 406/PGRST116 que
+  ese caso esperado generaba en consola.
+- Filtros de los paneles **Ventas** y **Despachos** ya no se recortan ni se salen del
+  viewport en tablet (≥640px) y desktop. Se quitó el prop `fullWidth` de los `Select`
+  de filtro: el `MuiFormControl-fullWidth` (`width:100%`) ganaba en especificidad sobre
+  el `width:auto` del layout y, con `flex-wrap:nowrap`, empujaba los filtros "Método de
+  pago"/"Stock" (y "Estado de despacho") fuera de la pantalla, sin scroll para alcanzarlos.
+  En mobile el comportamiento (apilado con wrap) se mantiene igual.
+- Producto destacado/activo con stock a nivel producto (sin `stockByOption` por
+  talle) ya no se calcula como stock 0 ni desaparece del home y del catálogo.
+  `sanitizeVariant` deja de fabricar ceros cuando la variante de talle no trackea
+  stock por opción, y `getSelectionStockLimit` cae al stock del producto. Antes el
+  panel marcaba el producto como destacado ("X en home") pero el público nunca lo veía.
+- El tema global publicado desde el panel de Temas ("Aplicar a todos los usuarios")
+  ahora sí se aplica a los visitantes sin preferencia propia: `SeasonThemeProvider`
+  lee `site_content.season_theme` al iniciar. La elección manual del usuario sigue
+  teniendo prioridad y el tema global aplicado no se persiste, así futuros cambios
+  del admin se reflejan en visitantes pasivos.
+- Validación de URL (http/https) en TikTok/Facebook del editor de Configuración del
+  sitio: evita guardar enlaces rotos o esquemas peligrosos en el footer público.
+- Imagen de "Acerca de" ya no se renderiza con `src=""` durante la carga (eliminado
+  el warning de React y la posible re-descarga de la página).
+
+### Removed
+- `.github/workflows/deploy.yml` (despliegue a GitHub Pages en cada push),
+  reemplazado por el despliegue continuo de Vercel.
 
 ### Changed
 - URL base del API centralizada: `API_BASE_URL` se exporta desde `utils/apiFetch.ts`
@@ -31,6 +198,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   email sin confirmar) en vez de un texto genérico.
 
 ### Fixed
+- Admin Cloudinary: el panel de uso mostraba "casi todo tu límite (96%)" comparando
+  la **cantidad de archivos** (24) contra los **25 créditos** del plan free (dos
+  métricas distintas). Ahora la barra refleja el consumo real del plan
+  (`credits.usage` / `credits.limit`), con texto amigable y la cantidad de imágenes
+  como dato informativo, sin la alarma falsa.
+- Admin Ventas: la tarjeta "Total ventas" contaba solo las pagadas (mismo valor
+  que "Pagadas") y no cuadraba con la lista; ahora cuenta todas las ventas.
 - Checkout MP: si el backend no devuelve `init_point`, ahora se muestra un error
   claro en lugar de redirigir a `about:undefined`.
 - `createOrder` (transferencia): los errores de inserción en `ventas` ya no se

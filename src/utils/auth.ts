@@ -20,6 +20,6 @@ export const getAuthToken = async (): Promise<string> => {
     /* fallback a tokenStorage */
   }
   const token = tokenStorage.getAccessToken();
-  if (!token) throw new Error('Token no disponible');
+  if (!token) throw new Error('Tu sesión expiró. Volvé a iniciar sesión para continuar.');
   return token;
 };

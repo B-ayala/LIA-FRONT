@@ -4,6 +4,7 @@ import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import { useNavigationLoad } from '../../components/common/NavigationLoad/NavigationLoadProvider';
 import NavigationLoadingScreen from '../../components/common/NavigationLoad/NavigationLoadingScreen';
+import AssistantWidget from '../components/Assistant/AssistantWidget';
 import '../styles/adminShared.css';
 import './AdminLayout.css';
 
@@ -38,6 +39,7 @@ const AdminLayout = () => {
                     </main>
                 </div>
             </div>
+            <AssistantWidget />
         </div>
     );
 };

@@ -32,6 +32,27 @@ export function buildCloudinaryUrl(
   return url.replace('/upload/', `/upload/${transformString}/`);
 }
 
+const PLACEHOLDER_SVG =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">` +
+  `<rect width="400" height="400" fill="#f1f5f9"/>` +
+  `<text x="200" y="208" font-family="sans-serif" font-size="20" fill="#94a3b8" text-anchor="middle">Sin imagen</text>` +
+  `</svg>`;
+
+/** Placeholder neutro (sin red) para productos sin imagen. */
+export const PRODUCT_IMAGE_PLACEHOLDER = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(PLACEHOLDER_SVG)}`;
+
+/**
+ * Devuelve la URL de imagen del producto lista para `<img src>`, o un placeholder
+ * cuando no hay imagen. Evita renderizar `src=""` (que dispara un warning de React
+ * y una re-descarga de la página).
+ */
+export function productImageSrc(
+  image: string | null | undefined,
+  options: Parameters<typeof buildCloudinaryUrl>[1] = {}
+): string {
+  return buildCloudinaryUrl(image ?? '', options) || PRODUCT_IMAGE_PLACEHOLDER;
+}
+
 /**
  * Extrae el public_id de una URL de entrega de Cloudinary.
  * Para `.../upload/v123/carpeta/imagen.jpg` devuelve `carpeta/imagen`

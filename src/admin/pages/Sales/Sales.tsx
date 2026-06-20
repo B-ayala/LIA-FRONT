@@ -273,7 +273,6 @@ const Sales = () => {
                         className="filter-select"
                         value={filterPaymentStatus}
                         onChange={(e) => setFilterPaymentStatus(e.target.value)}
-                        fullWidth
                         size="small"
                         slotProps={filterSelectSlotProps}
                     >
@@ -288,7 +287,6 @@ const Sales = () => {
                         className="filter-select"
                         value={filterPaymentMethod}
                         onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                        fullWidth
                         size="small"
                         slotProps={filterSelectSlotProps}
                     >
@@ -301,7 +299,6 @@ const Sales = () => {
                         className="filter-select"
                         value={filterStock}
                         onChange={(e) => setFilterStock(e.target.value)}
-                        fullWidth
                         size="small"
                         slotProps={filterSelectSlotProps}
                     >
@@ -315,7 +312,7 @@ const Sales = () => {
             {/* Summary badges */}
             <div className="sales-summary">
                 <div className="summary-badge total">
-                    <span className="summary-value">{sales.filter(s => s.payment_status === 'pagado').length}</span>
+                    <span className="summary-value">{sales.length}</span>
                     <span className="summary-label">Total ventas</span>
                 </div>
                 <div className="summary-badge pending">

@@ -97,6 +97,31 @@ const About = () => {
 
   const heroBackgroundPosition = heroImage?.backgroundPosition || '50% 50%';
 
+  if (isLoading) {
+    return (
+      <div className="about-page" aria-busy="true" aria-label="Cargando contenido">
+        <div className="about-hero about-hero--skeleton">
+          <div className="about-hero-content">
+            <div className="about-skeleton about-skeleton--title skeleton" />
+          </div>
+        </div>
+        <div className="about-container">
+          <div className="about-main-content">
+            <div className="about-text-section">
+              <div className="about-skeleton about-skeleton--line skeleton" />
+              <div className="about-skeleton about-skeleton--line skeleton" />
+              <div className="about-skeleton about-skeleton--line about-skeleton--line-short skeleton" />
+              <div className="about-skeleton about-skeleton--btn skeleton" />
+            </div>
+            <div className="about-image-section">
+              <div className="about-skeleton about-skeleton--image skeleton" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="about-page">
       <SEO
@@ -130,23 +155,25 @@ const About = () => {
             </button>
           </div>
 
-          <div className="about-image-section">
-            <img
-              src={buildCloudinaryUrl(image ?? '', {
-                width: 450,
-                quality: 'auto',
-                format: 'auto'
-              })}
-              alt="Esencia de LIA"
-              className="about-image"
-              loading="lazy"
-              decoding="async"
-              width={450}
-              height={600}
-              onLoad={() => setIsImageReady(true)}
-              onError={() => setIsImageReady(true)}
-            />
-          </div>
+          {image && (
+            <div className="about-image-section">
+              <img
+                src={buildCloudinaryUrl(image, {
+                  width: 450,
+                  quality: 'auto',
+                  format: 'auto'
+                })}
+                alt="Esencia de LIA"
+                className="about-image"
+                loading="lazy"
+                decoding="async"
+                width={450}
+                height={600}
+                onLoad={() => setIsImageReady(true)}
+                onError={() => setIsImageReady(true)}
+              />
+            </div>
+          )}
         </div>
       </div>
 
