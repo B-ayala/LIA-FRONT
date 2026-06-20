@@ -7,8 +7,10 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 0.75rem;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 900;
     flex-shrink: 0;
 }
@@ -60,8 +62,12 @@
     }
 }
 
-/* Desktop: hide menu toggle */
+/* Desktop: sidebar visible, header shifts right */
 @media (min-width: 1024px) {
+    .admin-header {
+        left: 260px;
+    }
+
     .admin-menu-toggle {
         display: none;
     }
