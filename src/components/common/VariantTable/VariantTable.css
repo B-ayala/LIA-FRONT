@@ -94,14 +94,29 @@
   background-color: rgba(239, 68, 68, 0.1);
 }
 
+.variant-label-cell {
+  text-align: left;
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.variant-value-cell {
+  text-align: center;
+  color: #4b5563;
+  font-size: 0.88rem;
+}
+
+.variant-table-empty {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-style: italic;
+}
+
 @media (max-width: 640px) {
   .variant-col-header, .variant-cell {
     padding: 8px 12px;
-  }
-  
-  .status-indicator {
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
   }
 }

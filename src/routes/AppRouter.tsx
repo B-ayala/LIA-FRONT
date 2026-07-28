@@ -1,14 +1,24 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Navigate, Routes, Route, Outlet } from 'react-router-dom';
 import ScrollToTop from '../components/common/ScrollToTop';
 import { InitialRouteReady } from '../components/common/InitialLoad/InitialLoadProvider';
 import { NavigationLoadProvider } from '../components/common/NavigationLoad/NavigationLoadProvider';
+import { useAuthStore } from '../store/authStore';
 
 // Layouts y guards quedan EAGER: son wrappers que siempre se renderizan; lazy
 // loadearlos introduce un flash innecesario al entrar a cualquier ruta.
 import UserLayout from '../users/layout/UserLayout';
 import AdminProtectedRoute from '../admin/routes/AdminProtectedRoute';
 import AdminLayout from '../admin/layout/AdminLayout';
+
+// Redirige a /admin si hay una sesión de admin activa.
+// Usa isAuthenticated que ya está hidratado sincrónicamente desde localStorage,
+// así que el redirect es instantáneo sin esperar initializeAuth.
+const AdminRedirect = () => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  if (isAuthenticated) return <Navigate to="/admin" replace />;
+  return <Outlet />;
+};
 
 // Páginas hoja: lazy. Esto permite que el bundle público no arrastre el
 // código admin (y viceversa). El chunk de cada página se carga cuando se
@@ -93,15 +103,17 @@ const AppRouter = () => {
             </Route>
           </Route>
 
-          {/* Public Routes */}
-          <Route element={<UserLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/checkout/result" element={<InitialRouteReady><CheckoutResult /></InitialRouteReady>} />
-            <Route path="/contact" element={<InitialRouteReady><Contact /></InitialRouteReady>} />
-            <Route path="/about" element={<About />} />
+          {/* Public Routes — redirige a /admin si la sesión es de admin */}
+          <Route element={<AdminRedirect />}>
+            <Route element={<UserLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/checkout/result" element={<InitialRouteReady><CheckoutResult /></InitialRouteReady>} />
+              <Route path="/contact" element={<InitialRouteReady><Contact /></InitialRouteReady>} />
+              <Route path="/about" element={<About />} />
+            </Route>
           </Route>
         </Routes>
       </Suspense>

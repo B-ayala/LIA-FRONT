@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Variant, Specification, FAQ } from '../../types/product';
+import type { Variant, Specification, FAQ, SizeGuide } from '../../types/product';
 
 // Auth (login/logout/currentUser/isAuthenticated) vive en `src/store/authStore.ts`
 // — separado para no forzar a la capa pública a importar desde `admin/`.
@@ -24,6 +24,7 @@ export interface AdminProduct {
   faqs?: FAQ[];
   warranty?: string;
   returnPolicy?: string;
+  sizeGuide?: SizeGuide;
   status: 'active' | 'inactive';
   featured?: boolean;
 }

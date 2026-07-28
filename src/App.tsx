@@ -5,6 +5,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { theme } from './utils/theme';
 import { SeasonThemeProvider } from './utils/SeasonThemeProvider';
+import { TypographyProvider } from './utils/TypographyProvider';
 import AppRouter from './routes/AppRouter';
 import WhatsAppButton from './components/common/WhatsAppButton/WhatsAppButton';
 import Footer from './components/common/Footer/Footer';
@@ -73,11 +74,13 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <SeasonThemeProvider>
-          <BrowserRouter>
-            <InitialLoadProvider>
-              <AppContent />
-            </InitialLoadProvider>
-          </BrowserRouter>
+          <TypographyProvider>
+            <BrowserRouter>
+              <InitialLoadProvider>
+                <AppContent />
+              </InitialLoadProvider>
+            </BrowserRouter>
+          </TypographyProvider>
         </SeasonThemeProvider>
       </ThemeProvider>
     </HelmetProvider>

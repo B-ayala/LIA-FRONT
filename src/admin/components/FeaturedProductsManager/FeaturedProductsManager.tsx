@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { Search, Plus, Trash2, Star, Eye } from 'lucide-react';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
 import { toggleProductFeatured, fetchProducts } from '../../../services/productService';
+import { cleanText, normalizeCategory } from '../../../utils/formatters';
 import './FeaturedProductsManager.css';
 
 const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
     id: String(p.id),
-    name: p.name as string,
+    name: cleanText(p.name as string),
     price: p.price as number,
     originalPrice: (p.original_price as number) || undefined,
     stock: p.stock as number,
-    category: (p.category as string) || '',
+    category: normalizeCategory(p.category as string),
     imageUrl: (p.image_url as string) || '',
     images: (p.images as string[]) || undefined,
     description: (p.description as string) || undefined,

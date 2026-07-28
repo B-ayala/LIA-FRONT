@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import type { Product } from '../types/product';
 import { getProductPricing } from '../utils/pricing';
 import { areUnitVariantSelectionsValid, getProductStockLimit } from '../utils/productVariants';
@@ -34,6 +34,43 @@ interface CartState {
   totalItems: () => number;
   setItem: (item: CheckoutItem | null) => void;
 }
+
+// El carrito vive en localStorage; sin caducidad un ítem puede quedar meses.
+// Se le da un TTL deslizante: cada vez que se escribe se restampa, y al rehidratar
+// se descarta si la última actividad supera el límite. 30 días post-abandono.
+const CART_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+
+const expiringStorage: StateStorage = {
+  getItem: (name) => {
+    const raw = localStorage.getItem(name);
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as { savedAt?: number };
+      if (typeof parsed.savedAt === 'number' && Date.now() - parsed.savedAt > CART_TTL_MS) {
+        localStorage.removeItem(name);
+        return null;
+      }
+      return raw;
+    } catch {
+      // JSON corrupto: lo tratamos como ausente para no romper la rehidratación.
+      localStorage.removeItem(name);
+      return null;
+    }
+  },
+  setItem: (name, value) => {
+    try {
+      const parsed = JSON.parse(value);
+      parsed.savedAt = Date.now();
+      localStorage.setItem(name, JSON.stringify(parsed));
+    } catch {
+      localStorage.setItem(name, value);
+    }
+  },
+  removeItem: (name) => localStorage.removeItem(name),
+};
 
 const clampQuantityToStock = (quantity: number, product: Product): number => {
   const safeQuantity = Math.max(0, quantity);
@@ -298,6 +335,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'damiana-bella-cart',
+      storage: createJSONStorage(() => expiringStorage),
       merge: (persistedState, currentState) => {
         const persistedCartState = persistedState as Partial<CartState>;
         const items = sanitizeCartItems(persistedCartState.items ?? currentState.items);

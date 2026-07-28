@@ -16,7 +16,7 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: { isOpen: boolean, toggleSideba
         { path: '/admin/users', name: 'Usuarios', icon: Users },
         { path: '/admin/about', name: 'Acerca de', icon: Info },
         { path: '/admin/site-config', name: 'Config. del sitio', icon: Settings },
-        { path: '/admin/themes', name: 'Temas', icon: Palette },
+        { path: '/admin/themes', name: 'Temas / Tipografía', icon: Palette },
         { path: '/admin/cloudinary', name: 'Cloudinary', icon: Image },
     ];
 

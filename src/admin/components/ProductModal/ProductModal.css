@@ -27,9 +27,8 @@
     padding: 0.5rem;
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 0.35rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     flex-shrink: 0;
     scrollbar-width: none;
 }
@@ -237,6 +236,19 @@
 
 .product-modal-footer .admin-btn-secondary:active {
     transform: translateY(0) scale(0.98);
+}
+
+/* Pantallas muy angostas (≤360px): con dos botones flex:1 + overflow:hidden del
+   primario (shimmer), "Guardar producto" no entraba y se recortaba. Se apilan en
+   vertical (cada uno full-width) para que la etiqueta se vea completa. */
+@media (max-width: 360px) {
+    .product-modal-footer {
+        flex-direction: column;
+    }
+
+    .product-modal-footer button {
+        width: 100%;
+    }
 }
 
 /* Tablet (640px+) */

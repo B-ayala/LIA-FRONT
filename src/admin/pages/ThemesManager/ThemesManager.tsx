@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Check, EyeOff, Globe, Palette, RefreshCw, Save, Sparkles } from 'lucide-react';
 import { supabase } from '../../../config/supabaseClient';
 import { useSeasonTheme } from '../../../utils/SeasonThemeProvider';
+import { useTypography } from '../../../utils/TypographyProvider';
 import {
   SEASON_LIST,
   SEASONS,
   isSeasonId,
   type SeasonId,
 } from '../../../utils/seasonThemes';
+import TypographySection from './TypographySection';
 import './ThemesManager.css';
 
 // Tabla `site_content` (key='season_theme') guarda la preferencia global —
@@ -33,6 +35,12 @@ const ThemesManager = () => {
     preview,
     clearPreview,
   } = useSeasonTheme();
+
+  const {
+    publishGlobal: publishTypography,
+    publishState: typoPublishState,
+    publishError: typoPublishError,
+  } = useTypography();
 
   const [remoteSeason, setRemoteSeason] = useState<SeasonId | null>(null);
   const [savingRemote, setSavingRemote] = useState(false);
@@ -66,7 +74,7 @@ const ThemesManager = () => {
     clearPreview();
   };
 
-  const handlePublishGlobal = async () => {
+  const saveThemeGlobal = async () => {
     setSavingRemote(true);
     setRemoteError(null);
     const payload: RemoteThemePref = {
@@ -78,7 +86,7 @@ const ThemesManager = () => {
       .upsert({ key: REMOTE_KEY, value: payload, updated_at: new Date().toISOString() });
     setSavingRemote(false);
     if (error) {
-      setRemoteError('No se pudo guardar para todos los usuarios.');
+      setRemoteError('No se pudo guardar el tema para todos los usuarios.');
       return;
     }
     setRemoteSeason(storedSeason);
@@ -86,14 +94,18 @@ const ThemesManager = () => {
     setTimeout(() => setSaved(false), 3000);
   };
 
+  const handleSaveAll = () => {
+    void Promise.all([saveThemeGlobal(), publishTypography()]);
+  };
+
   return (
     <div className="themes-manager">
       <div className="admin-page-header">
         <h1 className="admin-page-title">
-          <Palette size={22} aria-hidden="true" /> Temas estacionales
+          <Palette size={22} aria-hidden="true" /> Temas / Tipografía
         </h1>
         <p className="admin-page-subtitle">
-          Cambiá la identidad visual del sitio según la estación del año. Los cambios se aplican en tiempo real.
+          Personalizá la identidad visual del sitio: elegí un tema de color, ajustá la tipografía y publicá los cambios para todos los usuarios.
         </p>
       </div>
 
@@ -102,7 +114,7 @@ const ThemesManager = () => {
           <h2 id="themes-mode-title">Modo de selección</h2>
           <p>
             <strong>Automático</strong> sigue la fecha actual ({SEASONS[detectedSeason].label}).
-            <strong> Manual</strong> mantiene la estación que elijas.
+            <strong> Manual</strong> mantiene el tema que elijas.
           </p>
         </div>
         <div className="themes-mode-toggle" role="radiogroup" aria-label="Modo de selección de tema">
@@ -129,7 +141,7 @@ const ThemesManager = () => {
 
       <section aria-labelledby="themes-grid-title">
         <h2 id="themes-grid-title" className="themes-grid-title">
-          Estaciones disponibles
+          Temas disponibles
           {isPreviewing && (
             <span className="themes-preview-badge" aria-live="polite">
               Previsualizando — pasá el mouse fuera para volver
@@ -243,25 +255,35 @@ const ThemesManager = () => {
         </div>
       </section>
 
+      <hr className="themes-divider" aria-hidden="true" />
+
+      <TypographySection />
+
       <section className="themes-publish-card" aria-labelledby="themes-publish-title">
         <div>
           <h2 id="themes-publish-title">
-            <Globe size={18} aria-hidden="true" /> Aplicar a todos los usuarios
+            <Globe size={18} aria-hidden="true" /> Guardar para todos los usuarios
           </h2>
           <p>
-            Publica la estación seleccionada (<strong>{SEASONS[storedSeason].label}</strong>) como predeterminada
-            para todos los visitantes. Cada usuario podrá seguir personalizándola desde su navegador.
+            Publica el tema <strong>{SEASONS[storedSeason].label}</strong> y la tipografía seleccionada
+            como predeterminados para todos los visitantes. Cada usuario podrá seguir personalizándolos
+            desde su navegador.
           </p>
           {remoteError && <p className="themes-error" role="alert">{remoteError}</p>}
-          {saved && <p className="themes-success" role="status"><Check size={14} /> Preferencia global guardada.</p>}
+          {typoPublishError && <p className="themes-error" role="alert">{typoPublishError}</p>}
+          {(saved || typoPublishState === 'saved') && (
+            <p className="themes-success" role="status">
+              <Check size={14} /> Cambios guardados para todos los usuarios.
+            </p>
+          )}
         </div>
         <button
           type="button"
           className="themes-publish-btn"
-          onClick={handlePublishGlobal}
-          disabled={savingRemote}
+          onClick={handleSaveAll}
+          disabled={savingRemote || typoPublishState === 'saving'}
         >
-          {savingRemote
+          {(savingRemote || typoPublishState === 'saving')
             ? <><RefreshCw size={16} className="spin" aria-hidden="true" /> Guardando…</>
             : <><Save size={16} aria-hidden="true" /> Guardar para todos</>}
         </button>

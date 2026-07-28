@@ -204,6 +204,32 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 130px;
 }
 
+/* ─── SKELETON LOADING (compartido) ─── */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e6e3e8;
+  border-radius: 8px;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.55) 50%, transparent 75%);
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.5s infinite;
+  will-change: transform;
+}
+
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+}
+
 @media (min-width: 768px) {
   .form-group > label {
     font-size: 0.875rem;

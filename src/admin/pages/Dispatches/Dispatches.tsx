@@ -3,7 +3,7 @@ import { RefreshCw, Package, Truck, Store, User, Mail, SendHorizonal } from 'luc
 import { Box, MenuItem, Pagination, TextField } from '@mui/material';
 import { supabase } from '../../../config/supabaseClient';
 import { formatDate, formatPriceInt } from '../../../utils/formatters';
-import { DISPATCH_STATUS_LABEL, SHIPPING_METHOD_LABEL, filterSelectSlotProps } from '../../../utils/labels';
+import { SHIPPING_METHOD_LABEL, filterSelectSlotProps } from '../../../utils/labels';
 import { usePagination } from '../../../hooks/usePagination';
 import './Dispatches.css';
 
@@ -32,12 +32,6 @@ function ShippingIcon({ method }: { method: string | null }) {
     if (method === 'moto') return <Truck size={14} className="shipping-icon moto" />;
     if (method === 'local') return <Store size={14} className="shipping-icon local" />;
     return <SendHorizonal size={14} className="shipping-icon" />;
-}
-
-function nextDispatchStatus(current: DispatchStatus, shippingMethod: string | null): DispatchStatus {
-    if (current === 'pendiente') return 'en_preparacion';
-    if (current === 'en_preparacion') return shippingMethod === 'local' ? 'listo_para_retiro' : 'despachado';
-    return current;
 }
 
 const getDispatchStatusFieldSx = (status: DispatchStatus) => {
@@ -120,15 +114,6 @@ const Dispatches = () => {
         loadDispatches();
     }, []);
 
-    const handleAdvanceDispatch = async (d: Dispatch) => {
-        const newStatus = nextDispatchStatus(d.dispatch_status, d.shipping_method);
-        if (newStatus === d.dispatch_status) return;
-        const { error } = await supabase.from('ventas').update({ dispatch_status: newStatus }).eq('id', d.id);
-        if (!error) {
-            setDispatches((prev) => prev.map((x) => x.id === d.id ? { ...x, dispatch_status: newStatus } : x));
-        }
-    };
-
     const handleChangeDispatchStatus = async (d: Dispatch, newStatus: DispatchStatus) => {
         if (newStatus === d.dispatch_status) return;
         const { error } = await supabase.from('ventas').update({ dispatch_status: newStatus }).eq('id', d.id);
@@ -169,7 +154,6 @@ const Dispatches = () => {
                         className="filter-select"
                         value={filterShipping}
                         onChange={(e) => setFilterShipping(e.target.value)}
-                        fullWidth
                         size="small"
                         slotProps={filterSelectSlotProps}
                     >
@@ -183,7 +167,6 @@ const Dispatches = () => {
                         className="filter-select"
                         value={filterDispatch}
                         onChange={(e) => setFilterDispatch(e.target.value)}
-                        fullWidth
                         size="small"
                         slotProps={filterSelectSlotProps}
                     >
@@ -239,10 +222,7 @@ const Dispatches = () => {
                     <>
                         {/* Mobile cards */}
                         <div className="dispatch-card-list">
-                            {paginated.map((d) => {
-                                const isTerminal =
-                                    d.dispatch_status === 'despachado' || d.dispatch_status === 'listo_para_retiro' || d.dispatch_status === 'entregado';
-                                return (
+                            {paginated.map((d) => (
                                     <div className="dispatch-card" key={d.id}>
                                         <div className="dispatch-card-buyer">
                                             <div className="dispatch-card-buyer-row">
@@ -287,25 +267,27 @@ const Dispatches = () => {
                                             </div>
                                             <div className="dispatch-card-field full-width">
                                                 <span className="field-label">Estado despacho</span>
-                                                <div className="dispatch-status-row">
-                                                    <span className={`dispatch-status-badge ${d.dispatch_status}`}>
-                                                        {DISPATCH_STATUS_LABEL[d.dispatch_status]}
-                                                    </span>
-                                                    {!isTerminal && (
-                                                        <button
-                                                            className="dispatch-advance-btn"
-                                                            onClick={() => handleAdvanceDispatch(d)}
-                                                            title="Avanzar al siguiente estado"
-                                                        >
-                                                            Avanzar
-                                                        </button>
+                                                <TextField
+                                                    select
+                                                    className="dispatch-status-select"
+                                                    value={d.dispatch_status}
+                                                    onChange={(e) => handleChangeDispatchStatus(d, e.target.value as DispatchStatus)}
+                                                    size="small"
+                                                    sx={getDispatchStatusFieldSx(d.dispatch_status)}
+                                                >
+                                                    <MenuItem value="pendiente">Pendiente</MenuItem>
+                                                    <MenuItem value="en_preparacion">En preparación</MenuItem>
+                                                    {d.shipping_method === 'local' ? (
+                                                        <MenuItem value="listo_para_retiro">Listo para retiro</MenuItem>
+                                                    ) : (
+                                                        <MenuItem value="despachado">Despachado</MenuItem>
                                                     )}
-                                                </div>
+                                                    <MenuItem value="entregado">Entregado</MenuItem>
+                                                </TextField>
                                             </div>
                                         </div>
                                     </div>
-                                );
-                            })}
+                            ))}
                         </div>
 
                         {/* Desktop table */}

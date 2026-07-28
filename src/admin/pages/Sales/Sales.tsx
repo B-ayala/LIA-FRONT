@@ -273,7 +273,6 @@ const Sales = () => {
                         className="filter-select"
                         value={filterPaymentStatus}
                         onChange={(e) => setFilterPaymentStatus(e.target.value)}
-                        fullWidth
                         size="small"
                         slotProps={filterSelectSlotProps}
                     >
@@ -288,7 +287,6 @@ const Sales = () => {
                         className="filter-select"
                         value={filterPaymentMethod}
                         onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                        fullWidth
                         size="small"
                         slotProps={filterSelectSlotProps}
                     >
@@ -301,7 +299,6 @@ const Sales = () => {
                         className="filter-select"
                         value={filterStock}
                         onChange={(e) => setFilterStock(e.target.value)}
-                        fullWidth
                         size="small"
                         slotProps={filterSelectSlotProps}
                     >
@@ -315,7 +312,7 @@ const Sales = () => {
             {/* Summary badges */}
             <div className="sales-summary">
                 <div className="summary-badge total">
-                    <span className="summary-value">{sales.filter(s => s.payment_status === 'pagado').length}</span>
+                    <span className="summary-value">{sales.length}</span>
                     <span className="summary-label">Total ventas</span>
                 </div>
                 <div className="summary-badge pending">
@@ -419,12 +416,6 @@ const Sales = () => {
                                             <span className="field-value">{PAYMENT_METHOD_LABEL[sale.payment_method] ?? sale.payment_method}</span>
                                         </div>
                                         <div className="sale-card-field">
-                                            <span className="field-label">Stock actual</span>
-                                            <span className={`stock-badge ${sale.current_stock === 0 ? 'out' : sale.current_stock !== undefined && sale.current_stock <= 5 ? 'low' : 'ok'}`}>
-                                                {sale.current_stock ?? '—'}
-                                            </span>
-                                        </div>
-                                        <div className="sale-card-field">
                                             <span className="field-label">Estado pago</span>
                                             {sale.payment_method === 'transfer' && getEffectiveStatus(sale) === 'pendiente' ? (
                                                 <select
@@ -458,7 +449,6 @@ const Sales = () => {
                                     <th>Total</th>
                                     <th>Método pago</th>
                                     <th>Envío</th>
-                                    <th>Stock actual</th>
                                     <th>Estado pago</th>
                                 </tr>
                             </thead>
@@ -490,11 +480,6 @@ const Sales = () => {
                                         <td className="font-medium">{formatPriceInt(sale.total_price)}</td>
                                         <td>{PAYMENT_METHOD_LABEL[sale.payment_method] ?? sale.payment_method}</td>
                                         <td>{sale.shipping_method ? (SHIPPING_METHOD_LABEL[sale.shipping_method] ?? sale.shipping_method) : '—'}</td>
-                                        <td>
-                                            <span className={`stock-badge ${sale.current_stock === 0 ? 'out' : sale.current_stock !== undefined && sale.current_stock <= 5 ? 'low' : 'ok'}`}>
-                                                {sale.current_stock ?? '—'}
-                                            </span>
-                                        </td>
                                         <td>
                                             {sale.payment_method === 'transfer' && getEffectiveStatus(sale) === 'pendiente' ? (
                                                 <select

@@ -102,6 +102,12 @@
   border-left: 4px solid;
 }
 
+.storage-alert-ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-left-color: #43a047;
+}
+
 .storage-alert-normal {
   background: #e3f2fd;
   color: #1565c0;
@@ -127,6 +133,14 @@
 /* Progress bar */
 .storage-bar-container {
   margin-bottom: 16px;
+}
+
+.storage-bar-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #999;
 }
 
 .storage-bar {

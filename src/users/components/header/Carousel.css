@@ -8,6 +8,31 @@
 
 .carousel--skeleton {
   background: #c4c0c0;
+  animation: none;
+}
+
+.carousel-skeleton__logo-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.carousel-skeleton__logo {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  animation: carousel-logo-pulse 1.8s ease-in-out infinite;
+  opacity: 0.92;
+}
+
+@keyframes carousel-logo-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.92; }
+  50%       { transform: scale(1.07); opacity: 1; }
 }
 
 /* Shimmer via transform (compositor-only, no repaint) */

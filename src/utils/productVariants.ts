@@ -34,6 +34,22 @@ export const sanitizeVariant = (variant: Variant): Variant => {
     };
   }
 
+  // Una variante de talle sin stock por opción (ningún valor numérico) significa
+  // que el stock se controla a nivel producto (columna `stock`), no por talle.
+  // Fabricar ceros acá lo trataría como "agotado en todos los talles", lo que
+  // ocultaba el producto del home/catálogo y bloqueaba su compra.
+  const tracksStockByOption = !!variant.stockByOption
+    && options.some((option) => Number.isFinite(variant.stockByOption?.[option]));
+
+  if (!tracksStockByOption) {
+    return {
+      ...variant,
+      name,
+      options,
+      stockByOption: undefined,
+    };
+  }
+
   const stockByOption = options.reduce<Record<string, number>>((acc, option) => {
     const rawStock = variant.stockByOption?.[option];
     acc[option] = Number.isFinite(rawStock) ? Math.max(0, rawStock ?? 0) : 0;
@@ -130,7 +146,7 @@ export const getSelectionStockLimit = (product: Product, selectedVariants: Selec
   const sizeVariant = getSizeVariant(product);
   const selectedSize = getSelectedSizeOption(product, selectedVariants);
 
-  if (!sizeVariant || !selectedSize) {
+  if (!sizeVariant || !selectedSize || !sizeVariant.stockByOption) {
     return getProductStockLimit(product);
   }
 

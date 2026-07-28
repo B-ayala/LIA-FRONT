@@ -4,6 +4,7 @@ import './Products.css';
 import ProductGrid from '../../components/ProductGrid/ProductGrid';
 import SEO from '../../../components/common/SEO/SEO';
 import { fetchProducts, mapDbRowToProduct, fetchCategoriesTree, type Category } from '../../../services/productService';
+import { cleanText } from '../../../utils/formatters';
 import type { Product } from '../../../types/product';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 
@@ -50,7 +51,7 @@ const Products = () => {
   }, []);
 
   const filteredProducts = useMemo(() => {
-    const filterBy = activeSubSub || activeSubcategory || activeCategory;
+    const filterBy = cleanText(activeSubSub || activeSubcategory || activeCategory);
     if (filterBy === 'Todos') return products;
     const validNames = getAllDescendantNames(categories, filterBy);
     return products.filter((p) => validNames.has(p.category?.toLowerCase() ?? ''));
@@ -120,12 +121,10 @@ const Products = () => {
         </nav>
 
 
-        {loading ? (
-          <p className="products-loading">Cargando productos...</p>
-        ) : filteredProducts.length === 0 ? (
+        {!loading && filteredProducts.length === 0 ? (
           <p className="products-empty">No hay productos en esta categoría.</p>
         ) : (
-          <ProductGrid products={filteredProducts} />
+          <ProductGrid products={filteredProducts} loading={loading} skeletonCount={8} />
         )}
       </div>
     </div>

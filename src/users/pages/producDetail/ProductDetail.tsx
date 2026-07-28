@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { PackageX } from 'lucide-react';
+import logoImg from '../../../assets/img/logo.jpeg';
 import { fetchProductById, mapDbRowToProduct } from '../../../services/productService';
 import type { Product } from '../../../types/product';
 import Modal from '../../../components/common/Modal/Modal';
@@ -9,7 +11,6 @@ import PurchaseVariantModal from '../../components/PurchaseVariantModal/Purchase
 import { parseColorOption } from '../../../utils/constants';
 import { getProductPricing } from '../../../utils/pricing';
 import { INVALID_PRODUCT_PRICE_MESSAGE } from '../../../services/orderService';
-import { API_BASE_URL } from '../../../utils/apiFetch';
 import { useCartStore } from '../../../store/cartStore';
 import type { UnitVariants } from '../../../store/cartStore';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
@@ -20,6 +21,7 @@ import {
   getInvalidVariantSelections,
   getMissingVariantSelections,
   isVariantOptionAvailable,
+  isSizeVariant,
   sanitizeSelectedVariants,
   getSelectionStockLimit,
 } from '../../../utils/productVariants';
@@ -29,67 +31,76 @@ const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: string }>({});
   const [activeTab, setActiveTab] = useState<'description' | 'specs' | 'faq'>('description');
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-  const [postalCode, setPostalCode] = useState('');
-  const [shippingCost, setShippingCost] = useState<number | null>(null);
-  const [shippingDays, setShippingDays] = useState<string>('');
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
   const [variantError, setVariantError] = useState('');
   const [missingVariants, setMissingVariants] = useState<string[]>([]);
   const [isShaking, setIsShaking] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
-  const [isMainImageReady, setIsMainImageReady] = useState(false);
+  // `src` de la imagen principal que terminó de cargar (o falló): la "main image"
+  // está lista si no hay imagen o si la que se está mostrando ya cargó.
+  const [loadedImageSrc, setLoadedImageSrc] = useState('');
+  // Trackers del patrón "ajustar estado en render" (reemplazan effects que
+  // reseteaban estado al cambiar id / producto / límite de stock).
+  const [loadedId, setLoadedId] = useState(id);
+  const [variantsSyncedFor, setVariantsSyncedFor] = useState<string | number | null>(null);
   const cartItems = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
   const setItem = useCartStore((s) => s.setItem);
 
   useBodyScrollLock(isImageModalOpen);
 
+  // Reset al navegar entre productos: limpia el producto anterior antes de
+  // que llegue el nuevo (evita mostrar el viejo mientras carga el otro).
+  if (id !== loadedId) {
+    setLoadedId(id);
+    setProduct(null);
+    setNotFound(false);
+    setLoadedImageSrc('');
+  }
+
   const images = product?.images || (product?.image ? [product.image] : []);
   const currentImage = images[currentImageIndex] || '';
+  const isMainImageReady = currentImage === '' || loadedImageSrc === currentImage;
 
-  useInitialLoadTask('route', !product || (!!currentImage && !isMainImageReady));
+  // Sincroniza la selección de talles/colores con el producto recién cargado
+  // (descarta opciones que ya no aplican). Solo corre una vez por producto.
+  if (product && variantsSyncedFor !== product.id) {
+    setVariantsSyncedFor(product.id);
+    setSelectedVariants((prev) => sanitizeSelectedVariants(product, prev));
+  }
+
+  useInitialLoadTask('route', !notFound && (!product || (!!currentImage && !isMainImageReady)));
 
   useEffect(() => {
+    let cancelled = false;
+
     fetchProductById(id!)
       .then((row) => {
+        if (cancelled) return;
+        // Producto inactivo, retirado o inexistente (null): estado "no disponible".
+        if (!row) return setNotFound(true);
         const mapped = mapDbRowToProduct(row);
-        if ((mapped.stock ?? 0) <= 0) return navigate('/products');
+        // Producto sin stock (solo accesible por link directo; el catálogo ya lo oculta):
+        // mismo estado "no disponible" en lugar de redirigir en silencio.
+        if ((mapped.stock ?? 0) <= 0) return setNotFound(true);
         setProduct(mapped);
       })
-      .catch(() => navigate('/products'));
-  }, [id, navigate]);
+      // Error real (red/servidor): también mostramos "no disponible".
+      .catch(() => {
+        if (!cancelled) setNotFound(true);
+      });
 
-  useEffect(() => {
-    if (!product) {
-      return;
-    }
-
-    setIsMainImageReady(currentImage === '');
-  }, [currentImage, product]);
-
-  useEffect(() => {
-    if (!product) {
-      return;
-    }
-
-    setSelectedVariants((prev) => {
-      const sanitized = sanitizeSelectedVariants(product, prev);
-      const prevKeys = Object.keys(prev);
-      const nextKeys = Object.keys(sanitized);
-
-      if (prevKeys.length === nextKeys.length && prevKeys.every((key) => prev[key] === sanitized[key])) {
-        return prev;
-      }
-
-      return sanitized;
-    });
-  }, [product]);
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const discountedPrice = product ? getProductPricing(product).finalPrice : 0;
   const hasValidPrice = Number.isFinite(discountedPrice) && discountedPrice > 0;
@@ -126,8 +137,62 @@ const ProductDetail = () => {
     setQuantity((prev) => Math.min(prev, quantityStockLimit));
   }, [quantityStockLimit]);
 
+  if (notFound) {
+    return (
+      <div className="product-unavailable">
+        <SEO title="Producto no disponible" description="Este producto ya no está disponible en LIA." path={`/product/${id}`} />
+        <PackageX size={56} className="product-unavailable__icon" />
+        <h2 className="product-unavailable__title">Producto no disponible</h2>
+        <p className="product-unavailable__text">
+          Este producto ya no está disponible o fue retirado de la tienda.
+        </p>
+        <button
+          type="button"
+          className="product-unavailable__btn"
+          onClick={() => navigate('/products')}
+        >
+          Volver al catálogo
+        </button>
+      </div>
+    );
+  }
+
   if (!product) {
-    return <div className="loading">Cargando...</div>;
+    return (
+      <div className="product-detail-skeleton" role="status" aria-label="Cargando producto" aria-busy="true">
+        <div className="product-detail-skeleton__logo-wrap">
+          <img src={logoImg} alt="LIA" className="product-detail-skeleton__logo" />
+        </div>
+        <div className="product-detail-skeleton__main">
+          <div className="product-detail-skeleton__gallery">
+            <div className="product-detail-skeleton__img skeleton" />
+            <div className="product-detail-skeleton__thumbs">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="product-detail-skeleton__thumb skeleton" />
+              ))}
+            </div>
+          </div>
+          <div className="product-detail-skeleton__info">
+            <div className="product-detail-skeleton__line product-detail-skeleton__line--badge skeleton" />
+            <div className="product-detail-skeleton__line product-detail-skeleton__line--title skeleton" />
+            <div className="product-detail-skeleton__line product-detail-skeleton__line--price skeleton" />
+            <div className="product-detail-skeleton__variants">
+              <div className="product-detail-skeleton__line product-detail-skeleton__line--label skeleton" />
+              <div className="product-detail-skeleton__chips">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="product-detail-skeleton__chip skeleton" />
+                ))}
+              </div>
+            </div>
+            <div className="product-detail-skeleton__line product-detail-skeleton__line--qty skeleton" />
+            <div className="product-detail-skeleton__actions">
+              <div className="product-detail-skeleton__btn skeleton" />
+              <div className="product-detail-skeleton__btn skeleton" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const pricing = getProductPricing(product);
@@ -148,38 +213,6 @@ const ProductDetail = () => {
     }
 
     setSelectedVariants((prev) => sanitizeSelectedVariants(product, { ...prev, [variantName]: option }));
-  };
-
-  const calculateShipping = async () => {
-    if (postalCode.length < 4) {
-      alert('Por favor ingresa un código postal válido');
-      return;
-    }
-
-    try {
-      // Si tiene envío gratis, no llama al backend
-      if (product.freeShipping) {
-        setShippingCost(0);
-        setShippingDays('3-5 días hábiles');
-        return;
-      }
-
-      // Llamar al endpoint real de shipping
-      const response = await fetch(
-        `${API_BASE_URL}/shipping?postalCode=${encodeURIComponent(postalCode)}`
-      );
-
-      if (!response.ok) {
-        throw new Error('Error al calcular envío');
-      }
-
-      const data = await response.json();
-      setShippingCost(data.cost ?? 0);
-      setShippingDays(data.days ?? '5-7 días hábiles');
-    } catch (error) {
-      console.error('Error calculating shipping:', error);
-      alert('Error al calcular el costo de envío. Por favor intenta nuevamente.');
-    }
   };
 
   const hasVariants = (product?.variants?.length ?? 0) > 0;
@@ -318,8 +351,8 @@ const ProductDetail = () => {
                 alt={product.name}
                 className="gallery__image"
                 onClick={() => setIsImageModalOpen(true)}
-                onLoad={() => setIsMainImageReady(true)}
-                onError={() => setIsMainImageReady(true)}
+                onLoad={() => setLoadedImageSrc(currentImage)}
+                onError={() => setLoadedImageSrc(currentImage)}
                 width={600}
                 height={800}
               />
@@ -399,54 +432,90 @@ const ProductDetail = () => {
             {/* Variantes */}
             {product.variants && product.variants.length > 0 && (
               <div className="info__variants">
-                {product.variants.map((variant) => (
-                  <div key={variant.name} className={`variant${missingVariants.includes(variant.name) ? ` variant--error${isShaking ? ' variant--shake' : ''}` : ''}`}>
-                    <label className="variant__label">{variant.name}:</label>
-                    <div className="variant__options">
-                      {variant.options.map((option) => {
-                        const isColor = variant.name.toLowerCase() === 'color';
-                        const isTalle = variant.name.toLowerCase().startsWith('talle');
-                        const isTalleOutOfStock = isTalle && !isVariantOptionAvailable(variant, option);
+                {(() => {
+                  // Talle seleccionado actualmente (para filtrar colores disponibles)
+                  const talleVariant = product.variants?.find(v => isSizeVariant(v.name));
+                  const selectedTalle = talleVariant ? selectedVariants[talleVariant.name] : undefined;
 
-                        const { name: colorName, hex: colorHex } = isColor
-                          ? parseColorOption(option)
-                          : { name: option, hex: '' };
+                  return product.variants!.map((variant) => {
+                    const isColor = variant.name.toLowerCase() === 'color';
 
-                        return isColor ? (
-                          <button
-                            key={option}
-                            className={`variant__color-circle ${selectedVariants[variant.name] === option ? 'variant__color-circle--selected' : ''}`}
-                            style={{ backgroundColor: colorHex }}
-                            title={colorName}
-                            onClick={() => handleVariantChange(variant.name, option)}
-                          />
-                        ) : (
-                          <div
-                            key={option}
-                            className={`variant__option-wrap ${isTalleOutOfStock ? 'variant__option-wrap--soldout' : ''}`}
-                          >
-                            <button
-                              className={`variant__option ${selectedVariants[variant.name] === option ? 'variant__option--selected' : ''} ${isTalleOutOfStock ? 'variant__option--soldout' : ''}`}
-                              onClick={() => {
-                                if (!isTalleOutOfStock) {
-                                  handleVariantChange(variant.name, option);
-                                }
-                              }}
-                              disabled={isTalleOutOfStock}
-                            >
-                              <span className="variant__option-text">
-                                {isTalle ? option.toUpperCase() : option}
-                              </span>
-                            </button>
-                            {isTalleOutOfStock && (
-                              <span className="variant__option-strike" aria-hidden="true" />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                    // Colores disponibles para el talle seleccionado (si aplica).
+                    // Un array vacío [] significa "sin configurar" (se trata igual que
+                    // undefined) → todos los colores disponibles. Solo filtramos cuando
+                    // hay al menos un color explícitamente habilitado para ese talle.
+                    const rawColorsForTalle =
+                      isColor && selectedTalle && talleVariant?.colorsByOption
+                        ? talleVariant.colorsByOption[selectedTalle]
+                        : undefined;
+                    const availableColorsForTalle: string[] | undefined =
+                      rawColorsForTalle && rawColorsForTalle.length > 0
+                        ? rawColorsForTalle
+                        : undefined;
+
+                    return (
+                      <div key={variant.name} className={`variant${missingVariants.includes(variant.name) ? ` variant--error${isShaking ? ' variant--shake' : ''}` : ''}`}>
+                        <label className="variant__label">{variant.name}:</label>
+                        <div className="variant__options">
+                          {variant.options.map((option) => {
+                            const isTalle = isSizeVariant(variant.name);
+                            const isTalleOutOfStock = isTalle && !isVariantOptionAvailable(variant, option);
+
+                            const { name: colorName, hex: colorHex } = isColor
+                              ? parseColorOption(option)
+                              : { name: option, hex: '' };
+
+                            // Color no disponible en el talle seleccionado
+                            const isColorUnavailableForTalle =
+                              isColor && availableColorsForTalle !== undefined && !availableColorsForTalle.includes(option);
+
+                            return isColor ? (
+                              <div
+                                key={option}
+                                className={`variant__option-wrap${isColorUnavailableForTalle ? ' variant__option-wrap--soldout' : ''}`}
+                                title={isColorUnavailableForTalle ? `${colorName} no disponible en talle ${selectedTalle}` : colorName}
+                              >
+                                <button
+                                  className={`variant__color-circle ${selectedVariants[variant.name] === option ? 'variant__color-circle--selected' : ''} ${isColorUnavailableForTalle ? 'variant__color-circle--unavailable' : ''}`}
+                                  style={{ backgroundColor: colorHex }}
+                                  onClick={() => {
+                                    if (!isColorUnavailableForTalle) handleVariantChange(variant.name, option);
+                                  }}
+                                  disabled={isColorUnavailableForTalle}
+                                />
+                                {isColorUnavailableForTalle && (
+                                  <span className="variant__option-strike" aria-hidden="true" />
+                                )}
+                              </div>
+                            ) : (
+                              <div
+                                key={option}
+                                className={`variant__option-wrap ${isTalleOutOfStock ? 'variant__option-wrap--soldout' : ''}`}
+                              >
+                                <button
+                                  className={`variant__option ${selectedVariants[variant.name] === option ? 'variant__option--selected' : ''} ${isTalleOutOfStock ? 'variant__option--soldout' : ''}`}
+                                  onClick={() => {
+                                    if (!isTalleOutOfStock) {
+                                      handleVariantChange(variant.name, option);
+                                    }
+                                  }}
+                                  disabled={isTalleOutOfStock}
+                                >
+                                  <span className="variant__option-text">
+                                    {isTalle ? option.toUpperCase() : option}
+                                  </span>
+                                </button>
+                                {isTalleOutOfStock && (
+                                  <span className="variant__option-strike" aria-hidden="true" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
                 <button 
                   className="size-guide-btn"
                   onClick={() => setIsSizeGuideOpen(true)}
@@ -485,39 +554,6 @@ const ProductDetail = () => {
                 <span className="quantity__available quantity__available--out">
                   Sin stock
                 </span>
-              )}
-            </div>
-
-            {/* Calcular envío */}
-            <div className="info__shipping-calculator">
-              <label className="shipping-calculator__label">Calcular costo de envío:</label>
-              <div className="shipping-calculator__input-group">
-                <input 
-                  type="text" 
-                  className="shipping-calculator__input"
-                  placeholder="Ingresa tu código postal"
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
-                  maxLength={8}
-                />
-                <button 
-                  className="shipping-calculator__btn"
-                  onClick={calculateShipping}
-                >
-                  Calcular
-                </button>
-              </div>
-              {shippingCost !== null && (
-                <div className="shipping-calculator__result">
-                  {shippingCost === 0 ? (
-                    <p className="shipping-free">✓ Envío gratis - Llega en {shippingDays}</p>
-                  ) : (
-                    <>
-                      <p className="shipping-cost">Costo de envío: ${shippingCost.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
-                      <p className="shipping-time">Llega en {shippingDays}</p>
-                    </>
-                  )}
-                </div>
               )}
             </div>
 
@@ -678,9 +714,12 @@ const ProductDetail = () => {
       <Modal
         isOpen={isSizeGuideOpen}
         onClose={() => setIsSizeGuideOpen(false)}
-        title="Panel de Stock / Guía de Talles"
+        title="Guía de Talles"
       >
-        <VariantTable />
+        <VariantTable
+          sizeGuide={product.sizeGuide}
+          sizes={product.variants?.find(v => isSizeVariant(v.name))?.options ?? []}
+        />
       </Modal>
 
       {/* Modal de selección de variantes por unidad */}

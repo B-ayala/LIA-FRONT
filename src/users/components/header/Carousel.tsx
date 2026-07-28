@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { fetchCarouselImages } from '../../../services/productService';
 import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
 
 interface Slide {
@@ -33,6 +34,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState(0);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
   const hasReportedReady = useRef(false);
 
   const notifyReady = () => {
@@ -56,6 +58,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
     const deviceType = isMobile ? 'mobile' : 'desktop';
     const imgsPerSlide = isMobile ? 2 : 3;
     hasReportedReady.current = false;
+    setImagesLoaded(false);
 
     fetchCarouselImages(deviceType)
       .then(images => {
@@ -96,16 +99,19 @@ const Carousel = ({ onReady }: CarouselProps) => {
     image.src = optimizedUrl;
 
     if (image.complete) {
+      setImagesLoaded(true);
       notifyReady();
       return;
     }
 
-    image.onload = notifyReady;
-    image.onerror = notifyReady;
+    const handleLoad = () => { setImagesLoaded(true); notifyReady(); };
+    image.onload = handleLoad;
+    image.onerror = handleLoad;
 
     return () => {
       image.onload = null;
       image.onerror = null;
+      image.src = '';
     };
   }, [slides, isMobile, onReady]);
 
@@ -130,7 +136,15 @@ const Carousel = ({ onReady }: CarouselProps) => {
     return () => clearInterval(timer);
   }, [currentSlide, slides.length]);
 
-  if (slides.length === 0) return <div className="carousel carousel--skeleton" aria-hidden="true" />;
+  if (slides.length === 0 || !imagesLoaded) {
+    return (
+      <div className="carousel carousel--skeleton" role="status" aria-label="Cargando carrusel">
+        <div className="carousel-skeleton__logo-wrap">
+          <img src={logoImg} alt="LIA" className="carousel-skeleton__logo" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="carousel">

@@ -432,6 +432,13 @@
   margin-top: 0.35rem;
 }
 
+/* ─── Divider between sections ───────────────────────────────────────────────── */
+.themes-divider {
+  border: none;
+  border-top: 1px solid var(--gray-200);
+  margin: 0.5rem 0;
+}
+
 .spin {
   animation: themes-spin 0.9s linear infinite;
 }

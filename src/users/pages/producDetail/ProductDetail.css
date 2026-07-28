@@ -2,6 +2,125 @@
    PRODUCT DETAIL — estilos base (mobile-first → desktop)
    ============================================================ */
 
+/* ---------- Skeleton de carga ---------- */
+.product-detail-skeleton {
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.product-detail-skeleton__logo-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.product-detail-skeleton__logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14);
+  animation: pd-skeleton-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pd-skeleton-pulse {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%       { transform: scale(1.08); opacity: 1; }
+}
+
+.product-detail-skeleton__main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.product-detail-skeleton__gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.product-detail-skeleton__img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+}
+
+.product-detail-skeleton__thumbs {
+  display: flex;
+  gap: 8px;
+}
+
+.product-detail-skeleton__thumb {
+  width: 72px;
+  height: 96px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.product-detail-skeleton__info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.product-detail-skeleton__line {
+  border-radius: 6px;
+}
+
+.product-detail-skeleton__line--badge  { height: 14px; width: 40%; }
+.product-detail-skeleton__line--title  { height: 28px; width: 80%; }
+.product-detail-skeleton__line--price  { height: 36px; width: 35%; }
+.product-detail-skeleton__line--label  { height: 14px; width: 25%; }
+.product-detail-skeleton__line--qty    { height: 44px; width: 50%; border-radius: 8px; }
+
+.product-detail-skeleton__variants {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.product-detail-skeleton__chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.product-detail-skeleton__chip {
+  width: 48px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.product-detail-skeleton__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.product-detail-skeleton__btn {
+  flex: 1;
+  height: 48px;
+  border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+  .product-detail-skeleton__main {
+    grid-template-columns: 1fr;
+  }
+
+  .product-detail-skeleton__logo {
+    width: 56px;
+    height: 56px;
+  }
+}
+
 /* ---------- Animaciones ---------- */
 @keyframes shake {
   0%   { transform: translateX(0); }
@@ -374,8 +493,10 @@
   box-sizing: border-box;
 }
 
-.variant__color-circle:hover        { transform: scale(1.1); border-color: #3483fa; }
-.variant__color-circle--selected    { border-color: #3483fa; transform: scale(1.1); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3483fa; }
+.variant__color-circle:hover        { transform: scale(1.1); border-color: rgba(0, 0, 0, 0.4); }
+.variant__color-circle--selected    { border-color: transparent; transform: scale(1.1); box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(0, 0, 0, 0.8); }
+.variant__color-circle--unavailable { opacity: 0.35; cursor: not-allowed; }
+.variant__color-circle--unavailable:hover { transform: none; border-color: #e5e5e5; }
 
 /* Guía de talles */
 .size-guide-btn {
@@ -446,70 +567,6 @@
 
 .quantity__available          { color: #666; font-size: 14px; }
 .quantity__available--out     { color: #d32f2f; font-weight: 600; }
-
-/* ---------- Calculadora de envío ---------- */
-.info__shipping-calculator {
-  margin-bottom: 24px;
-  padding: 16px;
-  background: #f5f5f5;
-  border-radius: 8px;
-  box-sizing: border-box;
-}
-
-.shipping-calculator__label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #333;
-  font-size: 14px;
-}
-
-.shipping-calculator__input-group {
-  display: flex;
-  gap: 8px;
-}
-
-.shipping-calculator__input {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-  min-width: 0;
-}
-
-.shipping-calculator__input:focus { border-color: #3483fa; }
-
-.shipping-calculator__btn {
-  padding: 10px 16px;
-  background: #111;
-  color: #fff;
-  border: 2px solid #111;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-  white-space: nowrap;
-  box-sizing: border-box;
-}
-
-.shipping-calculator__btn:hover:not(:disabled) { opacity: 0.82; }
-
-.shipping-calculator__result {
-  margin-top: 12px;
-  padding: 12px;
-  background: #fff;
-  border-radius: 6px;
-  border-left: 3px solid #00a650;
-}
-
-.shipping-free  { color: #00a650; font-weight: 600; margin: 0; font-size: 14px; }
-.shipping-cost  { color: #333; font-weight: 600; margin: 0 0 4px; font-size: 14px; }
-.shipping-time  { color: #666; margin: 0; font-size: 13px; }
 
 /* ---------- Botones de acción ---------- */
 .info__actions {
@@ -742,6 +799,52 @@ body.cart-drawer-open .info__actions {
   color: #666;
 }
 
+.product-unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 60vh;
+  gap: 14px;
+  padding: 40px 20px;
+}
+
+.product-unavailable__icon {
+  color: #94a3b8;
+}
+
+.product-unavailable__title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111;
+  margin: 0;
+}
+
+.product-unavailable__text {
+  font-size: 15px;
+  color: #666;
+  max-width: 420px;
+  margin: 0;
+}
+
+.product-unavailable__btn {
+  margin-top: 8px;
+  padding: 12px 28px;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+  border: 2px solid #111;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.product-unavailable__btn:hover {
+  opacity: 0.82;
+}
+
 /* ============================================================
    RESPONSIVE
    ============================================================ */
@@ -793,7 +896,9 @@ body.cart-drawer-open .info__actions {
     margin-bottom: 0;
     background: #fff;
     box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.12);
-    z-index: 200;
+    /* Debe quedar por debajo del stacking context del navbar (z-index:100) para que
+       el menú mobile (overlay/slider, atrapados en ese contexto) lo tape al abrirse. */
+    z-index: 90;
     gap: 10px;
     width: 100%;
     box-sizing: border-box;
@@ -837,8 +942,6 @@ body.cart-drawer-open .info__actions {
   .quantity__input { width: 48px; height: 36px; font-size: 15px; }
 
   .variant__option { padding: 7px 14px; font-size: 13px; }
-
-  .shipping-calculator__btn { padding: 10px 12px; font-size: 13px; }
 
   .size-guide-btn { font-size: 13px; padding: 7px 12px; }
 

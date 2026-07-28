@@ -20,6 +20,7 @@ const emptyFooter: FooterInfo = {
 
 const Footer = () => {
   const [footerInfo, setFooterInfo] = useState<FooterInfo>(emptyFooter);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadFooter = async () => {
@@ -31,11 +32,35 @@ const Footer = () => {
         }
       } catch (error) {
         console.error('Error loading footer:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     loadFooter();
   }, []);
+
+  if (isLoading) {
+    return (
+      <footer className="footer-container">
+        <div className="footer-content" aria-busy="true" aria-label="Cargando información del sitio">
+          <div className="footer-column footer-brand">
+            <div className="footer-skeleton footer-skeleton--logo skeleton" />
+            <div className="footer-skeleton footer-skeleton--line skeleton" />
+            <div className="footer-skeleton footer-skeleton--line footer-skeleton--line-short skeleton" />
+          </div>
+          <div className="footer-column footer-contact">
+            <div className="footer-skeleton footer-skeleton--title skeleton" />
+            <div className="footer-skeleton footer-skeleton--line skeleton" />
+            <div className="footer-skeleton footer-skeleton--line skeleton" />
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <div className="footer-skeleton footer-skeleton--copyright skeleton" />
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="footer-container">

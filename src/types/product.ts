@@ -1,7 +1,21 @@
 export interface Variant {
   name: string;
   options: string[];
-  stockByOption?: Record<string, number>; // Stock por opción de variante (ej: para talles)
+  stockByOption?: Record<string, number>;
+  colorsByOption?: Record<string, string[]>;
+}
+
+export type SizeGuideType = 'indumentaria' | 'calzado';
+
+export interface SizeGuideRow {
+  label: string;
+  values: Record<string, string>;
+}
+
+export interface SizeGuide {
+  type?: SizeGuideType;
+  columns?: string[];
+  rows: SizeGuideRow[];
 }
 
 export interface Specification {
@@ -44,4 +58,5 @@ export interface Product {
   reviews?: Review[];
   warranty?: string;
   returnPolicy?: string;
+  sizeGuide?: SizeGuide;
 }

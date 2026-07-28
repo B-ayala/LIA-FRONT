@@ -9,6 +9,7 @@
 .admin-main-wrapper {
     flex: 1;
     margin-left: 0;
+    padding-top: 50px; /* compensa el header fixed */
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -49,6 +50,10 @@
 
 /* Tablet */
 @media (min-width: 768px) {
+    .admin-main-wrapper {
+        padding-top: 64px; /* header crece a 64px en tablet+ */
+    }
+
     .admin-main-content {
         padding: 1.5rem;
     }

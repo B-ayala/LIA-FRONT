@@ -5,9 +5,11 @@ import NavBar from '../components/header/navBar/NavBar';
 import SeasonalBackdrop from '../components/SeasonalBackdrop/SeasonalBackdrop';
 import { useNavigationLoad } from '../../components/common/NavigationLoad/NavigationLoadProvider';
 import NavigationLoadingScreen from '../../components/common/NavigationLoad/NavigationLoadingScreen';
+import { useTypography } from '../../utils/TypographyProvider';
 
 const UserLayout = () => {
     const { isNavigationLoading } = useNavigationLoad();
+    const { userLayoutStyle } = useTypography();
     const [showLoadingScreen, setShowLoadingScreen] = useState(false);
     const [isExiting, setIsExiting] = useState(false);
 
@@ -27,7 +29,7 @@ const UserLayout = () => {
     }, [isNavigationLoading, showLoadingScreen]);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', ...userLayoutStyle }}>
             <SeasonalBackdrop />
             <div style={{ position: 'sticky', top: 0, zIndex: 200, width: '100%' }}>
                 <TopNavBar />

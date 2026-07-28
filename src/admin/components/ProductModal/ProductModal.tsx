@@ -5,9 +5,9 @@ import { useAdminStore, type AdminProduct } from '../../store/adminStore';
 import { getAuthToken } from '../../../utils/auth';
 import { extractErrorMessage } from '../../../utils/errorMessage';
 import { createProduct, updateProduct as updateProductApi } from '../../../services/productService';
-import type { Specification, FAQ } from '../../../types/product';
-import { COLOR_MAP } from '../../../utils/constants';
-import { calculateDiscountPercentage } from '../../../utils/pricing';
+import type { Specification, FAQ, SizeGuide, SizeGuideType } from '../../../types/product';
+import { COLOR_MAP, parseColorOption } from '../../../utils/constants';
+import { calculateDiscountPercentage, getProductPricing } from '../../../utils/pricing';
 import { fetchCategoriesTree, createCategory, deleteCategory, type Category } from '../../../services/productService';
 import { getNormalizedVariantOptions, getProductStockFromVariants, isSizeVariant, normalizeVariantOption, sanitizeProductVariants } from '../../../utils/productVariants';
 import { Folder, FolderOpen, Dot, Plus, X, Images } from 'lucide-react';
@@ -25,6 +25,11 @@ interface ProductModalProps {
 
 const tabs = ['Datos Básicos', 'Variantes', 'Promociones', 'Descripción', 'Especificaciones', 'FAQ'];
 const DEFAULT_VISIBLE_VARIANT_OPTIONS = 6;
+
+const DEFAULT_SIZE_COLUMNS: Record<SizeGuideType, string[]> = {
+    indumentaria: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    calzado: ['35', '36', '37', '38', '39', '40', '41', '42'],
+};
 
 const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) => {
     const { addProduct, updateProduct } = useAdminStore();
@@ -66,8 +71,11 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const [returnPolicy, setReturnPolicy] = useState('');
 
     // Variantes
-    const [variants, setVariants] = useState<{ name: string; optionsText: string; stockByOption?: Record<string, number> }[]>([]);
+    const [variants, setVariants] = useState<{ name: string; optionsText: string; stockByOption?: Record<string, number>; colorsByOption?: Record<string, string[]> }[]>([]);
+    const [sizeGuide, setSizeGuide] = useState<SizeGuide>({ type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] });
+    const [newColInput, setNewColInput] = useState('');
     const [expandedVariantOptions, setExpandedVariantOptions] = useState<Record<number, boolean>>({});
+    const [expandedTalleCbt, setExpandedTalleCbt] = useState<string | null>(null);
     const [customColorName, setCustomColorName] = useState('');
     const [customColorHex, setCustomColorHex] = useState('#000000');
     const [customPaletteColors, setCustomPaletteColors] = useState<Record<string, string>>(() => {
@@ -97,7 +105,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-    const [inactiveWarning, setInactiveWarning] = useState<string[] | null>(null);
+    const [stockBlock, setStockBlock] = useState(false);
     const managesStockFromVariants = useMemo(
         () => variants.some((variant) => isSizeVariant(variant.name) && getNormalizedVariantOptions(variant.name, variant.optionsText.split(',')).length > 0),
         [variants]
@@ -143,6 +151,17 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                     })),
             }))
     ), [dbCategories]);
+
+    // Misma función que usa la tienda pública: garantiza que la vista previa del
+    // admin coincida exactamente con lo que ve el cliente (precio tachado + final).
+    const pricingPreview = useMemo(() => getProductPricing({
+        price: parseFloat(price) || 0,
+        discount: discount ? parseFloat(discount) : undefined,
+        originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
+    }), [price, discount, originalPrice]);
+
+    const formatMoney = (value: number) =>
+        value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const promotionReferencePrice = useMemo(() => {
         if (product?.originalPrice && product.originalPrice > 0) return product.originalPrice;
@@ -213,7 +232,17 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                         stockByOption: dbStock === 0 && v.stockByOption
                             ? Object.fromEntries(Object.keys(v.stockByOption).map(k => [k, 0]))
                             : v.stockByOption,
+                        colorsByOption: v.colorsByOption,
                     }))
+                );
+                setSizeGuide(product.sizeGuide
+                    ? {
+                        type: product.sizeGuide.type ?? 'indumentaria',
+                        columns: product.sizeGuide.columns
+                            ?? [...DEFAULT_SIZE_COLUMNS[product.sizeGuide.type ?? 'indumentaria']],
+                        rows: product.sizeGuide.rows,
+                    }
+                    : { type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] }
                 );
                 setSpecifications(product.specifications ? [...product.specifications] : []);
                 setFaqs(product.faqs ? [...product.faqs] : []);
@@ -221,7 +250,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 resetForm();
             }
             setError('');
-            setInactiveWarning(null);
         }
     }, [isOpen, product]);
 
@@ -243,12 +271,13 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         setReturnPolicy('');
         setVariants([]);
         setExpandedVariantOptions({});
+        setSizeGuide({ type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] });
+        setNewColInput('');
         setSpecifications([]);
         setFaqs([]);
         setCustomColorName('');
         setCustomColorHex('#000000');
         setFieldErrors({});
-        setInactiveWarning(null);
     };
 
     const buildPayload = () => {
@@ -258,6 +287,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 name: variant.name,
                 options: variant.optionsText.split(','),
                 stockByOption: variant.stockByOption,
+                colorsByOption: variant.colorsByOption,
             }))
         ) ?? [];
         const totalStock = getProductStockFromVariants(builtVariants) ?? (parseInt(stock) || 0);
@@ -280,6 +310,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             faqs,
             warranty,
             returnPolicy,
+            sizeGuide: sizeGuide.rows.length > 0 ? sizeGuide : undefined,
             status,
         };
     };
@@ -287,7 +318,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const executeSave = async () => {
         setSaving(true);
         setError('');
-        setInactiveWarning(null);
 
         try {
             const token = await getAuthToken();
@@ -297,12 +327,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 const savedData = await updateProductApi(product.id, payload, token);
                 const finalStatus = savedData?.data?.status ?? payload.status;
                 updateProduct(product.id, { ...payload, status: finalStatus });
-
-                if (savedData?.autoInactive) {
-                    setInactiveWarning(savedData.missingFields ?? []);
-                    onSaved?.();
-                    return;
-                }
             } else {
                 const savedData = await createProduct(payload, token);
                 const newProduct: AdminProduct = {
@@ -311,12 +335,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                     status: savedData?.data?.status ?? payload.status,
                 };
                 addProduct(newProduct);
-
-                if (savedData?.autoInactive) {
-                    setInactiveWarning(savedData.missingFields ?? []);
-                    onSaved?.();
-                    return;
-                }
             }
 
             resetForm();
@@ -330,12 +348,27 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     };
 
     const handleSave = async () => {
-        // El nombre es el único campo que bloquea el guardado en el frontend.
-        // El resto (precio, talles, descripción) es validado en el backend:
-        // si faltan, el producto se guarda automáticamente como inactivo.
+        // Validación de borde en el cliente (el backend revalida nombre y precio).
         if (!name.trim()) {
             setFieldErrors({ name: 'El nombre es requerido' });
             setActiveTab('Datos Básicos');
+            return;
+        }
+
+        const priceValue = parseFloat(price);
+        if (!Number.isFinite(priceValue) || priceValue <= 0) {
+            setFieldErrors({ price: 'El precio es requerido y debe ser mayor a 0' });
+            setActiveTab('Datos Básicos');
+            return;
+        }
+
+        // Un producto "Activo" sin stock queda oculto en la tienda (el catálogo
+        // público filtra stock > 0), por lo que el estado sería engañoso. Se
+        // bloquea el guardado y se obliga a cargar stock o pasar a "Inactivo".
+        const payload = buildPayload();
+        if (payload.status === 'active' && (payload.stock ?? 0) <= 0) {
+            setActiveTab('Datos Básicos');
+            setStockBlock(true);
             return;
         }
 
@@ -381,10 +414,25 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const syncVariantState = (
         variantName: string,
         optionsText: string,
-        stockByOption?: Record<string, number>
+        stockByOption?: Record<string, number>,
+        colorsByOption?: Record<string, string[]>
     ) => {
         const options = getNormalizedOptionsFromText(variantName, optionsText);
         const isSizeVariantName = isSizeVariant(variantName);
+
+        // Solo preservamos las entradas que estaban explícitamente configuradas
+        // (array no vacío). Los talles sin configurar quedan como undefined para
+        // que ProductDetail los trate como "todos los colores disponibles".
+        const nextColorsByOption = isSizeVariantName && colorsByOption
+            ? (() => {
+                const result = options.reduce<Record<string, string[]>>((acc, option) => {
+                    const existing = colorsByOption[option];
+                    if (existing && existing.length > 0) acc[option] = existing;
+                    return acc;
+                }, {});
+                return Object.keys(result).length > 0 ? result : undefined;
+            })()
+            : undefined;
 
         return {
             optionsText: options.join(', '),
@@ -394,6 +442,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                     return acc;
                 }, {})
                 : undefined,
+            colorsByOption: nextColorsByOption,
         };
     };
 
@@ -436,7 +485,8 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             const syncedState = syncVariantState(
                 variant.name,
                 [...currentOptions, candidate].join(', '),
-                variant.stockByOption
+                variant.stockByOption,
+                variant.colorsByOption
             );
 
             return {
@@ -467,7 +517,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
 
             const nextName = field === 'name' ? value : variant.name;
             const nextOptionsText = field === 'optionsText' ? value : variant.optionsText;
-            const syncedState = syncVariantState(nextName, nextOptionsText, variant.stockByOption);
+            const syncedState = syncVariantState(nextName, nextOptionsText, variant.stockByOption, variant.colorsByOption);
 
             return {
                 ...variant,
@@ -477,6 +527,66 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             };
         }));
     };
+
+    const updateVariantColorsByOption = (variantIndex: number, talleOption: string, selectedColors: string[]) => {
+        setVariants(prev => prev.map((variant, idx) => {
+            if (idx !== variantIndex) return variant;
+            const next = { ...(variant.colorsByOption ?? {}), [talleOption]: selectedColors };
+            // Array vacío = sin restricción: eliminar la key para que undefined quede claro
+            if (selectedColors.length === 0) delete next[talleOption];
+            const hasAny = Object.keys(next).length > 0;
+            return {
+                ...variant,
+                colorsByOption: hasAny ? next : undefined,
+            };
+        }));
+    };
+
+    const changeSizeGuideType = (type: SizeGuideType) => {
+        setSizeGuide({ type, columns: [...DEFAULT_SIZE_COLUMNS[type]], rows: [] });
+    };
+
+    const addSizeGuideColumn = (col: string) => {
+        const trimmed = col.trim();
+        if (!trimmed) return;
+        setSizeGuide(prev => ({
+            ...prev,
+            columns: [...(prev.columns ?? []), trimmed].filter((c, i, a) => a.indexOf(c) === i),
+        }));
+        setNewColInput('');
+    };
+
+    const removeSizeGuideColumn = (col: string) => {
+        setSizeGuide(prev => ({
+            ...prev,
+            columns: (prev.columns ?? []).filter(c => c !== col),
+            rows: prev.rows.map(row => {
+                const newValues = { ...row.values };
+                delete newValues[col];
+                return { ...row, values: newValues };
+            }),
+        }));
+    };
+
+    const addSizeGuideRow = () => setSizeGuide(prev => ({
+        ...prev,
+        rows: [...prev.rows, { label: '', values: {} }],
+    }));
+
+    const removeSizeGuideRow = (rowIdx: number) => setSizeGuide(prev => ({
+        ...prev,
+        rows: prev.rows.filter((_, i) => i !== rowIdx),
+    }));
+
+    const updateSizeGuideRowLabel = (rowIdx: number, label: string) => setSizeGuide(prev => ({
+        ...prev,
+        rows: prev.rows.map((row, i) => i === rowIdx ? { ...row, label } : row),
+    }));
+
+    const updateSizeGuideRowValue = (rowIdx: number, size: string, value: string) => setSizeGuide(prev => ({
+        ...prev,
+        rows: prev.rows.map((row, i) => i === rowIdx ? { ...row, values: { ...row.values, [size]: value } } : row),
+    }));
 
     const addSpec = () => setSpecifications([...specifications, { label: '', value: '' }]);
     const removeSpec = (i: number) => setSpecifications(specifications.filter((_, j) => j !== i));
@@ -566,18 +676,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                             {error}
                         </div>
                     )}
-                    {inactiveWarning && (
-                        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: '0.375rem', color: '#7c5800', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                            <strong>Producto guardado como inactivo.</strong>
-                            {' '}El producto se guardó en estado inactivo porque faltan completar campos obligatorios. Por favor, completalos para activarlo.
-                            {inactiveWarning.length > 0 && (
-                                <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.25rem' }}>
-                                    {inactiveWarning.map(f => <li key={f} style={{ textTransform: 'capitalize' }}>{f}</li>)}
-                                </ul>
-                            )}
-                        </div>
-                    )}
-
                     {/* ── DATOS BÁSICOS ── */}
                     {activeTab === 'Datos Básicos' && (
                         <div className="tab-pane">
@@ -719,13 +817,8 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                     {fieldErrors.price && <span className="field-error-msg">{fieldErrors.price}</span>}
                                 </div>
                                 <div className={`form-group${fieldErrors.stock ? ' form-group--error' : ''}`}>
-                                    <label>{managesStockFromVariants || !product ? 'Stock total' : 'Stock disponible'}</label>
-                                    {!product ? (
-                                        <div className="stock-derived-card">
-                                            <strong>{derivedVariantStock}</strong>
-                                            <span>Se calcula automáticamente desde las variantes de talle.</span>
-                                        </div>
-                                    ) : managesStockFromVariants ? (
+                                    <label>{managesStockFromVariants ? 'Stock total' : 'Stock disponible'}</label>
+                                    {managesStockFromVariants ? (
                                         <div className="stock-derived-card">
                                             <strong>{derivedVariantStock}</strong>
                                             <span>Se calcula automáticamente desde los talles configurados en Variantes.</span>
@@ -1130,6 +1223,101 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                                 </div>
                                             )}
                                         </div>
+                                        {/* ── Color por talle ── */}
+                                        {isSizeVariant(v.name) && (() => {
+                                            const colorVariant = variants.find(vv => vv.name.toLowerCase() === 'color');
+                                            if (!colorVariant) return null;
+                                            const allColorOptions = colorVariant.optionsText
+                                                .split(',').map(s => s.trim()).filter(Boolean);
+                                            if (allColorOptions.length === 0) return null;
+                                            const talleOptions = getNormalizedOptionsFromText(v.name, v.optionsText);
+                                            if (talleOptions.length === 0) return null;
+                                            return (
+                                                <div className="colors-by-talle-section">
+                                                    <p className="colors-by-talle-section__title">
+                                                        Colores disponibles por talle
+                                                        <span className="colors-by-talle-section__optional">(opcional)</span>
+                                                    </p>
+                                                    <p className="colors-by-talle-section__hint">
+                                                        Por defecto todos los colores están disponibles en cada talle. Tocá un talle para restringir cuáles se pueden elegir.
+                                                    </p>
+                                                    <div className="cbt-accordion">
+                                                        {talleOptions.map(talleOpt => {
+                                                            const selectedForTalle = v.colorsByOption?.[talleOpt] ?? [];
+                                                            const isConfigured = selectedForTalle.length > 0;
+                                                            const isExpanded = expandedTalleCbt === talleOpt;
+                                                            return (
+                                                                <div key={talleOpt} className={`cbt-item${isConfigured ? ' cbt-item--active' : ''}${isExpanded ? ' cbt-item--open' : ''}`}>
+                                                                    {/* Cabecera: siempre visible, clickeable */}
+                                                                    <button
+                                                                        type="button"
+                                                                        className="cbt-item__header"
+                                                                        onClick={() => setExpandedTalleCbt(isExpanded ? null : talleOpt)}
+                                                                    >
+                                                                        <span className="cbt-item__size">{talleOpt}</span>
+                                                                        <div className="cbt-item__preview">
+                                                                            {isConfigured ? (
+                                                                                <>
+                                                                                    {selectedForTalle.slice(0, 6).map(c => {
+                                                                                        const { hex } = parseColorOption(c);
+                                                                                        return <span key={c} className="cbt-item__dot" style={{ background: hex }} />;
+                                                                                    })}
+                                                                                    {selectedForTalle.length > 6 && (
+                                                                                        <span className="cbt-item__more">+{selectedForTalle.length - 6}</span>
+                                                                                    )}
+                                                                                </>
+                                                                            ) : (
+                                                                                <span className="cbt-item__free">Todos disponibles</span>
+                                                                            )}
+                                                                        </div>
+                                                                        <span className={`cbt-item__chevron${isExpanded ? ' cbt-item__chevron--open' : ''}`}>›</span>
+                                                                    </button>
+
+                                                                    {/* Cuerpo expandido: grilla de colores con nombre */}
+                                                                    {isExpanded && (
+                                                                        <div className="cbt-item__body">
+                                                                            <div className="cbt-color-grid">
+                                                                                {allColorOptions.map(colorOpt => {
+                                                                                    const { name: colorName, hex: colorHex } = parseColorOption(colorOpt);
+                                                                                    const isChecked = selectedForTalle.includes(colorOpt);
+                                                                                    return (
+                                                                                        <button
+                                                                                            key={colorOpt}
+                                                                                            type="button"
+                                                                                            className={`cbt-color-card${isChecked ? ' cbt-color-card--on' : ''}`}
+                                                                                            onClick={() => {
+                                                                                                const next = isChecked
+                                                                                                    ? selectedForTalle.filter(c => c !== colorOpt)
+                                                                                                    : [...selectedForTalle, colorOpt];
+                                                                                                updateVariantColorsByOption(i, talleOpt, next);
+                                                                                            }}
+                                                                                        >
+                                                                                            <span className="cbt-color-card__circle" style={{ background: colorHex }}>
+                                                                                                {isChecked && <span className="cbt-color-card__check">✓</span>}
+                                                                                            </span>
+                                                                                            <span className="cbt-color-card__name">{colorName}</span>
+                                                                                        </button>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                            {isConfigured && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="cbt-reset"
+                                                                                    onClick={() => updateVariantColorsByOption(i, talleOpt, [])}
+                                                                                >
+                                                                                    Quitar restricción
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                         <button
                                             className="admin-btn-secondary"
                                             style={{ marginTop: '0.25rem' }}
@@ -1145,6 +1333,133 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                 <button className="admin-btn-secondary" style={{ width: '100%' }} onClick={addVariant}>
                                     + Agregar variante
                                 </button>
+                            </div>
+
+                            {/* ── Guía de talles ── */}
+                            <div className="size-guide-editor">
+                                <p className="size-guide-editor__title">Guía de talles</p>
+                                <div className="size-guide-type-selector">
+                                    <button
+                                        type="button"
+                                        className={`size-guide-type-btn${sizeGuide.type === 'indumentaria' ? ' size-guide-type-btn--active' : ''}`}
+                                        onClick={() => changeSizeGuideType('indumentaria')}
+                                    >
+                                        Indumentaria
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`size-guide-type-btn${sizeGuide.type === 'calzado' ? ' size-guide-type-btn--active' : ''}`}
+                                        onClick={() => changeSizeGuideType('calzado')}
+                                    >
+                                        Calzado
+                                    </button>
+                                </div>
+                                <p className="size-guide-editor__hint">
+                                    {sizeGuide.type === 'calzado'
+                                        ? 'Configurá las medidas por número (ej: "Largo plantilla" → 35: 22.5 cm, 36: 23 cm). El usuario la verá en el botón "Ver guía de talles".'
+                                        : 'Configurá las medidas por talle (ej: "Pecho" → S: 86 cm, M: 91 cm). El usuario la verá en el botón "Ver guía de talles".'}
+                                </p>
+
+                                <div className="size-guide-cols-manager">
+                                    <span className="size-guide-cols-label">Talles:</span>
+                                    <div className="size-guide-cols-chips">
+                                        {(sizeGuide.columns ?? []).map(col => (
+                                            <span key={col} className="size-guide-col-chip">
+                                                {col}
+                                                <button
+                                                    type="button"
+                                                    className="size-guide-col-chip__del"
+                                                    onClick={() => removeSizeGuideColumn(col)}
+                                                    title={`Quitar talle ${col}`}
+                                                >
+                                                    <X size={10} />
+                                                </button>
+                                            </span>
+                                        ))}
+                                        <div className="size-guide-col-add">
+                                            <input
+                                                type="text"
+                                                className="size-guide-col-add__input"
+                                                placeholder={sizeGuide.type === 'calzado' ? 'Ej: 43' : 'Ej: XXXL'}
+                                                value={newColInput}
+                                                onChange={e => setNewColInput(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSizeGuideColumn(newColInput); } }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="size-guide-col-add__btn"
+                                                onClick={() => addSizeGuideColumn(newColInput)}
+                                            >
+                                                + Agregar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {(sizeGuide.columns ?? []).length > 0 && (
+                                    <>
+                                        <div className="size-guide-table-wrapper">
+                                            <table className="size-guide-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="size-guide-table__label-col">Medida</th>
+                                                        {(sizeGuide.columns ?? []).map(s => (
+                                                            <th key={s} className="size-guide-table__size-col">{s}</th>
+                                                        ))}
+                                                        <th className="size-guide-table__del-col" />
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {sizeGuide.rows.map((row, rowIdx) => (
+                                                        <tr key={rowIdx}>
+                                                            <td>
+                                                                <input
+                                                                    type="text"
+                                                                    className="size-guide-table__input"
+                                                                    placeholder={sizeGuide.type === 'calzado' ? 'Ej: Largo plantilla (cm)' : 'Ej: Pecho (cm)'}
+                                                                    value={row.label}
+                                                                    onChange={e => updateSizeGuideRowLabel(rowIdx, e.target.value)}
+                                                                />
+                                                            </td>
+                                                            {(sizeGuide.columns ?? []).map(s => (
+                                                                <td key={s}>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="size-guide-table__input size-guide-table__input--value"
+                                                                        placeholder="—"
+                                                                        value={row.values[s] ?? ''}
+                                                                        onChange={e => updateSizeGuideRowValue(rowIdx, s, e.target.value)}
+                                                                    />
+                                                                </td>
+                                                            ))}
+                                                            <td>
+                                                                <button
+                                                                    type="button"
+                                                                    className="size-guide-table__del-btn"
+                                                                    onClick={() => removeSizeGuideRow(rowIdx)}
+                                                                    title="Eliminar fila"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {sizeGuide.rows.length === 0 && (
+                                            <p className="size-guide-editor__empty">Sin filas. Agregá una medida para empezar.</p>
+                                        )}
+                                        <button
+                                            type="button"
+                                            className="admin-btn-secondary"
+                                            style={{ marginTop: '0.5rem' }}
+                                            onClick={addSizeGuideRow}
+                                        >
+                                            + Agregar medida
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -1171,15 +1486,20 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                             }
                                         }}
                                     />
-                                    {originalPrice && price && (
-                                        <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
-                                            Precio original detectado: ${Number(originalPrice).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. El precio actual se guarda como precio final.
-                                        </p>
-                                    )}
-                                    {discount && (
-                                        <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
-                                            Se mostrará como "{discount}% OFF" en la vista del producto
-                                        </p>
+                                    {price && (
+                                        pricingPreview.hasPromotion ? (
+                                            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                                                Vista del cliente:{' '}
+                                                <span style={{ textDecoration: 'line-through' }}>${formatMoney(pricingPreview.originalPrice ?? 0)}</span>
+                                                {' → '}
+                                                <strong>${formatMoney(pricingPreview.finalPrice)}</strong>
+                                                {pricingPreview.discountPercentage ? ` (${pricingPreview.discountPercentage}% OFF)` : ''}
+                                            </p>
+                                        ) : (
+                                            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                                                Sin promoción: el cliente verá ${formatMoney(parseFloat(price) || 0)}
+                                            </p>
+                                        )
                                     )}
                                 </div>
                                 <div className="form-group">
@@ -1610,6 +1930,15 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             </div>
 
         </Modal>
+
+        <ConfirmationModal
+            isOpen={stockBlock}
+            onClose={() => setStockBlock(false)}
+            title="No se puede activar sin stock"
+            message={'El producto está en estado "Activo" pero no tiene stock, así que no se mostraría en la tienda. Agregá stock (o stock por talle en Variantes) o cambiá el estado a "Inactivo" para poder guardarlo.'}
+            status="error"
+            actionButtonText="Entendido"
+        />
 
         <ConfirmationModal
             isOpen={deleteCatConfirm !== null}

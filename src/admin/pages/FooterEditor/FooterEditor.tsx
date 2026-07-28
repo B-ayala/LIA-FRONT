@@ -6,6 +6,19 @@ import { getSiteContent, normalizeBannerInfo, saveSiteContent } from '../../../s
 import type { BannerInfo } from '../../../services/siteContentService';
 import './FooterEditor.css';
 
+// URL opcional pero, si se carga, debe ser http(s) absoluta — evita guardar
+// enlaces rotos o esquemas peligrosos (javascript:, data:) en el footer público.
+const isValidHttpUrl = (value: string): boolean => {
+    if (!value.trim()) return true;
+
+    try {
+        const { protocol } = new URL(value.trim());
+        return protocol === 'http:' || protocol === 'https:';
+    } catch {
+        return false;
+    }
+};
+
 const FooterEditor = () => {
     const { footerInfo, updateFooterInfo } = useAdminStore();
 
@@ -66,6 +79,19 @@ const FooterEditor = () => {
     const handleSave = async (e: { preventDefault: () => void }) => {
         e.preventDefault();
         setError(null);
+
+        const invalidUrls = [
+            ['TikTok URL', tiktokUrl],
+            ['Facebook URL', facebookUrl],
+        ]
+            .filter(([, value]) => !isValidHttpUrl(value))
+            .map(([label]) => label);
+
+        if (invalidUrls.length > 0) {
+            setError(`Revisá las URLs (${invalidUrls.join(', ')}): deben empezar con http:// o https://.`);
+            return;
+        }
+
         const newInfo = {
             brandName, description, whatsapp, email,
             tiktokUser, tiktokUrl, facebookUser, facebookUrl,
@@ -73,19 +99,14 @@ const FooterEditor = () => {
         };
 
         try {
-            console.log('[FooterEditor] Guardando footer:', newInfo);
             await saveSiteContent('footer', newInfo);
-            console.log('[FooterEditor] Footer guardado ✅');
 
-            // Guardar banner
             const bannerInfo: BannerInfo = {
                 text: bannerText,
                 visible: bannerVisible
             };
 
-            console.log('[FooterEditor] Guardando banner:', bannerInfo);
             await saveSiteContent('banner', bannerInfo);
-            console.log('[FooterEditor] Banner guardado ✅');
 
             updateFooterInfo(newInfo);
             setSaved(true);

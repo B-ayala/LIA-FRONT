@@ -8,6 +8,13 @@ import {
   type SeasonId,
   type ThemeMode,
 } from './seasonThemes';
+import { getSiteContent } from '../services/siteContentService';
+
+const REMOTE_THEME_KEY = 'season_theme';
+
+interface RemoteThemePreference {
+  season?: string;
+}
 
 // ─── Persistencia ──────────────────────────────────────────────────────────────
 // Local: rápido, no requiere red, sobrevive recargas.
@@ -22,6 +29,7 @@ type AnimationsEnabled = Record<SeasonId, boolean>;
 
 const DEFAULT_ANIMATIONS: AnimationsEnabled = {
   default: false,
+  mono: false,
   spring: true,
   summer: true,
   autumn: true,
@@ -111,11 +119,17 @@ interface SeasonThemeProviderProps {
 
 export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   // Lectura sincrónica para evitar el flash de tema neutral en el primer paint.
-  const initial = useMemo<PersistedPreference>(() => {
+  const { initial, hadLocalPreference } = useMemo(() => {
     const stored = readLocalPreference();
-    if (stored) return stored;
-    return { season: DEFAULT_SEASON, mode: 'manual', animations: { ...DEFAULT_ANIMATIONS } };
+    return {
+      initial: stored ?? { season: DEFAULT_SEASON, mode: 'manual' as ThemeMode, animations: { ...DEFAULT_ANIMATIONS } },
+      hadLocalPreference: stored !== null,
+    };
   }, []);
+
+  // Distingue "el usuario eligió un tema" de "todavía no tocó nada". Sólo
+  // persistimos y bloqueamos el tema global cuando la elección es explícita.
+  const hasExplicitPreference = useRef(hadLocalPreference);
 
   const [storedSeason, setStoredSeason] = useState<SeasonId>(initial.season);
   const [mode, setModeState] = useState<ThemeMode>(initial.mode);
@@ -143,13 +157,38 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
     lastApplied.current = effectiveSeason;
   }, [effectiveSeason]);
 
-  // Persistencia local — no perseguimos preview, sólo la preferencia confirmada.
+  // Persistencia local — sólo la preferencia confirmada por el usuario. No
+  // persistimos el tema global aplicado automáticamente: así, si el admin lo
+  // cambia, los visitantes pasivos lo reflejan en la próxima visita.
   useEffect(() => {
+    if (!hasExplicitPreference.current) return;
     writeLocalPreference({ season: storedSeason, mode, animations });
   }, [storedSeason, mode, animations]);
 
+  // Tema global publicado por el admin (site_content.season_theme). Aplica sólo
+  // a visitantes sin preferencia propia: su elección local siempre tiene prioridad.
+  useEffect(() => {
+    if (hasExplicitPreference.current) return;
+    let cancelled = false;
+
+    getSiteContent<RemoteThemePreference>(REMOTE_THEME_KEY)
+      .then((remote) => {
+        if (cancelled || hasExplicitPreference.current) return;
+        if (remote && isSeasonId(remote.season)) {
+          setStoredSeason(remote.season);
+          setModeState('manual');
+        }
+      })
+      .catch(() => {
+        // Degrada a la preferencia local/default sin romper la UI.
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
   const setSeason = useCallback((season: SeasonId) => {
     if (!SEASONS[season]) return;
+    hasExplicitPreference.current = true;
     setStoredSeason(season);
     setPreviewSeason(null);
     // Elegir una estación implica salir de auto: el usuario tomó control.
@@ -157,12 +196,14 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   }, []);
 
   const setMode = useCallback((next: ThemeMode) => {
+    hasExplicitPreference.current = true;
     setModeState(next);
     setPreviewSeason(null);
   }, []);
 
   const setAnimationEnabled = useCallback((season: SeasonId, enabled: boolean) => {
     if (!SEASONS[season]) return;
+    hasExplicitPreference.current = true;
     setAnimations((prev) => {
       if (prev[season] === enabled) return prev;
       return { ...prev, [season]: enabled };
@@ -182,6 +223,7 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   const clearPreview = useCallback(() => setPreviewSeason(null), []);
 
   const resetToDefault = useCallback(() => {
+    hasExplicitPreference.current = true;
     setStoredSeason(DEFAULT_SEASON);
     setModeState('manual');
     setPreviewSeason(null);

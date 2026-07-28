@@ -6,8 +6,10 @@ import { parseColorOption } from '../../../utils/constants';
 import { getProductPricing } from '../../../utils/pricing';
 import { buildVariantLine as fmtVariantLine, allUnitsShareVariants } from '../../../utils/formatters';
 import { extractErrorMessage } from '../../../utils/errorMessage';
-import { createOrder, createMpPreference, INVALID_PRODUCT_PRICE_MESSAGE } from '../../../services/orderService';
+import { createOrder, createMpPreference, recordNudge, INVALID_PRODUCT_PRICE_MESSAGE } from '../../../services/orderService';
+import type { NudgeResponse } from '../../../services/orderService';
 import AuthModal from '../../components/auth/AuthModal';
+import PurchaseNudgeModal from '../../components/PurchaseNudgeModal/PurchaseNudgeModal';
 import SEO from '../../../components/common/SEO/SEO';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import './Checkout.css';
@@ -247,6 +249,11 @@ const Checkout = () => {
   const [submitting, setSubmitting] = useState(false);
   const [mpError, setMpError] = useState('');
   const [mpReady, setMpReady] = useState(false);
+  const [nudgeOpen, setNudgeOpen] = useState(false);
+  const [nudgeBusy, setNudgeBusy] = useState(false);
+  const [nudgeError, setNudgeError] = useState<string | null>(null);
+  const nudgeOrderIdsRef = useRef<string[]>([]);
+  const nudgeCleanupRef = useRef<(() => void) | null>(null);
   const currentUser = useAuthStore((s) => s.currentUser);
   const authInitialized = useAuthStore((s) => s.authInitialized);
   const [buyerName, setBuyerName] = useState('');
@@ -321,6 +328,10 @@ const Checkout = () => {
       setBuyerEmail(currentUser.email);
     }
   }, [currentUser]);
+
+  // El listener de "volvió de WhatsApp" se arma imperativamente; lo limpiamos si
+  // el usuario abandona el checkout sin volver, para no dejar listeners colgados.
+  useEffect(() => () => nudgeCleanupRef.current?.(), []);
 
   useEffect(() => {
     if (!loading && checkoutItems.length === 0) {
@@ -594,6 +605,46 @@ const Checkout = () => {
     return lines.join('\n');
   };
 
+  // Arma una escucha de visibilidad: cuando el usuario vuelve a la pestaña tras
+  // abrir WhatsApp, dispara el nudge "¿al final comprás?".
+  const armNudgeOnReturn = () => {
+    nudgeCleanupRef.current?.();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        cleanup();
+        setNudgeOpen(true);
+      }
+    };
+    const cleanup = () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      nudgeCleanupRef.current = null;
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    nudgeCleanupRef.current = cleanup;
+  };
+
+  // Cierra el nudge y vacía el carrito (la venta ya está creada). El carrito vacío
+  // dispara la navegación a /products vía el effect existente.
+  const finishNudge = () => {
+    setNudgeOpen(false);
+    setNudgeBusy(false);
+    setNudgeError(null);
+    nudgeOrderIdsRef.current = [];
+    clearCart();
+  };
+
+  const handleNudgeRespond = async (response: NudgeResponse) => {
+    setNudgeBusy(true);
+    setNudgeError(null);
+    try {
+      await recordNudge(nudgeOrderIdsRef.current, response);
+      finishNudge();
+    } catch {
+      setNudgeBusy(false);
+      setNudgeError('No pudimos registrar tu respuesta, pero tu pedido quedó guardado.');
+    }
+  };
+
   const handlePaymentSubmit = async () => {
     setMpError('');
 
@@ -610,7 +661,7 @@ const Checkout = () => {
 
     if (selectedPayment === 'transfer') {
       try {
-        await createOrder({
+        const orderIds = await createOrder({
           buyerName: buyerName.trim(),
           buyerEmail: buyerEmail.trim(),
           items: orderItemsPayload,
@@ -622,7 +673,14 @@ const Checkout = () => {
         const phoneNumber = '5491133631325';
         const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(buildWhatsAppMessage())}`;
         window.open(whatsappUrl, '_blank');
-        clearCart();
+
+        if (orderIds.length > 0) {
+          nudgeOrderIdsRef.current = orderIds;
+          armNudgeOnReturn();
+        } else {
+          // Sin ids no hay nudge posible: se mantiene el comportamiento previo.
+          clearCart();
+        }
       } catch (err) {
         setMpError(extractErrorMessage(err, 'No se pudo iniciar la compra. Intenta nuevamente.'));
       }
@@ -1197,6 +1255,14 @@ const Checkout = () => {
         </div>
       </div>
     )}
+
+    <PurchaseNudgeModal
+      isOpen={nudgeOpen}
+      busy={nudgeBusy}
+      error={nudgeError}
+      onRespond={handleNudgeRespond}
+      onDismiss={finishNudge}
+    />
     </>
   );
 };
