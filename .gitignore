@@ -92,3 +92,7 @@ vite.config.ts.timestamp-*
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+# Playwright — reportes y resultados generados
+test-results/
+playwright-report/
