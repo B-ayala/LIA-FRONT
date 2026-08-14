@@ -31,6 +31,7 @@ const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
     specifications: (p.specifications as AdminProduct['specifications']) || undefined,
     features: (p.features as string[]) || undefined,
     faqs: (p.faqs as AdminProduct['faqs']) || undefined,
+    sizeGuide: (p.size_guide as AdminProduct['sizeGuide']) || undefined,
     warranty: (p.warranty as string) || undefined,
     returnPolicy: (p.return_policy as string) || undefined,
     status: (p.status as 'active' | 'inactive') || 'active',
