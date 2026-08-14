@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TextField, Button, CircularProgress, Alert } from '@mui/material';
 import Modal from '../../../../components/common/Modal/Modal';
+import { useAuthStore } from '../../../../store/authStore';
 import { changePassword } from '../../../../services/userService';
 import { validatePassword, validatePasswordMatch } from '../../../../utils/validation';
 import { extractErrorMessage } from '../../../../utils/errorMessage';
@@ -54,6 +55,10 @@ const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProps) => {
     setIsLoading(true);
     try {
       await changePassword(currentPassword, newPassword);
+      // changePassword() ya invalida la sesión (signOut + tokenStorage.clear) para forzar
+      // re-login con la contraseña nueva; el store de auth no se entera solo, así que el
+      // header quedaría mostrando al usuario logueado hasta un refresh sin este reset.
+      useAuthStore.setState({ isAuthenticated: false, currentUser: null });
       setFeedbackMessage({
         type: 'success',
         text: 'Contraseña actualizada exitosamente',

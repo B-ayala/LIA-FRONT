@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, RefreshCw, ShoppingBag, User, Mail } from 'lucide-react';
+import { Search, RefreshCw, ShoppingBag, User, Mail, ArrowUpDown } from 'lucide-react';
 import { Box, InputAdornment, MenuItem, Pagination, TextField } from '@mui/material';
 import { supabase } from '../../../config/supabaseClient';
 import { formatDate, formatPriceInt } from '../../../utils/formatters';
@@ -62,6 +62,7 @@ const Sales = () => {
     const [confirming, setConfirming] = useState(false);
     const [cancellingSale, setCancellingSale] = useState<Sale | null>(null);
     const [cancelling, setCancelling] = useState(false);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Sale, direction: 'asc' | 'desc' } | null>(null);
 
     const loadSales = async () => {
         setLoading(true);
@@ -200,6 +201,28 @@ const Sales = () => {
     } else if (filterStock === 'low_stock') {
         filtered = filtered.filter((s) => s.current_stock !== undefined && s.current_stock > 0 && s.current_stock <= 5);
     }
+
+    if (sortConfig !== null) {
+        const { key, direction } = sortConfig;
+        filtered = [...filtered].sort((a, b) => {
+            const aVal = a[key];
+            const bVal = b[key];
+            // != null cubre undefined y null (buyer_name/buyer_email/shipping_method).
+            if (aVal != null && bVal != null) {
+                if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+    }
+
+    const requestSort = (key: keyof Sale) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     const { currentPage, setCurrentPage, totalPages, paginated } = usePagination(filtered, {
         resetDeps: [searchTerm, filterPaymentStatus, filterPaymentMethod, filterStock],
@@ -442,14 +465,30 @@ const Sales = () => {
                         <table className="admin-table sales-table">
                             <thead>
                                 <tr>
-                                    <th>Comprador</th>
-                                    <th>Producto</th>
-                                    <th>Fecha</th>
-                                    <th>Cant.</th>
-                                    <th>Total</th>
-                                    <th>Método pago</th>
-                                    <th>Envío</th>
-                                    <th>Estado pago</th>
+                                    <th onClick={() => requestSort('buyer_name')} className="sortable">
+                                        Comprador <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('product_name')} className="sortable">
+                                        Producto <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('created_at')} className="sortable">
+                                        Fecha <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('quantity')} className="sortable">
+                                        Cant. <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('total_price')} className="sortable">
+                                        Total <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('payment_method')} className="sortable">
+                                        Método pago <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('shipping_method')} className="sortable">
+                                        Envío <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('payment_status')} className="sortable">
+                                        Estado pago <ArrowUpDown size={14} />
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>

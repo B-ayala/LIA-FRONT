@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Package, Truck, Store, User, Mail, SendHorizonal } from 'lucide-react';
+import { RefreshCw, Package, Truck, Store, User, Mail, SendHorizonal, ArrowUpDown } from 'lucide-react';
 import { Box, MenuItem, Pagination, TextField } from '@mui/material';
 import { supabase } from '../../../config/supabaseClient';
 import { formatDate, formatPriceInt } from '../../../utils/formatters';
@@ -75,6 +75,7 @@ const Dispatches = () => {
     const [loading, setLoading] = useState(true);
     const [filterShipping, setFilterShipping] = useState('');
     const [filterDispatch, setFilterDispatch] = useState('');
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Dispatch, direction: 'asc' | 'desc' } | null>(null);
 
     const loadDispatches = async () => {
         setLoading(true);
@@ -126,6 +127,28 @@ const Dispatches = () => {
     let filtered = dispatches;
     if (filterShipping) filtered = filtered.filter((d) => d.shipping_method === filterShipping);
     if (filterDispatch) filtered = filtered.filter((d) => d.dispatch_status === filterDispatch);
+
+    if (sortConfig !== null) {
+        const { key, direction } = sortConfig;
+        filtered = [...filtered].sort((a, b) => {
+            const aVal = a[key];
+            const bVal = b[key];
+            // != null cubre undefined y null (buyer_name/buyer_email/shipping_method).
+            if (aVal != null && bVal != null) {
+                if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+    }
+
+    const requestSort = (key: keyof Dispatch) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     const { currentPage, setCurrentPage, totalPages, paginated } = usePagination(filtered, {
         resetDeps: [filterShipping, filterDispatch],
@@ -294,11 +317,21 @@ const Dispatches = () => {
                         <table className="admin-table dispatch-table">
                             <thead>
                                 <tr>
-                                    <th>Comprador</th>
-                                    <th>Producto</th>
-                                    <th>Fecha</th>
-                                    <th>Envío</th>
-                                    <th>Estado despacho</th>
+                                    <th onClick={() => requestSort('buyer_name')} className="sortable">
+                                        Comprador <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('product_name')} className="sortable">
+                                        Producto <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('created_at')} className="sortable">
+                                        Fecha <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('shipping_method')} className="sortable">
+                                        Envío <ArrowUpDown size={14} />
+                                    </th>
+                                    <th onClick={() => requestSort('dispatch_status')} className="sortable">
+                                        Estado despacho <ArrowUpDown size={14} />
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>

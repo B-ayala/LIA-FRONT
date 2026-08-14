@@ -13,6 +13,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { isValidEmail, validatePassword, validatePasswordMatch, validatePhone } from '../../../utils/validation';
 import { extractErrorMessage } from '../../../utils/errorMessage';
 import { createUser, resendConfirmationEmail, requestPasswordReset } from '../../../services/userService';
+import { signInWithGoogle } from '../../../services/authService';
 import Modal from '../../../components/common/Modal/Modal';
 import { EMAIL_CONFIRMED_CHANNEL, EMAIL_CONFIRMED_STORAGE_KEY } from '../../pages/auth/EmailConfirmation';
 
@@ -224,6 +225,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
 
   // Loading & server feedback
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [serverError, setServerError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isResendingEmail, setIsResendingEmail] = useState(false);
@@ -376,6 +378,18 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
       setServerError(extractErrorMessage(err, 'No pudimos iniciar sesión. Verificá tus datos e intentá de nuevo.'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setServerError('');
+    setIsGoogleLoading(true);
+    try {
+      // Redirige a Google; si no tira error acá, el navegador ya está navegando afuera.
+      await signInWithGoogle();
+    } catch (err) {
+      setServerError(extractErrorMessage(err, 'No pudimos iniciar sesión con Google. Intentá de nuevo.'));
+      setIsGoogleLoading(false);
     }
   };
 
@@ -911,11 +925,13 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
             type="button"
             variant="outlined"
             fullWidth
+            disabled={isGoogleLoading}
+            onClick={handleGoogleLogin}
             startIcon={<FcGoogle style={{ fontSize: '1.25rem', flexShrink: 0 }} />}
             endIcon={<FiArrowRight size={16} />}
             sx={googleBtnSx}
           >
-            Continuar con Google
+            {isGoogleLoading ? 'Conectando con Google...' : 'Continuar con Google'}
           </Button>
           </Box>
         </Box>

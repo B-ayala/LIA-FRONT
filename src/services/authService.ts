@@ -128,6 +128,15 @@ export const login = async (email: string, password: string): Promise<AuthUser> 
   return authUser;
 };
 
+// ─── OAuth (Google) ───
+export const signInWithGoogle = async (): Promise<void> => {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: redirectUrl('/') },
+  });
+  if (error) throw new Error(error.message);
+};
+
 // ─── Logout ───
 export const logout = async (): Promise<void> => {
   try {
