@@ -141,6 +141,8 @@ export interface AdminUserData {
   role: string;
   created_at: string;
   email_confirmed_at: string | null;
+  purchase_allowed_exclusive: boolean;
+  is_owner: boolean;
 }
 
 export const getAdminUsers = async (): Promise<AdminUserData[]> => {
@@ -174,5 +176,24 @@ export const updateUserRole = async (userId: string, newRole: 'admin' | 'user'):
     message: `Error al actualizar usuario (HTTP ${response.status})`,
   }));
   if (!response.ok || !data.success) throw new Error(data.message || 'Error al actualizar el rol del usuario');
+  return data.data;
+};
+
+/**
+ * Marca/desmarca a un usuario como "comprador habilitado". Mientras haya al
+ * menos un usuario marcado, el resto queda sin poder comprar (ver
+ * orderController.js → blockIfPurchaseNotAllowed).
+ */
+export const updateUserPurchaseAccess = async (userId: string, allowed: boolean): Promise<AdminUserData> => {
+  const response = await apiFetch(`${API_BASE_URL}/users/${encodeURIComponent(userId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ purchase_allowed_exclusive: allowed }),
+  });
+  const data = await response.json().catch(() => ({
+    success: false,
+    message: `Error al actualizar usuario (HTTP ${response.status})`,
+  }));
+  if (!response.ok || !data.success) throw new Error(data.message || 'Error al actualizar el permiso de compra del usuario');
   return data.data;
 };

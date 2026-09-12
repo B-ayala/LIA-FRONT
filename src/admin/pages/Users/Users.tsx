@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Trash2, RefreshCw, Shield, ShieldOff, Search } from 'lucide-react';
+import { Trash2, RefreshCw, Shield, ShieldOff, Search, Lock, Unlock, AlertTriangle } from 'lucide-react';
 import { Pagination, Box, InputAdornment, TextField } from '@mui/material';
 import { useAuthStore } from '../../../store/authStore';
-import { getAdminUsers, deleteAdminUser, updateUserRole, type AdminUserData } from '../../../services/userService';
+import { getAdminUsers, deleteAdminUser, updateUserRole, updateUserPurchaseAccess, type AdminUserData } from '../../../services/userService';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import { usePagination } from '../../../hooks/usePagination';
@@ -17,6 +17,8 @@ const Users = () => {
     const [error, setError] = useState('');
     const [userToDelete, setUserToDelete] = useState<AdminUserData | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [purchaseToggleTarget, setPurchaseToggleTarget] = useState<AdminUserData | null>(null);
+    const [isTogglingPurchase, setIsTogglingPurchase] = useState(false);
     const [feedback, setFeedback] = useState<{
         isOpen: boolean;
         status: 'success' | 'error';
@@ -61,6 +63,15 @@ const Users = () => {
             });
             return;
         }
+        if (user.is_owner) {
+            setFeedback({
+                isOpen: true,
+                status: 'error',
+                title: 'Acción no permitida',
+                message: 'No puedes eliminar al usuario principal de la tienda.',
+            });
+            return;
+        }
         setUserToDelete(user);
     };
 
@@ -101,6 +112,16 @@ const Users = () => {
             return;
         }
 
+        if (user.is_owner) {
+            setFeedback({
+                isOpen: true,
+                status: 'error',
+                title: 'Acción no permitida',
+                message: 'No puedes quitarle el rol admin al usuario principal de la tienda.',
+            });
+            return;
+        }
+
         const newRole = user.role === 'admin' ? 'user' : 'admin';
 
         if (newRole === 'admin' && !user.email_confirmed_at) {
@@ -129,6 +150,43 @@ const Users = () => {
                 title: 'Error al Actualizar',
                 message: extractErrorMessage(err, 'Error al actualizar el rol del usuario'),
             });
+        }
+    };
+
+    const restrictedModeActive = users.some((u) => u.purchase_allowed_exclusive);
+
+    const handlePurchaseToggleClick = (user: AdminUserData) => {
+        setPurchaseToggleTarget(user);
+    };
+
+    const handleConfirmPurchaseToggle = async () => {
+        if (!purchaseToggleTarget) return;
+
+        const nextAllowed = !purchaseToggleTarget.purchase_allowed_exclusive;
+        setIsTogglingPurchase(true);
+        try {
+            const updatedUser = await updateUserPurchaseAccess(purchaseToggleTarget.id, nextAllowed);
+            setUsers(prev => prev.map(u => u.id === purchaseToggleTarget.id
+                ? { ...u, purchase_allowed_exclusive: updatedUser.purchase_allowed_exclusive }
+                : u));
+            setFeedback({
+                isOpen: true,
+                status: 'success',
+                title: nextAllowed ? 'Compra habilitada' : 'Compra restaurada',
+                message: nextAllowed
+                    ? `"${purchaseToggleTarget.name || purchaseToggleTarget.email}" ahora puede comprar. Mientras siga marcado (solo o junto a otros), el resto de los usuarios no podrá comprar.`
+                    : `Se le quitó el permiso exclusivo de compra a "${purchaseToggleTarget.name || purchaseToggleTarget.email}".`,
+            });
+        } catch (err) {
+            setFeedback({
+                isOpen: true,
+                status: 'error',
+                title: 'Error al Actualizar',
+                message: extractErrorMessage(err, 'Error al actualizar el permiso de compra del usuario'),
+            });
+        } finally {
+            setIsTogglingPurchase(false);
+            setPurchaseToggleTarget(null);
         }
     };
 
@@ -182,6 +240,16 @@ const Users = () => {
                 </div>
             )}
 
+            {!isLoading && restrictedModeActive && (
+                <div className="admin-card restricted-mode-banner">
+                    <AlertTriangle size={18} />
+                    <p>
+                        Modo de compra restringida activo: solo los usuarios marcados como &quot;comprador habilitado&quot; pueden
+                        comprar. El resto ve un aviso de sitio en mantenimiento al intentar pagar.
+                    </p>
+                </div>
+            )}
+
             <div className="admin-card table-card">
                 {isLoading ? (
                     <div className="users-loading">
@@ -214,12 +282,14 @@ const Users = () => {
                                         const emailStatus = getEmailStatus(user);
                                         const isSelf = currentUser?.id === user.id;
                                         const canPromote = !!user.email_confirmed_at;
-                                        const roleButtonDisabled = isSelf || (user.role !== 'admin' && !canPromote);
-                                        const roleButtonTitle = isSelf
-                                            ? 'No puedes cambiar tu rol'
-                                            : user.role !== 'admin' && !canPromote
-                                                ? 'El usuario debe confirmar su email antes de ser admin'
-                                                : `Cambiar a ${user.role === 'admin' ? 'usuario' : 'admin'}`;
+                                        const roleButtonDisabled = isSelf || user.is_owner || (user.role !== 'admin' && !canPromote);
+                                        const roleButtonTitle = user.is_owner
+                                            ? 'El usuario principal no puede perder el rol admin'
+                                            : isSelf
+                                                ? 'No puedes cambiar tu rol'
+                                                : user.role !== 'admin' && !canPromote
+                                                    ? 'El usuario debe confirmar su email antes de ser admin'
+                                                    : `Cambiar a ${user.role === 'admin' ? 'usuario' : 'admin'}`;
                                         return (
                                             <tr key={user.id}>
                                                 <td className="font-medium">{user.name || '—'}</td>
@@ -229,6 +299,11 @@ const Users = () => {
                                                     <span className={`role-badge ${user.role}`}>
                                                         {user.role}
                                                     </span>
+                                                    {user.is_owner && (
+                                                        <span className="role-badge owner" title="Usuario principal de la tienda">
+                                                            Principal
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td>
                                                     <span className={`email-status-badge ${emailStatus.className}`}>
@@ -246,10 +321,25 @@ const Users = () => {
                                                             {user.role === 'admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
                                                         </button>
                                                         <button
+                                                            onClick={() => handlePurchaseToggleClick(user)}
+                                                            className={`admin-action-btn ${user.purchase_allowed_exclusive ? 'purchase-enabled' : 'purchase-default'}`}
+                                                            title={user.purchase_allowed_exclusive
+                                                                ? 'Quitar permiso exclusivo de compra'
+                                                                : 'Marcar como comprador habilitado (activa el modo restringido para el resto)'}
+                                                        >
+                                                            {user.purchase_allowed_exclusive ? <Lock size={16} /> : <Unlock size={16} />}
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleDeleteClick(user)}
                                                             className="admin-action-btn delete"
-                                                            title={isSelf ? 'No puedes eliminarte' : 'Eliminar usuario'}
-                                                            disabled={isSelf}
+                                                            title={
+                                                                isSelf
+                                                                    ? 'No puedes eliminarte'
+                                                                    : user.is_owner
+                                                                        ? 'No puedes eliminar al usuario principal'
+                                                                        : 'Eliminar usuario'
+                                                            }
+                                                            disabled={isSelf || user.is_owner}
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
@@ -287,6 +377,19 @@ const Users = () => {
                 message={`¿Estás seguro de eliminar a "${userToDelete?.name || userToDelete?.email}"?\n\nEsta acción eliminará la cuenta completamente y no se puede deshacer.`}
                 actionButtonText={isDeleting ? 'Eliminando...' : 'Eliminar'}
                 onActionClick={handleConfirmDelete}
+            />
+
+            <ConfirmationModal
+                isOpen={!!purchaseToggleTarget}
+                onClose={() => setPurchaseToggleTarget(null)}
+                status={isTogglingPurchase ? 'loading' : 'info'}
+                title={purchaseToggleTarget?.purchase_allowed_exclusive ? 'Quitar comprador habilitado' : 'Marcar comprador habilitado'}
+                message={purchaseToggleTarget?.purchase_allowed_exclusive
+                    ? `¿Estás seguro de quitarle a "${purchaseToggleTarget?.name || purchaseToggleTarget?.email}" el permiso exclusivo de compra?\n\nSi era el único usuario marcado, la compra vuelve a estar habilitada para todos.`
+                    : `¿Estás seguro de marcar a "${purchaseToggleTarget?.name || purchaseToggleTarget?.email}" como comprador habilitado?\n\nMientras haya al menos un usuario marcado así, el resto de los usuarios NO podrá comprar (verán un aviso de sitio en mantenimiento).`}
+                actionButtonText={isTogglingPurchase ? 'Aplicando...' : 'Confirmar'}
+                cancelButtonText="Cancelar"
+                onActionClick={handleConfirmPurchaseToggle}
             />
 
             <ConfirmationModal

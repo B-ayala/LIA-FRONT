@@ -5,6 +5,23 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Added
+- **Toggle "comprador habilitado" en Usuarios (admin)**: nuevo botón por fila
+  (`admin/pages/Users/Users.tsx`) para marcar/desmarcar a un usuario como
+  comprador exclusivo, con popup de confirmación (`ConfirmationModal`) antes de
+  aplicar el cambio. Mientras haya al menos un usuario marcado, se muestra un
+  banner de aviso ("Modo de compra restringida activo...") y el resto de los
+  usuarios recibe, al intentar pagar, el mensaje "Por el momento no es posible
+  comprar. Sitio en mantenimiento, gracias por tu paciencia." (viene del
+  backend, `PUT /api/users/:id` con `purchase_allowed_exclusive`).
+
+### Fixed
+- **Panel de Usuarios no protegía al admin principal ("owner")**: `Users.tsx`
+  ahora deshabilita "sacar admin" y "eliminar" para el usuario marcado como
+  owner (`is_owner`, viene de `GET /api/users`) y muestra la insignia
+  "Principal" junto a su rol. Antes el único chequeo era "no te saques el rol
+  a vos mismo", que no protegía ninguna cuenta específica.
+
 ### Changed
 - **Producto "Activo" sin stock ya no bloquea el guardado**: en `ProductModal`
   (alta y edición, mismo componente), guardar un producto "Activo" con stock 0

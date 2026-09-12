@@ -571,6 +571,53 @@ Esperado: tabla como cards con labels PRECIO/STOCK/ESTADO; sidebar se despliega 
 Resultado: OK (2026-06-19)
 ```
 
+## Casos — Compra restringida (admin)
+
+```
+ID: TC-RESTRICT-01
+Caso: Admin marca a un usuario como "comprador habilitado" (con popup de confirmación)
+Tipo: happy
+Pasos:
+  1. /admin/users → click en el ícono de candado abierto (Unlock) de un usuario.
+  2. Confirmar en el popup ("¿Estás seguro de marcar...?").
+Esperado: popup se cierra, aparece el banner amarillo "Modo de compra restringida
+  activo...", modal de feedback de éxito, y el ícono del usuario pasa a candado
+  cerrado (Lock).
+Resultado: no probado
+
+ID: TC-RESTRICT-02
+Caso: Cancelar el popup no aplica el cambio
+Tipo: edge
+Pasos:
+  1. /admin/users → click en el toggle de compra de un usuario.
+  2. Click "Cancelar" en el popup.
+Esperado: no se llama a la API, el usuario queda sin cambios.
+Resultado: no probado
+
+ID: TC-RESTRICT-03
+Caso: Usuario NO habilitado intenta comprar con el modo restringido activo
+Tipo: failure
+Pre-condición: al menos un usuario distinto marcado (TC-RESTRICT-01 aplicado)
+Pasos:
+  1. Loguearse con un usuario sin marcar → agregar producto al carrito → /checkout.
+  2. Completar el formulario y elegir transferencia → "Continuar".
+  3. Repetir con Mercado Pago → "Continuar al pago".
+Esperado: en ambos casos aparece el mensaje "Por el momento no es posible comprar.
+  Sitio en mantenimiento, gracias por tu paciencia." (área de error del checkout,
+  sin redirección ni orden creada).
+Resultado: no probado
+
+ID: TC-RESTRICT-04
+Caso: Admin desmarca al último usuario → banner desaparece y compra vuelve a andar
+Tipo: happy / regression
+Pre-condición: un solo usuario marcado
+Pasos:
+  1. /admin/users → click en el toggle del usuario marcado → confirmar.
+Esperado: banner de "modo restringido" desaparece; un usuario cualquiera puede
+  completar TC-100/TC-109 (checkout MP/transferencia) sin bloqueo.
+Resultado: no probado
+```
+
 ---
 
 ## Matriz de cobertura
@@ -589,6 +636,7 @@ Resultado: OK (2026-06-19)
 | Productos: coherencia   | P06   |             | P07,P08,P09,P10,P12 |     |      |
 | Saneo de datos / carrito |      | DATA-01,DATA-02,DATA-05 | DATA-03,DATA-04 |  |      |
 | Mobile 375px             | MOB-01,MOB-02,MOB-04,MOB-05,MOB-06,MOB-07,MOB-08 | MOB-03 | MOB-03 | | MOB-03 |
+| Compra restringida (admin) | RESTRICT-01,RESTRICT-04 | RESTRICT-02 | RESTRICT-03 | RESTRICT-03 | |
 
 ## Cross-browser / device
 
