@@ -4,6 +4,7 @@ import { Checkbox, FormControlLabel, TextField } from '@mui/material';
 import { useAdminStore } from '../../store/adminStore';
 import { getSiteContent, normalizeBannerInfo, saveSiteContent } from '../../../services/siteContentService';
 import type { BannerInfo } from '../../../services/siteContentService';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './FooterEditor.css';
 
 // URL opcional pero, si se carga, debe ser http(s) absoluta — evita guardar
@@ -117,7 +118,7 @@ const FooterEditor = () => {
         }
     };
 
-    if (loading) return <div className="admin-footer-editor"><p>Cargando...</p></div>;
+    if (loading) return <div className="admin-footer-editor"><LiaLoader size="lg" variant="section" label="Cargando..." /></div>;
 
     return (
         <div className="admin-footer-editor">

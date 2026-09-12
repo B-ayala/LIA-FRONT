@@ -4,6 +4,7 @@ import { Pagination, Box, InputAdornment, TextField } from '@mui/material';
 import { useAuthStore } from '../../../store/authStore';
 import { getAdminUsers, deleteAdminUser, updateUserRole, type AdminUserData } from '../../../services/userService';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import { usePagination } from '../../../hooks/usePagination';
 import { extractErrorMessage } from '../../../utils/errorMessage';
 import './Users.css';
@@ -184,7 +185,7 @@ const Users = () => {
             <div className="admin-card table-card">
                 {isLoading ? (
                     <div className="users-loading">
-                        <div className="users-spinner"></div>
+                        <LiaLoader size="md" />
                         <p>Cargando usuarios...</p>
                     </div>
                 ) : (

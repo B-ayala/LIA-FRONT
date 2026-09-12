@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Button, CircularProgress, IconButton, InputAdornment,
+  Box, Button, IconButton, InputAdornment,
   Stack, TextField, Typography, Alert,
 } from '@mui/material';
 import { FiAlertCircle, FiCheckCircle, FiEye, FiEyeOff, FiLock } from 'react-icons/fi';
@@ -9,6 +9,7 @@ import { resetPassword, changePassword } from '../../../services/userService';
 import { hasActiveSession, onPasswordRecovery } from '../../../services/authService';
 import { useAuthStore } from '../../../store/authStore';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 
 const cardSx = {
   background: '#fff',
@@ -184,7 +185,7 @@ const ResetPassword = () => {
       <Box sx={cardSx}>
         {status === 'waiting' && (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 2 }}>
-            <CircularProgress sx={{ color: 'var(--primary-color)' }} />
+            <LiaLoader size="lg" />
             <Typography sx={{ color: '#888', fontSize: '0.95rem' }}>
               Verificando el link de recuperación...
             </Typography>

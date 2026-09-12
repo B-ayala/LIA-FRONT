@@ -17,6 +17,7 @@ type NavigationLoadContextValue = {
 };
 
 const NAVIGATION_MIN_SCREEN_TIME_MS = 300;
+const NAVIGATION_EXIT_ANIMATION_MS = 150;
 
 const NavigationLoadContext = createContext<NavigationLoadContextValue | null>(null);
 
@@ -24,6 +25,8 @@ export const NavigationLoadProvider = ({ children }: PropsWithChildren) => {
   const location = useLocation();
   const [isNavigationLoading, setIsNavigationLoading] = useState(false);
   const [minimumTimeElapsed, setMinimumTimeElapsed] = useState(false);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const previousPathRef = useRef(location.pathname);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -71,6 +74,21 @@ export const NavigationLoadProvider = ({ children }: PropsWithChildren) => {
     }
   }, [minimumTimeElapsed, isNavigationLoading]);
 
+  // Fade-out uniforme: se muestra al instante, se retira con una animación
+  // de salida en vez de desaparecer de golpe (evita el "parpadeo" brusco).
+  useEffect(() => {
+    if (isNavigationLoading) {
+      setShowLoadingScreen(true);
+      setIsExiting(false);
+    } else if (showLoadingScreen) {
+      setIsExiting(true);
+      const timer = setTimeout(() => {
+        setShowLoadingScreen(false);
+      }, NAVIGATION_EXIT_ANIMATION_MS);
+      return () => clearTimeout(timer);
+    }
+  }, [isNavigationLoading, showLoadingScreen]);
+
   const value = useMemo<NavigationLoadContextValue>(
     () => ({
       isNavigationLoading,
@@ -82,7 +100,7 @@ export const NavigationLoadProvider = ({ children }: PropsWithChildren) => {
   return (
     <NavigationLoadContext.Provider value={value}>
       {children}
-      {isNavigationLoading && <NavigationLoadingScreen />}
+      {showLoadingScreen && <NavigationLoadingScreen isExiting={isExiting} />}
     </NavigationLoadContext.Provider>
   );
 };

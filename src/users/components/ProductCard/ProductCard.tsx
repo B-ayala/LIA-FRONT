@@ -24,11 +24,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore }) => {
 
   const colorVariant = product.variants?.find(v => v.name.toLowerCase() === 'color');
   const pricing = getProductPricing(product);
+  const isOutOfStock = (product.stock ?? 0) <= 0;
 
   return (
-    <div className="product-card">
+    <div className={`product-card${isOutOfStock ? ' product-card--out-of-stock' : ''}`}>
       <div className="product-card__image-container" onClick={handleReadMore}>
-        {pricing.hasPromotion && pricing.discountPercentage && (
+        {isOutOfStock ? (
+          <div className="product-card__stock-badge">Sin stock</div>
+        ) : pricing.hasPromotion && pricing.discountPercentage && (
           <div className="product-card__discount-badge">-{pricing.discountPercentage}%</div>
         )}
         <img

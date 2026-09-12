@@ -21,6 +21,7 @@ import {
   type CloudinaryFolder,
 } from '../../../services/productService';
 import CloudinaryStorageUsage from '../../components/CloudinaryStorageUsage/CloudinaryStorageUsage';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './CloudinaryManager.css';
 
 interface ImageUsage {
@@ -312,7 +313,7 @@ const CloudinaryManager = () => {
           </button>
           <button className="admin-btn-primary admin-flex-center gap-2" onClick={handleUpload} disabled={uploading}>
             {uploading
-              ? <RefreshCw size={15} className="spinning" />
+              ? <LiaLoader size="xs" />
               : <Upload size={15} />}
             {uploading ? 'Abriendo...' : 'Subir imagen'}
           </button>
@@ -357,7 +358,7 @@ const CloudinaryManager = () => {
               />
               <div className="cld-new-folder-actions">
                 <button type="submit" className="admin-btn-primary" disabled={creatingFolder || !newFolderName.trim()}>
-                  {creatingFolder ? <RefreshCw size={13} className="spinning" /> : 'Crear'}
+                  {creatingFolder ? <LiaLoader size="xs" /> : 'Crear'}
                 </button>
                 <button type="button" className="cld-btn-secondary" onClick={() => { setShowNewFolder(false); setNewFolderName(''); }}>
                   Cancelar
@@ -377,7 +378,7 @@ const CloudinaryManager = () => {
 
           {/* Folder list */}
           {foldersLoading ? (
-            <div className="cld-folders-loading"><RefreshCw size={14} className="spinning" /></div>
+            <div className="cld-folders-loading"><LiaLoader size="sm" /></div>
           ) : folders.length === 0 ? (
             <p className="cld-folders-empty">Sin carpetas</p>
           ) : (
@@ -398,7 +399,7 @@ const CloudinaryManager = () => {
                     title="Eliminar carpeta"
                   >
                     {deletingFolder === f.path
-                      ? <RefreshCw size={12} className="spinning" />
+                      ? <LiaLoader size="xs" />
                       : <Trash2 size={12} />}
                   </button>
                 </li>
@@ -469,7 +470,7 @@ const CloudinaryManager = () => {
           <div className="cloudinary-grid-card admin-card">
             {imagesLoading ? (
               <div className="cloudinary-loading">
-                <RefreshCw size={24} className="spinning" />
+                <LiaLoader size="md" />
                 <span>Cargando imágenes...</span>
               </div>
             ) : filteredImages.length === 0 ? (
@@ -501,7 +502,7 @@ const CloudinaryManager = () => {
                       title="Eliminar imagen"
                     >
                       {deletingId === img.public_id
-                        ? <RefreshCw size={14} className="spinning" />
+                        ? <LiaLoader size="xs" />
                         : <Trash2 size={14} />}
                     </button>
                   </div>
@@ -551,7 +552,7 @@ const CloudinaryManager = () => {
             {/* Usage check result */}
             {checkingUsage ? (
               <div className="cld-usage-checking">
-                <RefreshCw size={14} className="spinning" />
+                <LiaLoader size="sm" />
                 <span>Verificando usos...</span>
               </div>
             ) : imageUsage && hasUsage(imageUsage) ? (

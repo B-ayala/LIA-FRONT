@@ -16,6 +16,7 @@ import { useCartStore } from '../../../../store/cartStore';
 import CartDrawer from '../../cart/CartDrawer';
 import MyPurchasesModal from './MyPurchasesModal';
 import { useInitialLoadTask } from '../../../../components/common/InitialLoad/InitialLoadProvider';
+import LiaLoader from '../../../../components/common/LiaLoader/LiaLoader';
 import './NavBar.css';
 
 const staticNavBefore = [{ name: 'Inicio', path: '/' }];
@@ -502,7 +503,10 @@ const NavBar = () => {
             {searchOpen && showResults && (
               <div className="search-results-dropdown">
                 {isSearching ? (
-                  <p className="search-loading">Buscando...</p>
+                  <div className="search-loading">
+                    <LiaLoader size="sm" />
+                    <span>Buscando...</span>
+                  </div>
                 ) : searchResults.length === 0 ? (
                   <p className="search-no-results">No se encontraron productos</p>
                 ) : (

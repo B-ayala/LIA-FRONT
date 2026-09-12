@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { CircularProgress, Collapse, Divider } from '@mui/material';
+import { Collapse, Divider } from '@mui/material';
 import { FiPackage, FiChevronDown, FiChevronUp, FiShoppingBag, FiArrowLeft } from 'react-icons/fi';
 import Modal from '../../../../components/common/Modal/Modal';
+import LiaLoader from '../../../../components/common/LiaLoader/LiaLoader';
 import { getUserPurchases, type Purchase } from '../../../../services/orderService';
 import { fetchProductById, mapDbRowToProduct } from '../../../../services/productService';
 import type { Product } from '../../../../types/product';
@@ -152,7 +153,7 @@ const PurchaseProductDetail = ({
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-          <CircularProgress size={36} sx={{ color: 'var(--primary-accent)' }} />
+          <LiaLoader size="md" />
         </div>
       ) : (
         <>
@@ -508,7 +509,7 @@ const MyPurchasesModal = ({ isOpen, onClose, email }: MyPurchasesModalProps) => 
           <>
             {loading && (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-                <CircularProgress size={36} sx={{ color: 'var(--primary-accent)' }} />
+                <LiaLoader size="md" />
               </div>
             )}
 

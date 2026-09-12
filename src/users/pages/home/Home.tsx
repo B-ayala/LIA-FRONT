@@ -16,7 +16,7 @@ const Home = () => {
 
   useEffect(() => {
     fetchFeaturedProducts()
-      .then((rows) => setProducts(rows.map(mapDbRowToProduct).filter((p) => (p.stock ?? 0) > 0)))
+      .then((rows) => setProducts(rows.map(mapDbRowToProduct)))
       .catch(console.error)
       .finally(() => setIsFeaturedLoading(false));
   }, []);

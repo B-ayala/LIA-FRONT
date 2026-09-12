@@ -63,23 +63,8 @@
   color: #333;
 }
 
-.checkout-spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e0e0e0;
-  border-top-color: #009ee3; /* Celeste MercadoPago */
-  border-radius: 50%;
-  animation: checkout-spin 1s linear infinite;
-  margin-bottom: 20px;
-}
-
-@keyframes checkout-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .checkout-loading-text {
+  margin-top: 20px;
   font-size: 1.2rem;
   font-weight: 500;
   color: #666;

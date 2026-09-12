@@ -5,6 +5,7 @@ import { useAdminStore } from '../../store/adminStore';
 import { buildCloudinaryUrl } from '../../../utils/cloudinary';
 import { deleteSiteContent, getSiteContent, saveSiteContent } from '../../../services/siteContentService';
 import HeroImageEditor from './HeroImageEditor';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './AboutEditor.css';
 
 interface HeroImageData {
@@ -115,7 +116,7 @@ const AboutEditor = () => {
         setValues(values.filter((_, i) => i !== index));
     };
 
-    if (loading) return <div className="admin-about-editor"><p>Cargando...</p></div>;
+    if (loading) return <div className="admin-about-editor"><LiaLoader size="lg" variant="section" label="Cargando..." /></div>;
 
     return (
         <div className="admin-about-editor">

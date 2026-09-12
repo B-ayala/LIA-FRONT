@@ -11,12 +11,12 @@
 Este repo es el **frontend** de la tienda **damiana-bella** (nombre interno del paquete: `lia`).
 Es una SPA en **React 19 + TypeScript + Vite** que consume:
 
-- **Supabase** (lecturas públicas de catálogo, contenido de sitio, ventas por transferencia).
-- Una **API backend Express** externa (autenticación JWT, escritura de productos, Cloudinary,
-  Mercado Pago, envíos). Ese backend vive en **otro repositorio** (`../../BACK/lia-store`)
-  y NO forma parte de este repo.
-  ⚠️ Ese backend implementa hoy un contrato **distinto** (auth sobre token de Supabase, sin
-  `/orders` ni `/shipping`). Ver discrepancias en `../../BACK/lia-store/DOCUMENTACION_BACKEND.md`.
+- **Supabase** — Auth (sesión del usuario) y lecturas públicas de catálogo y contenido de sitio.
+- Una **API backend Express** externa (órdenes y pagos, envíos, escritura de productos,
+  Cloudinary, analítica admin, gestión de usuarios). Ese backend vive en **otro repositorio**
+  (`../../BACK/lia-store`) y NO forma parte de este repo.
+  Los contratos están **alineados**: el front adjunta el access token de Supabase y el backend
+  lo verifica. Ver `../../BACK/lia-store/DOCUMENTACION_BACKEND.md` §5 y §11.
 
 📄 La documentación técnica completa de este frontend está en
 [DOCUMENTACION_FRONTEND.md](DOCUMENTACION_FRONTEND.md). **Leela antes de tocar código**:
@@ -59,3 +59,15 @@ en este repo.
 - Variables de entorno mínimas (ver `DOCUMENTACION_FRONTEND.md` → Configuración):
   `VITE_API_URL_LOCAL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 - Mantener la documentación de este repo separada de la del backend.
+
+### 📄 Mantenimiento de la documentación
+
+- **El código es la fuente de verdad.** Si `DOCUMENTACION_FRONTEND.md`, `README.md` o este archivo
+  contradicen al código, el error está en la doc: verificá contra el código y corregila.
+- **Docs de estado → se corrigen, no se acumulan.** `DOCUMENTACION_FRONTEND.md`, `README.md`,
+  `CLAUDE.md` y `ONBOARDING_TESTERS.md` describen cómo es el sistema **hoy**: si un cambio invalida
+  un párrafo, se reescribe ese párrafo en el mismo cambio. Agregar una sección nueva dejando la
+  vieja produce docs que se contradicen entre sí.
+- **Solo `CHANGELOG.md` acumula** (append-only): es historia, no estado. `qa/test-plan.md` acumula
+  casos, pero los resultados se actualizan.
+- Alcance mínimo: tocar la sección afectada. No hace falta releer la doc entera en cada cambio.

@@ -1,6 +1,7 @@
-import { Dialog, DialogContent, IconButton, Zoom, Box, Button, CircularProgress, useMediaQuery } from '@mui/material';
+import { Dialog, DialogContent, IconButton, Zoom, Box, Button, useMediaQuery } from '@mui/material';
 import { FiX, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import { keyframes } from '@emotion/react';
+import LiaLoader from '../LiaLoader/LiaLoader';
 
 const scaleIn = keyframes`
   from { transform: scale(0); opacity: 0; }
@@ -59,7 +60,11 @@ const ConfirmationModal = ({
           </Box>
         );
       case 'loading':
-        return <CircularProgress size={50} sx={{ my: 1, color: '#667eea' }} />;
+        return (
+          <Box sx={{ display: 'flex', my: 1 }}>
+            <LiaLoader size="lg" />
+          </Box>
+        );
       default:
         return null;
     }

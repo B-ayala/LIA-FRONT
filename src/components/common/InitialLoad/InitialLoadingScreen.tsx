@@ -1,4 +1,4 @@
-import { GiClothes } from 'react-icons/gi';
+import LiaLoader from '../LiaLoader/LiaLoader';
 import './InitialLoadingScreen.css';
 
 const InitialLoadingScreen = () => {
@@ -9,8 +9,7 @@ const InitialLoadingScreen = () => {
 
       <div className="initial-loading-screen__card">
         <div className="initial-loading-screen__icon-shell">
-          <div className="initial-loading-screen__icon-ring" />
-          <GiClothes className="initial-loading-screen__icon" />
+          <LiaLoader size="xl" />
         </div>
 
         <div className="initial-loading-screen__copy">

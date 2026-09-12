@@ -192,10 +192,6 @@
     animation: users-spin 1s linear infinite;
 }
 
-@keyframes users-spin {
-    to { transform: rotate(360deg); }
-}
-
 /* Loading state */
 .users-loading {
     display: flex;
@@ -205,15 +201,6 @@
     padding: 3rem 1rem;
     gap: 1rem;
     color: #64748b;
-}
-
-.users-spinner {
-    width: 36px;
-    height: 36px;
-    border: 3px solid #f1f5f9;
-    border-top-color: var(--primary-color, #9333ea);
-    border-radius: 50%;
-    animation: users-spin 1s linear infinite;
 }
 
 .users-loading p {

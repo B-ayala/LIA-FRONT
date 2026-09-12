@@ -3,6 +3,7 @@ import { Search, Plus, Trash2, Star, Eye } from 'lucide-react';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
 import { toggleProductFeatured, fetchProducts } from '../../../services/productService';
 import { cleanText, normalizeCategory } from '../../../utils/formatters';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './FeaturedProductsManager.css';
 
 const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
@@ -90,7 +91,10 @@ const FeaturedProductsManager = () => {
             </div>
 
             {loading ? (
-                <div className="featured-loading">Cargando productos...</div>
+                <div className="featured-loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                    <LiaLoader size="md" />
+                    <span>Cargando productos...</span>
+                </div>
             ) : (
                 <>
                     {/* Search */}

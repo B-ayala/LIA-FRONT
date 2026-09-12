@@ -7,6 +7,7 @@ import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, SHIPPING_METHOD_LABEL, filt
 import { usePagination } from '../../../hooks/usePagination';
 import { apiFetch, authHeaders, API_BASE_URL } from '../../../utils/apiFetch';
 import { getAuthToken } from '../../../utils/auth';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './Sales.css';
 
 const API_URL = API_BASE_URL;
@@ -378,7 +379,10 @@ const Sales = () => {
             {/* Table */}
             <div className="admin-card table-card">
                 {loading ? (
-                    <p className="sales-loading">Cargando ventas...</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '3rem 1rem', color: '#666' }}>
+                        <LiaLoader size="md" />
+                        <p className="sales-loading" style={{ margin: 0 }}>Cargando ventas...</p>
+                    </div>
                 ) : filtered.length === 0 ? (
                     <div className="sales-empty-state">
                         <ShoppingBag size={48} className="sales-empty-icon" />

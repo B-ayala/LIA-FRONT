@@ -5,6 +5,21 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Changed
+- **Producto "Activo" sin stock ya no bloquea el guardado**: en `ProductModal`
+  (alta y edición, mismo componente), guardar un producto "Activo" con stock 0
+  (simple o por variantes) ya no muestra un error bloqueante. Ahora abre una
+  confirmación ("Producto sin stock — ¿Deseás mostrarlo igualmente...?") con
+  "Mostrar igualmente" / "Cancelar"; al confirmar, el producto se guarda
+  "Activo" y queda visible en la tienda marcado "Sin stock" (no comprable). Si
+  el usuario cancela, no se guarda nada (comportamiento anterior).
+- **Catálogo, destacados y detalle ya no ocultan productos sin stock**:
+  `Products.tsx` y `Home.tsx` dejaron de filtrar `stock > 0`; `ProductDetail`
+  dejó de redirigir a "no disponible" por stock 0 (solo lo hace si el producto
+  está inactivo/no existe). `ProductCard` agrega una insignia "Sin stock". La
+  imposibilidad real de compra ya estaba cubierta en `ProductDetail` y
+  `cartStore` (límite de stock por producto/variante), sin cambios ahí.
+
 ### QA — sesión 2026-07-01 (cobertura acumulada)
 - **TC-130** ✅ Login con contraseña incorrecta → 401 "Credenciales inválidas"
 - **TC-131** ✅ GET /api/users/auth/:userId → 200 con perfil completo
@@ -18,6 +33,30 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - **HALL-006** ✅ Confirmado: "Agregar al carrito" truncado en sticky bar a 375px (pendiente fix)
 - **HALL-007** ✅ Confirmado: /contact — Redes Sociales y Correo Electrónico sin CTA funcional (pendiente fix)
 - Pendientes que requieren cuenta de usuario regular: TC-111, TC-120 UI, TC-163, TC-164, TC-152
+
+### Removed
+- `MODAL_GUIDE.md` y `REGISTRATION_IMPROVEMENTS.md`: describían un patrón de modales y un
+  cambio de registro que ya no reflejan el código.
+
+### Changed
+- `DOCUMENTACION_FRONTEND.md` §4.2, §4.3, §6.1, §6.3, §6.4, §9 y §10 corregidos contra el
+  código: la doc describía una **auth con JWT propio** (`/auth/login`, `/auth/me`, `/auth/refresh`)
+  que no existe — la sesión la maneja Supabase Auth — y decía que la transferencia insertaba
+  directo en `ventas` (va por `POST /orders/transfer` desde el fix de BUG-001). Se sumaron
+  `shippingService`, `insightsService` y el endpoint `nudge`.
+- `DOCUMENTACION_FRONTEND.md` §7.4: se elimina GitHub Pages como destino de despliegue (el
+  workflow ya no existe); queda solo Vercel.
+- `README.md` reescrito: era el template por defecto de Vite; ahora describe el proyecto, la
+  puesta en marcha y el índice de documentación.
+- `CLAUDE.md`: el contrato con el backend está alineado (ya no hay "endpoints que el backend no
+  implementa").
+- `ONBOARDING_TESTERS.md`: la base URL es `/`, no `/LIA` (quedó de la etapa GitHub Pages).
+- `DOCUMENTACION_FRONTEND.md` §7.1: `VITE_API_URL_LOCAL` documenta que aplica a **todos** los
+  entornos (no solo local) y que requiere el sufijo `/api`; el env se copia de `.env.example`
+  a `.env.local`.
+- `DOCUMENTACION_FRONTEND.md` §8 "Cómo levantar el proyecto": Node 22.x, puerto real y salto a
+  5174, comando `test:e2e`, nuevas §8.1 (stack completo frontend + backend) y §8.2 (tabla de
+  problemas frecuentes en local).
 
 ### Added
 - **Temas / Tipografía — configuración avanzada de fuentes**: la sección "Temas" del panel admin pasa a llamarse "Temas / Tipografía" e incorpora un configurador completo de tipografía (familia, peso, espaciado entre letras, altura de línea). Los cambios se aplican en tiempo real sobre la sección del usuario, se persisten en localStorage por dispositivo y el admin puede publicarlos como predeterminado global desde Supabase. Las 8 familias disponibles (Poppins, Inter, Montserrat, Raleway, Nunito, Playfair Display, Cormorant Garamond, DM Sans) se cargan dinámicamente desde Google Fonts sin impacto en el bundle.

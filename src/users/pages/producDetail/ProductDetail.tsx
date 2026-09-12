@@ -86,11 +86,9 @@ const ProductDetail = () => {
         if (cancelled) return;
         // Producto inactivo, retirado o inexistente (null): estado "no disponible".
         if (!row) return setNotFound(true);
-        const mapped = mapDbRowToProduct(row);
-        // Producto sin stock (solo accesible por link directo; el catálogo ya lo oculta):
-        // mismo estado "no disponible" en lugar de redirigir en silencio.
-        if ((mapped.stock ?? 0) <= 0) return setNotFound(true);
-        setProduct(mapped);
+        // Sin stock (activo) sí se muestra: la propia vista ya indica "Sin stock"
+        // y deshabilita la compra.
+        setProduct(mapDbRowToProduct(row));
       })
       // Error real (red/servidor): también mostramos "no disponible".
       .catch(() => {

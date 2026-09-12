@@ -9,6 +9,7 @@ import {
     deleteCarouselImageDb,
     reorderCarouselImages,
 } from '../../../services/productService';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './CarouselManager.css';
 
 const CarouselManager = () => {
@@ -133,7 +134,10 @@ const CarouselManager = () => {
             </form>
 
             {loading ? (
-                <div className="empty-state">Cargando imágenes...</div>
+                <div className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                    <LiaLoader size="md" />
+                    <span>Cargando imágenes...</span>
+                </div>
             ) : (
                 <>
                     {filteredImages.length > 0 && (

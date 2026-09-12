@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  X, RefreshCw, Home, Folder, FolderOpen, ChevronRight,
+  X, Home, Folder, FolderOpen, ChevronRight,
 } from 'lucide-react';
 import { getAuthToken } from '../../../utils/auth';
 import {
@@ -9,6 +9,7 @@ import {
   type CloudinaryResource,
   type CloudinaryFolder,
 } from '../../../services/productService';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './CloudinaryImagePicker.css';
 
 interface CloudinaryImagePickerProps {
@@ -141,7 +142,7 @@ const CloudinaryImagePicker = ({ open, onClose, onSelect }: CloudinaryImagePicke
             {/* Lista de carpetas */}
             {foldersLoading ? (
               <div className="cip-folders-loading">
-                <RefreshCw size={12} className="spinning" />
+                <LiaLoader size="sm" />
               </div>
             ) : folders.length === 0 ? (
               <p className="cip-folders-empty">Sin carpetas</p>
@@ -218,7 +219,7 @@ const CloudinaryImagePicker = ({ open, onClose, onSelect }: CloudinaryImagePicke
             {/* Grid */}
             {imagesLoading ? (
               <div className="cip-loading">
-                <RefreshCw size={20} className="spinning" />
+                <LiaLoader size="md" />
                 <span>Cargando imágenes...</span>
               </div>
             ) : images.length === 0 ? (

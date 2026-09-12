@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchProducts, deleteProduct } from '../../../services/productService';
 import { getAuthToken } from '../../../utils/auth';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './ProductGallery.css';
 
 interface Product {
@@ -69,7 +70,7 @@ const ProductGallery = ({ onProductSelect, refreshTrigger }: ProductGalleryProps
   };
 
   if (loading) {
-    return <div className="product-gallery"><p>Cargando productos...</p></div>;
+    return <div className="product-gallery"><LiaLoader size="lg" variant="section" label="Cargando productos..." /></div>;
   }
 
   return (

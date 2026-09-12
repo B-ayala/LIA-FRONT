@@ -6,6 +6,7 @@ import Modal from '../../../components/common/Modal/Modal';
 import SEO from '../../../components/common/SEO/SEO';
 import type { FooterInfo } from '../../../admin/store/adminStore';
 import { getSiteContent } from '../../../services/siteContentService';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './Contact.css';
 
 interface ContactFormData {
@@ -112,7 +113,7 @@ const Contact = () => {
       <div className="contact-page">
         <div className="contact-header">
           <h1>Siempre cerca de ti</h1>
-          <p>Cargando información de contacto...</p>
+          <LiaLoader size="md" variant="section" label="Cargando información de contacto..." />
         </div>
       </div>
     );
@@ -310,8 +311,16 @@ const Contact = () => {
                   type="submit"
                   className="submit-btn"
                   disabled={isSubmitting}
-                  style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+                  style={{
+                    opacity: isSubmitting ? 0.7 : 1,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                  }}
                 >
+                  {isSubmitting && <LiaLoader size="xs" />}
                   {isSubmitting ? 'Enviando...' : 'Enviar Mensaje'}
                 </button>
               </form>

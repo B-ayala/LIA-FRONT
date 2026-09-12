@@ -5,6 +5,7 @@ import { supabase } from '../../../config/supabaseClient';
 import { formatDate, formatPriceInt } from '../../../utils/formatters';
 import { SHIPPING_METHOD_LABEL, filterSelectSlotProps } from '../../../utils/labels';
 import { usePagination } from '../../../hooks/usePagination';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './Dispatches.css';
 
 type DispatchStatus = 'pendiente' | 'en_preparacion' | 'despachado' | 'listo_para_retiro' | 'entregado';
@@ -226,7 +227,10 @@ const Dispatches = () => {
             {/* Content */}
             <div className="admin-card table-card">
                 {loading ? (
-                    <p className="dispatch-loading">Cargando despachos...</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '3rem 1rem', color: '#666' }}>
+                        <LiaLoader size="md" />
+                        <p className="dispatch-loading" style={{ margin: 0 }}>Cargando despachos...</p>
+                    </div>
                 ) : filtered.length === 0 ? (
                     <div className="dispatch-empty-state">
                         <SendHorizonal size={48} className="dispatch-empty-icon" />

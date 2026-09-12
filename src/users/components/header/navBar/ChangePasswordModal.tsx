@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { TextField, Button, CircularProgress, Alert } from '@mui/material';
+import { TextField, Button, Alert } from '@mui/material';
 import Modal from '../../../../components/common/Modal/Modal';
+import LiaLoader from '../../../../components/common/LiaLoader/LiaLoader';
 import { useAuthStore } from '../../../../store/authStore';
 import { changePassword } from '../../../../services/userService';
 import { validatePassword, validatePasswordMatch } from '../../../../utils/validation';
@@ -170,7 +171,7 @@ const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProps) => {
               },
             }}
           >
-            {isLoading ? <CircularProgress size={20} /> : 'Guardar'}
+            {isLoading ? <LiaLoader size="xs" /> : 'Guardar'}
           </Button>
         </div>
       </div>

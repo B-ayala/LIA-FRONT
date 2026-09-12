@@ -74,10 +74,6 @@
   font-size: 14px;
 }
 
-.storage-loading .spinning {
-  animation: spin 1s linear infinite;
-}
-
 /* Error state */
 .storage-error {
   background: #ffebee;

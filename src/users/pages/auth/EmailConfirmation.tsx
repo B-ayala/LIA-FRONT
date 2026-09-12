@@ -4,6 +4,7 @@ import type { EmailOtpType } from '@supabase/supabase-js';
 import { confirmEmail, hasActiveSession } from '../../../services/authService';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './EmailConfirmation.css';
 
 export const EMAIL_CONFIRMED_CHANNEL = 'db_email_confirmation';
@@ -88,7 +89,9 @@ const EmailConfirmation = () => {
     <div className="email-confirmation-page">
       {status === 'loading' && (
         <div className="confirmation-loading">
-          <div className="spinner"></div>
+          <div style={{ background: '#fff', borderRadius: '50%', padding: '10px', display: 'flex' }}>
+            <LiaLoader size="lg" />
+          </div>
           <p>Verificando tu correo electrónico...</p>
         </div>
       )}

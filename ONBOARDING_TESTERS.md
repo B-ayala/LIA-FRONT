@@ -2,7 +2,7 @@
 
 > **Proyecto:** LIA - Tienda de Indumentaria Artesanal  
 > **Stack:** React + TypeScript + Vite  
-> **Base URL:** `/LIA`
+> **Base URL:** `/` (local: `http://localhost:5173`)
 
 ---
 
@@ -211,7 +211,8 @@ npm install
 # Iniciar servidor de desarrollo
 npm run dev
 
-# La app se abre en: http://localhost:5173/LIA
+# La app se abre en: http://localhost:5173
+# (necesita el backend en http://localhost:3000 para checkout, pagos y admin)
 ```
 
 ---

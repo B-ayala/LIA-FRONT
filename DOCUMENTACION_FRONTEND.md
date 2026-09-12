@@ -164,10 +164,12 @@ va por **Supabase directo** (lectura pública) o por la **API Express** (escritu
 
 | Servicio | Supabase directo | API Express |
 |---|---|---|
-| `authService` | — | `/auth/*` (JWT) |
+| `authService` | Supabase Auth (login, signUp, verifyOtp, reset) + `profiles` | — |
 | `userService` | — | `/users` (admin) + delega en `authService` |
 | `productService` | read `productos`, `categories`, `carousel_images` | write `/products`, `/cloudinary/*` |
-| `orderService` | insert `ventas` (transferencia) | `/orders/*` (Mercado Pago, compras, cancelaciones) |
+| `orderService` | — | `/orders/*` (transferencia, Mercado Pago, compras, cancelaciones, nudge) |
+| `shippingService` | — | `/shipping?postalCode=` |
+| `insightsService` | — | `/admin/insights/*` (solo admin) |
 | `siteContentService` | `site_content` (read/write) | — |
 
 ### 4.3 Estado global (Zustand)
@@ -176,8 +178,8 @@ va por **Supabase directo** (lectura pública) o por la **API Express** (escritu
   - `isAuthenticated`: **solo admin validado** (es el gate de `AdminProtectedRoute`).
   - Hidrata sincrónicamente desde `localStorage` en el primer render (evita que `/admin` + F5
     redirija por un render temprano con sesión vacía). `initializeAuth()` valida contra
-    `/auth/me`; ante error de red transitorio mantiene el estado hidratado en vez de expulsar
-    al admin.
+    `supabase.auth.getSession()`; ante error de red transitorio mantiene el estado hidratado en
+    vez de expulsar al admin.
 - **`cartStore`** — carrito persistido (`zustand/persist`, key `damiana-bella-cart`). Maneja
   `items[]` (carrito) y un `item` de checkout (puede venir del carrito o de compra directa).
   Toda mutación pasa por sanitización: clamp de cantidad a stock, validación de variantes por
@@ -222,21 +224,30 @@ guards quedan **eager** (son wrappers siempre presentes).
 
 ## 6. Flujos principales
 
-### 6.1 Autenticación (JWT propio, no Supabase Auth)
-1. **Login** (`AuthModal` → `authStore.login` → `authService.login`): `POST /auth/login`.
-   El backend devuelve `{ data: user, accessToken, refreshToken }`; se persisten en
-   `tokenStorage` (localStorage). Si `role === 'admin'` se setea `isAuthenticated`.
-2. **Sesión persistente**: al cargar la app, `authStore` hidrata desde localStorage y luego
-   `initializeAuth()` llama `GET /auth/me`.
-3. **Refresh automático**: `apiFetch` detecta `401` con `code: TOKEN_EXPIRED`, llama a
-   `POST /auth/refresh` (con cola para no disparar N refreshes en paralelo), guarda los nuevos
-   tokens y reintenta la request original **una vez**. Si el refresh falla → `auth:logout`.
-4. **Registro** (`POST /auth/register`): requiere confirmación de email
-   (`/auth/confirm?token=…` → `EmailConfirmation.tsx` → `POST /auth/confirm-email`).
-5. **Recuperación**: `forgot-password` → email con token → `/auth/reset-password?token=…`
-   → `ResetPassword.tsx` → `POST /auth/reset-password`.
-6. **Cambio de password** (logueado): `POST /auth/change-password`; el backend revoca todos
-   los refresh tokens, el front limpia sesión y fuerza re-login.
+### 6.1 Autenticación (Supabase Auth desde el cliente)
+La sesión la maneja **Supabase Auth**; el backend Express no expone endpoints `/auth/*`, solo
+**verifica** el access token que se le adjunta. Todo pasa por `services/authService.ts`.
+
+1. **Login** (`AuthModal` → `authStore.login` → `authService.login`): `supabase.auth.signInWithPassword`.
+   El perfil y el rol se leen de `profiles`; `tokenStorage` (localStorage) queda sincronizado
+   solo para el estado de login de la UI.
+2. **Sesión persistente**: `authStore` hidrata sincrónicamente desde localStorage en el primer
+   render (evita que `/admin` + F5 rebote) y luego confirma contra `supabase.auth.getSession()`.
+   `onAuthStateChange` mantiene el store al día.
+3. **Refresh automático**: lo hace el SDK de Supabase. [apiFetch.ts](src/utils/apiFetch.ts) toma
+   el token de la sesión en cada request; ante un `401` refresca vía Supabase y **reintenta una
+   vez**, con cola para no disparar N refreshes en paralelo. Si el refresh falla → limpia sesión
+   y emite el evento global `auth:logout`.
+4. **Registro**: `supabase.auth.signUp` con confirmación de email; el link vuelve a
+   `EmailConfirmation.tsx`, que valida con `supabase.auth.verifyOtp`. Reenvío con
+   `supabase.auth.resend`.
+5. **Recuperación**: `supabase.auth.resetPasswordForEmail` → link → `ResetPassword.tsx` →
+   `supabase.auth.updateUser`; al terminar se cierra sesión y se fuerza re-login.
+6. **Cambio de password** (logueado): re-autentica con la password actual antes de
+   `updateUser`, y luego `signOut`.
+
+> El backend usa estos tokens en `authMiddleware` (los verifica contra Supabase). Detalle en
+> `../../BACK/lia-store/DOCUMENTACION_BACKEND.md` §6.
 
 ### 6.2 Catálogo
 - `Home` / `Products` leen de Supabase (`fetchFeaturedProducts`, `fetchProducts`).
@@ -248,19 +259,24 @@ guards quedan **eager** (son wrappers siempre presentes).
 1. El usuario agrega al carrito (`cartStore.addItem`) o va a "compra directa" (setea `item`).
 2. Cada unidad puede tener variantes (`PurchaseVariantModal`); se validan contra el producto.
 3. En `Checkout` se elige método de pago:
-   - **Transferencia**: `orderService.createOrder` inserta filas en `ventas` (Supabase) con
-     `payment_status: 'pendiente'`.
+   - **Transferencia**: `orderService.createOrder` → `POST /orders/transfer`. La escritura va por
+     el backend a propósito: insertar directo en `ventas` con la anon key lo bloquea RLS
+     (BUG-001). El trigger `trg_decrement_stock` descuenta stock al insertar.
    - **Mercado Pago**: `orderService.createMpPreference` → `POST /orders/mp-preference`,
      recibe `init_point` (redirección a MP) + `order_ids`. Si el usuario vuelve sin pagar,
-     `cancelMpOrder` → `POST /orders/:id/cancel` (el backend restaura stock; hay cron de respaldo).
-4. `CheckoutResult` muestra el resultado del pago.
-5. `MyPurchasesModal` lista compras por email vía `GET /orders/user?email=…` (el backend
-   bypassa RLS de Supabase).
+     `cancelMpOrder` → `POST /orders/:id/cancel` (el backend restaura stock; hay sweep de respaldo
+     cada 60 s).
+4. `CheckoutResult` confirma el pago con `POST /orders/mp-confirm` (el backend lo verifica contra
+   la API de MP, no confía en los parámetros de la URL) y muestra el resultado.
+5. `POST /orders/nudge` registra el recordatorio al usuario con el pago pendiente.
+6. `MyPurchasesModal` lista compras por email vía `GET /orders/user?email=…` (el backend
+   bypassa RLS de Supabase y valida que seas el dueño o admin).
 
 ### 6.4 Admin
 - `Products`: CRUD vía API (`/products`), imágenes vía Cloudinary firmado.
 - `Sales`: lee `ventas` de Supabase; confirma/cancela transferencias vía
-  `POST /orders/:id/confirm-transfer` y `/orders/:id/cancel-transfer`.
+  `PATCH /orders/:id/confirm-transfer` y `/orders/:id/cancel-transfer` (solo admin).
+- `Asistente`: analítica vía `GET /admin/insights/*` (`insightsService.ts`).
 - `Dispatches`: gestiona estado de despacho sobre `ventas`.
 - `Users`: lista/edita/borra usuarios vía `/users` (solo admin).
 - `HomeManager` / `AboutEditor` / `FooterEditor` / `ThemesManager`: editan contenido en
@@ -272,13 +288,13 @@ guards quedan **eager** (son wrappers siempre presentes).
 ## 7. Configuración
 
 ### 7.1 Variables de entorno (Vite — prefijo `VITE_`)
-Crear un `.env` (o `.env.local`) en la raíz del repo. **Nunca commitearlo.**
+Copiar `.env.example` a `.env.local` en la raíz del repo. **Nunca commitearlo.**
 
 | Variable | Requerida | Descripción |
 |---|---|---|
 | `VITE_SUPABASE_URL` | ✅ | URL del proyecto Supabase. Sin ella, `supabaseClient` lanza error en el arranque. |
 | `VITE_SUPABASE_ANON_KEY` | ✅ | Anon key (pública) de Supabase. |
-| `VITE_API_URL_LOCAL` | ✅ (recomendada) | Base URL de la API Express. Si falta, cae a `http://localhost:3000/api`. Soporta túneles ngrok (agrega header `ngrok-skip-browser-warning` y hace fallback a localhost ante error de red). |
+| `VITE_API_URL_LOCAL` | ✅ (recomendada) | Base URL de la API Express, **con el sufijo `/api`**. Pese al nombre `_LOCAL`, es la URL del backend en **todos** los entornos (en Vercel también). Si falta, cae a `http://localhost:3000/api`. Soporta túneles ngrok (manda el header `ngrok-skip-browser-warning`). |
 
 > `import.meta.env.BASE_URL` se usa para resolver assets según el `base` de despliegue.
 
@@ -292,8 +308,7 @@ Crear un `.env` (o `.env.local`) en la raíz del repo. **Nunca commitearlo.**
 - `npm run build` corre `tsc -b` antes de `vite build` (el build falla si hay errores de tipos).
 
 ### 7.4 Despliegue
-- **GitHub Pages**: `.github/workflows/deploy.yml` buildea en push a `main` y publica `dist/`.
-- **Vercel**: `vercel.json` define headers de seguridad (`X-Frame-Options: DENY`,
+- **Vercel** (único destino activo): `vercel.json` define headers de seguridad (`X-Frame-Options: DENY`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`) y rewrite SPA
   (`/(.*) → /index.html`). Script `npm run deploy` (`vercel --prod`).
 
@@ -301,28 +316,61 @@ Crear un `.env` (o `.env.local`) en la raíz del repo. **Nunca commitearlo.**
 
 ## 8. Cómo levantar el proyecto
 
-```bash
-# 1. Instalar dependencias (Node 22.x)
+Requisito: **Node 22.x** (`engines.node`).
+
+```powershell
+# Desde la raíz del repo frontend
+cd "FRONT/damiana-bella"
+
+# 1. Instalar dependencias
 npm install
 
-# 2. Crear .env en la raíz con:
+# 2. Copiar .env.example a .env.local y completar:
 #    VITE_SUPABASE_URL=...
 #    VITE_SUPABASE_ANON_KEY=...
 #    VITE_API_URL_LOCAL=http://localhost:3000/api   # o el túnel ngrok del backend
 
 # 3. Levantar en desarrollo (HMR)
 npm run dev
+```
 
-# 4. Otros comandos
+Queda en **http://localhost:5173** (si el puerto está ocupado, Vite salta a 5174 — el backend
+acepta cualquier `localhost` en desarrollo).
+
+```powershell
+# Otros comandos
 npm run build     # tsc -b && vite build  → genera dist/
 npm run preview   # sirve el build de producción localmente
 npm run lint      # eslint .
 npm run deploy    # build + vercel --prod
+npm run test:e2e  # Playwright (necesita front y backend levantados)
 ```
 
-> Para que la app funcione completa necesitás también el **backend Express** corriendo
-> (auth, productos, pagos, Cloudinary, envíos) y un proyecto **Supabase** con las tablas
-> listadas abajo. Ver `../../BACK/lia-store/DOCUMENTACION_BACKEND.md`.
+### 8.1 Stack completo (frontend + backend)
+
+Dos terminales, una por proceso:
+
+```powershell
+# Terminal 1 — backend (http://localhost:3000, API en /api)
+cd "BACK/lia-store"; npm run dev
+
+# Terminal 2 — frontend (http://localhost:5173)
+cd "FRONT/damiana-bella"; npm run dev
+```
+
+Sin el **backend Express** corriendo no funcionan órdenes/pagos, envíos, Cloudinary ni la
+administración de usuarios. Setup y variables del backend en
+`../../BACK/lia-store/DOCUMENTACION_BACKEND.md` (§8 y §9).
+
+### 8.2 Problemas frecuentes en local
+
+| Síntoma | Causa probable | Solución |
+|---|---|---|
+| La app rompe en el arranque con error de Supabase | Faltan `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Completar `.env.local` y **reiniciar** `npm run dev` (Vite no recarga env en caliente) |
+| Todas las llamadas al backend fallan (`Failed to fetch`) | Backend caído o `VITE_API_URL_LOCAL` sin `/api` | Levantar el backend; verificar la URL base |
+| `503` al ir a Mercado Pago | Falta `MP_ACCESS_TOKEN` en el backend | Cargarlo en `BACK/lia-store/.env` |
+| Requests bloqueadas por CORS | Origen del front fuera de la allowlist del backend | `NODE_ENV=development` en el backend, o sumar el origen a `FRONTEND_URL` |
+| Cambié el `.env.local` y no toma | Vite lee env solo al iniciar | Reiniciar el dev server |
 
 ---
 
@@ -336,7 +384,7 @@ Tablas que el frontend toca directamente con la `anon key`:
 | `categories` | read/write | árbol por `parent_id` + `level`; con fallback a categorías derivadas de `productos`. |
 | `carousel_images` | read/write | filtrable por `device_type` (`desktop`/`mobile`), `is_active`, `order`. |
 | `site_content` | read/write/delete | clave-valor (`key`/`value` JSON) para about, footer, banner, temas. Requiere UNIQUE en `key`. |
-| `ventas` | insert (transferencia) | escrita también por el backend (MP, stock, despachos). Campos: `buyer_*`, `product_*`, `quantity`, `unit_price`, `total_price`, `units_config`, `payment_method`, `payment_status`, `shipping_method`, `dispatch_status`. |
+| `ventas` | solo lectura (panel admin) | las altas van por el backend (RLS bloquea el insert con anon key — BUG-001); también la escribe el backend (MP, stock, despachos). Campos: `buyer_*`, `product_*`, `quantity`, `unit_price`, `total_price`, `units_config`, `payment_method`, `payment_status`, `shipping_method`, `dispatch_status`. |
 | `contact_messages` | insert | mensajes del formulario de contacto. |
 
 > `profiles` (roles/usuarios) y la escritura sensible de `productos`/`ventas` se manejan
@@ -347,10 +395,11 @@ Tablas que el frontend toca directamente con la `anon key`:
 ## 10. Patrones y buenas prácticas detectadas
 
 - **Frontera de datos en `services/`**: los componentes no hablan directo con Supabase/fetch.
-- **`apiFetch` centraliza auth**: Bearer token automático, refresh con cola anti-stampede,
-  reintento único, fallback ngrok→localhost, y evento global de logout forzado.
-- **Tokens cortos + refresh rotativo**: access ~15 min; mitigación de XSS documentada en
-  `tokenStorage.ts` (con plan de migración a httpOnly cookie si se endurece).
+- **`apiFetch` centraliza auth**: Bearer token tomado de la sesión de Supabase, refresh con cola
+  anti-stampede, reintento único y evento global de logout forzado.
+- **Rotación de tokens delegada a Supabase Auth**: el SDK refresca solo; `tokenStorage` es
+  espejo para la UI, no la fuente de verdad (mitigación de XSS documentada ahí, con plan de
+  migración a httpOnly cookie si se endurece).
 - **Sanitización del carrito**: clamp a stock + validación de variantes en cada mutación y
   al rehidratar desde localStorage (no confía en el estado persistido).
 - **Code-splitting por ruta y por vendor**: el bundle público no arrastra el admin.
@@ -368,8 +417,8 @@ Tablas que el frontend toca directamente con la `anon key`:
   dependencia** en `package.json`; su uso real es parcial/ausente. Verificar antes de asumirlo.
 - Carpeta `producDetail/` con typo (sin `t`); es el nombre real del directorio, respetarlo en imports.
 - `fetchAllProducts` está `@deprecated` → usar `fetchProducts(false)`.
-- Algunas inserciones (`createOrder`, `cancelMpOrder`) son **best-effort** y se tragan errores
-  a propósito para no bloquear el flujo de pago; tenerlo en cuenta al depurar ventas.
+- `cancelMpOrder` es **best-effort**: loguea el fallo y no lo propaga (el sweep de expiración del
+  backend limpia igual). `createOrder`, en cambio, **sí lanza** el error normalizado.
 - Las rutas de skills en `CLAUDE.md` apuntan a `../../skill` (carpeta compartida fuera del repo).
 
 ---

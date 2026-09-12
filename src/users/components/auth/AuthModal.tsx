@@ -15,6 +15,7 @@ import { extractErrorMessage } from '../../../utils/errorMessage';
 import { createUser, resendConfirmationEmail, requestPasswordReset } from '../../../services/userService';
 import { signInWithGoogle } from '../../../services/authService';
 import Modal from '../../../components/common/Modal/Modal';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import { EMAIL_CONFIRMED_CHANNEL, EMAIL_CONFIRMED_STORAGE_KEY } from '../../pages/auth/EmailConfirmation';
 
 interface AuthModalProps {
@@ -698,7 +699,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               )}
 
               <Button type="submit" disabled={isLoading} variant="contained" fullWidth sx={submitBtnSx}
-                startIcon={!isLoading ? <FiLogIn size={18} /> : undefined}
+                startIcon={isLoading ? <LiaLoader size="xs" /> : <FiLogIn size={18} />}
               >
                 {isLoading ? 'Ingresando...' : 'Ingresar'}
               </Button>
@@ -856,7 +857,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                     type="button"
                     onClick={handleResendEmail}
                     disabled={isResendingEmail}
-                    startIcon={<FiMail size={15} />}
+                    startIcon={isResendingEmail ? <LiaLoader size="xs" /> : <FiMail size={15} />}
                     sx={resendBtnSx}
                   >
                     {isResendingEmail ? 'Reenviando...' : 'Reenviar email de confirmación'}
@@ -876,7 +877,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               )}
 
               <Button type="submit" disabled={isLoading} variant="contained" fullWidth sx={submitBtnSx}
-                startIcon={!isLoading ? <FiUserPlus size={18} /> : undefined}
+                startIcon={isLoading ? <LiaLoader size="xs" /> : <FiUserPlus size={18} />}
               >
                 {isLoading ? 'Registrando...' : 'Registrarse'}
               </Button>
@@ -1063,7 +1064,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               )}
 
               <Button type="submit" disabled={isLoading} variant="contained" fullWidth sx={submitBtnSx}
-                startIcon={!isLoading ? <FiMail size={18} /> : undefined}
+                startIcon={isLoading ? <LiaLoader size="xs" /> : <FiMail size={18} />}
               >
                 {isLoading ? 'Enviando...' : 'Enviar link de recuperación'}
               </Button>
@@ -1205,7 +1206,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               disabled={isResendingEmail || resendCooldown > 0}
               variant="contained"
               fullWidth
-              startIcon={<FiMail size={16} />}
+              startIcon={isResendingEmail ? <LiaLoader size="xs" /> : <FiMail size={16} />}
               sx={{
                 background: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)',
                 borderRadius: '8px',

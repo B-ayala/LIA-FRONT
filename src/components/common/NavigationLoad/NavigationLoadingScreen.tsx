@@ -1,4 +1,4 @@
-import { GiClothes } from 'react-icons/gi';
+import LiaLoader from '../LiaLoader/LiaLoader';
 import './NavigationLoadingScreen.css';
 
 interface NavigationLoadingScreenProps {
@@ -14,10 +14,7 @@ const NavigationLoadingScreen = ({ isExiting = false }: NavigationLoadingScreenP
       aria-label="Cargando nueva sección"
     >
       <div className="navigation-loading-screen__content">
-        <div className="navigation-loading-screen__icon-wrapper">
-          <GiClothes className="navigation-loading-screen__icon" />
-          <div className="navigation-loading-screen__spinner" />
-        </div>
+        <LiaLoader size="lg" />
         <p className="navigation-loading-screen__text">Cargando...</p>
       </div>
     </div>

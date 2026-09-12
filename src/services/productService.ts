@@ -530,10 +530,12 @@ export const deleteCarouselImageDb = async (id: string): Promise<void> => {
 };
 
 export const reorderCarouselImages = async (images: { id: string; order: number }[]): Promise<void> => {
-  await Promise.all(
+  const results = await Promise.all(
     images.map(img =>
       supabase.from('carousel_images').update({ order: img.order }).eq('id', img.id)
     )
   );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw failed.error;
 };
 

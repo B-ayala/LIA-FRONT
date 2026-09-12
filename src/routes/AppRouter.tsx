@@ -3,6 +3,7 @@ import { Navigate, Routes, Route, Outlet } from 'react-router-dom';
 import ScrollToTop from '../components/common/ScrollToTop';
 import { InitialRouteReady } from '../components/common/InitialLoad/InitialLoadProvider';
 import { NavigationLoadProvider } from '../components/common/NavigationLoad/NavigationLoadProvider';
+import LiaLoader from '../components/common/LiaLoader/LiaLoader';
 import { useAuthStore } from '../store/authStore';
 
 // Layouts y guards quedan EAGER: son wrappers que siempre se renderizan; lazy
@@ -43,37 +44,12 @@ const ThemesManager = lazy(() => import('../admin/pages/ThemesManager/ThemesMana
 const AdminSales = lazy(() => import('../admin/pages/Sales/Sales'));
 const AdminDispatches = lazy(() => import('../admin/pages/Dispatches/Dispatches'));
 
-// Fallback estable: min-height evita colapso del layout, colores derivados de
-// las variables del sistema (no introduce paleta nueva). Se ve discreto, no
-// compite con la marca.
+// Fallback estable: min-height evita colapso del layout mientras se descarga
+// el chunk de la página. Solo se ve en conexiones lentas — la navegación
+// normal ya queda cubierta por NavigationLoadProvider.
 const RouteFallback = () => (
-  <div
-    role="status"
-    aria-live="polite"
-    style={{
-      minHeight: '60vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'column',
-      gap: '0.75rem',
-      color: 'var(--text-light)',
-      fontSize: '0.9rem',
-    }}
-  >
-    <span
-      aria-hidden="true"
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: '50%',
-        border: '3px solid rgba(184,165,200,0.2)',
-        borderTopColor: 'var(--primary-color)',
-        animation: 'appRouterSpin 0.8s linear infinite',
-      }}
-    />
-    <span>Cargando…</span>
-    <style>{`@keyframes appRouterSpin { to { transform: rotate(360deg); } }`}</style>
+  <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}>
+    <LiaLoader size="lg" variant="section" label="Cargando…" />
   </div>
 );
 

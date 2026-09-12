@@ -9,6 +9,7 @@ import { fetchAllProducts } from '../../../services/productService';
 import { getProductStockFromVariants } from '../../../utils/productVariants';
 import { filterSelectSlotProps } from '../../../utils/labels';
 import { cleanText, normalizeCategory } from '../../../utils/formatters';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './Products.css';
 
 const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
@@ -154,7 +155,10 @@ const Products = () => {
 
             <div className="admin-card table-card">
                 {loading ? (
-                    <p style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Cargando productos...</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '3rem 1rem', color: '#666' }}>
+                        <LiaLoader size="md" />
+                        <p style={{ margin: 0 }}>Cargando productos...</p>
+                    </div>
                 ) : (
                     <ProductTable
                         onEdit={handleOpenModal}

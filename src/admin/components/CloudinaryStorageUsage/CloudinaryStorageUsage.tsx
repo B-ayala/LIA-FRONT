@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { getAuthToken } from '../../../utils/auth';
 import { fetchCloudinaryUsage, type CloudinaryUsage } from '../../../services/productService';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './CloudinaryStorageUsage.css';
 
 interface StorageUsageProps {
@@ -109,7 +110,7 @@ const CloudinaryStorageUsage = ({ onRefresh }: StorageUsageProps) => {
       {/* Loading state */}
       {loading ? (
         <div className="storage-loading">
-          <RefreshCw size={18} className="spinning" />
+          <LiaLoader size="sm" />
           <span>Cargando información...</span>
         </div>
       ) : usage ? (

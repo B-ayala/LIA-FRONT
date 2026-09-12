@@ -105,7 +105,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-    const [stockBlock, setStockBlock] = useState(false);
+    const [outOfStockConfirmOpen, setOutOfStockConfirmOpen] = useState(false);
     const managesStockFromVariants = useMemo(
         () => variants.some((variant) => isSizeVariant(variant.name) && getNormalizedVariantOptions(variant.name, variant.optionsText.split(',')).length > 0),
         [variants]
@@ -362,13 +362,13 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             return;
         }
 
-        // Un producto "Activo" sin stock queda oculto en la tienda (el catálogo
-        // público filtra stock > 0), por lo que el estado sería engañoso. Se
-        // bloquea el guardado y se obliga a cargar stock o pasar a "Inactivo".
+        // Un producto "Activo" sin stock se muestra igual en la tienda marcado
+        // "Sin stock" (no se puede comprar), pero requiere que el usuario lo
+        // confirme explícitamente en lugar de guardarlo en silencio.
         const payload = buildPayload();
         if (payload.status === 'active' && (payload.stock ?? 0) <= 0) {
             setActiveTab('Datos Básicos');
-            setStockBlock(true);
+            setOutOfStockConfirmOpen(true);
             return;
         }
 
@@ -1932,12 +1932,17 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         </Modal>
 
         <ConfirmationModal
-            isOpen={stockBlock}
-            onClose={() => setStockBlock(false)}
-            title="No se puede activar sin stock"
-            message={'El producto está en estado "Activo" pero no tiene stock, así que no se mostraría en la tienda. Agregá stock (o stock por talle en Variantes) o cambiá el estado a "Inactivo" para poder guardarlo.'}
+            isOpen={outOfStockConfirmOpen}
+            onClose={() => setOutOfStockConfirmOpen(false)}
+            title="Producto sin stock"
+            message='Este producto no tiene stock disponible, pero está configurado como "Activo". ¿Deseás mostrarlo igualmente en la tienda indicando que está Sin stock?'
             status="error"
-            actionButtonText="Entendido"
+            actionButtonText="Mostrar igualmente"
+            cancelButtonText="Cancelar"
+            onActionClick={() => {
+                setOutOfStockConfirmOpen(false);
+                void executeSave();
+            }}
         />
 
         <ConfirmationModal

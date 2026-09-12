@@ -12,6 +12,7 @@ import AuthModal from '../../components/auth/AuthModal';
 import PurchaseNudgeModal from '../../components/PurchaseNudgeModal/PurchaseNudgeModal';
 import SEO from '../../../components/common/SEO/SEO';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './Checkout.css';
 
 type ShippingMethod = 'correo' | 'moto' | 'local';
@@ -342,7 +343,7 @@ const Checkout = () => {
   if (loading) {
     return (
       <div className="checkout-loading-screen">
-        <div className="checkout-spinner"></div>
+        <LiaLoader size="lg" />
         <p className="checkout-loading-text">Preparando tu compra...</p>
       </div>
     );
@@ -351,7 +352,7 @@ const Checkout = () => {
   if (!authInitialized) {
     return (
       <div className="checkout-loading-screen">
-        <div className="checkout-spinner"></div>
+        <LiaLoader size="lg" />
         <p className="checkout-loading-text">Recuperando tu sesión...</p>
       </div>
     );

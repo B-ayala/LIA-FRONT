@@ -331,6 +331,61 @@ Resultado: ok (post-fix del footer). Sin overflow en ningún breakpoint. Modal: 
 ```
 
 ```
+ID: TC-PROD-14
+Caso: Guardar producto "Activo" sin stock pide confirmación en vez de bloquear
+Tipo: happy / regression
+Pre-condición: sesión admin, `/admin/products`.
+Pasos:
+  1. Crear (o editar) un producto, poner Estado = "Activo" y Stock = 0 (sin variantes).
+  2. "Guardar producto".
+  3. En el modal "Producto sin stock", click "Mostrar igualmente".
+Esperado: se abre el modal de confirmación (no el bloqueo antiguo); tras confirmar,
+          el producto se guarda como "Activo" con stock 0 y aparece en la tabla admin
+          con badge Stock "0" (out) + Estado "Activo".
+Resultado: no probado
+
+ID: TC-PROD-15
+Caso: Cancelar la confirmación de "sin stock" no guarda el producto
+Tipo: edge
+Pre-condición: igual a TC-PROD-14.
+Pasos:
+  1. Repetir pasos 1-2 de TC-PROD-14.
+  2. En el modal, click "Cancelar" (o la X).
+Esperado: el modal se cierra, el producto NO se guarda, el usuario sigue en el
+          formulario con los datos intactos (puede corregir stock o pasar a Inactivo).
+Resultado: no probado
+
+ID: TC-PROD-16
+Caso: Producto sin stock (activo) se muestra en la tienda marcado "Sin stock" y no se puede comprar
+Tipo: happy / edge
+Pre-condición: producto activo con stock 0 (creado en TC-PROD-14); variante equivalente
+  con una talla en 0 y otra con stock.
+Pasos:
+  1. /products y / (home, si el producto está destacado): ubicar la card del producto.
+  2. Abrir /product/:id directo.
+  3. Para un producto con variantes: seleccionar la talla sin stock.
+  4. Intentar "Comprar ahora" / "Agregar al carrito" con stock 0 (global o de la
+     variante seleccionada).
+Esperado: la card muestra insignia "Sin stock" (no la oculta el catálogo/home);
+          el detalle no redirige a "Producto no disponible", muestra "Sin stock"
+          bajo el título y en el selector de cantidad; la talla sin stock aparece
+          tachada/deshabilitada; los botones de compra están deshabilitados y no
+          se puede agregar al carrito en ningún caso de stock 0.
+Resultado: no probado
+
+ID: TC-PROD-17
+Caso: Producto sin stock e Inactivo sigue oculto (no regresión)
+Tipo: regression
+Pasos:
+  1. Editar el producto de TC-PROD-14: cambiar Estado a "Inactivo" (stock sigue 0).
+  2. Guardar (no debe pedir confirmación: Inactivo no dispara la validación).
+  3. Buscarlo en /products, /, y por URL directa /product/:id.
+Esperado: se guarda sin confirmación; el producto no aparece en ningún listado
+          público y /product/:id muestra "Producto no disponible".
+Resultado: no probado
+```
+
+```
 ID: TC-DESP-01
 Caso: Estado de despacho en mobile usa el mismo desplegable que desktop
 Tipo: failure (paridad desktop ↔ mobile)
@@ -581,7 +636,7 @@ Resultado: OK (2026-06-19)
 | ID           | Severidad  | Estado | Descripción | Caso |
 |--------------|------------|--------|-------------|------|
 | BUG-001-RLS  | 🔴 Crítico | ✅ RESUELTO (2026-06-19) | RLS de Supabase bloqueaba INSERT en ventas para usuarios no-admin → fix: createOrder() ahora llama POST /api/orders/transfer en el backend | TC-169 (BACK) |
-| BUG-002-DESP | 🟡 Medio   | ABIERTO | Falta opción "Despachado" en select de despacho para envíos a domicilio (solo "Listo para retiro") | TC-DESP-01 |
+| BUG-002-DESP | 🟡 Medio   | ✅ RESUELTO (confirmado en código 2026-08-14, ver `docs/flows/DOCUMENTACION_FUNCIONAL_SISTEMA.md` §5.12 y §12) | ~~Falta opción "Despachado" en select de despacho para envíos a domicilio (solo "Listo para retiro")~~ `Dispatches.tsx` ya tiene los 5 estados (`pendiente`, `en_preparacion`, `despachado`, `listo_para_retiro`, `entregado`) con lógica condicional por `shipping_method`: pedidos con `shipping_method === 'local'` ofrecen "Listo para retiro", el resto ofrece "Despachado". No se identificó el commit puntual del fix; se reconfirmó contra el working tree actual, no contra una nueva pasada de Playwright. | TC-DESP-01 |
 | HALL-006     | 🟡 Medio   | ABIERTO | Botón "Agregar al carrito" truncado ("Agregar al ca...") en sticky bar mobile 375px — dos botones no caben | TC-MOB-03 |
 | HALL-003     | 🟡 Info    | Documentado | Sin guest checkout: todo flujo de compra requiere registro y email confirmado (no bloqueante, es decisión de diseño) | TC-168 (BACK) |
 | HALL-004     | 🟢 Info    | Documentado | Webhook MP no funciona en dev local (localhost) — normal, el webhook necesita URL pública; en producción funciona | TC-100 (BACK) |
