@@ -9,6 +9,7 @@ import {
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { getSiteContent, saveSiteContent } from '../services/siteContentService';
+import { supabase } from '../config/supabaseClient';
 
 // ─── Font catalog ─────────────────────────────────────────────────────────────
 
@@ -201,21 +202,45 @@ export const TypographyProvider = ({ children }: { children: ReactNode }) => {
     writeLocal(config);
   }, [config]);
 
-  // Fetch global default from Supabase when the user has no local preference.
+  // Fetch global default from Supabase when the user has no local preference,
+  // y se re-suscribe a postgres_changes para reflejarlo en tiempo real.
   useEffect(() => {
-    if (hasExplicit.current) return;
     let cancelled = false;
-    getSiteContent<TypographyConfig>(REMOTE_KEY)
-      .then((remote) => {
-        if (cancelled || hasExplicit.current) return;
-        if (remote && typeof remote.fontId === 'string' && FONT_MAP.has(remote.fontId)) {
-          setConfigState({ ...DEFAULT_TYPOGRAPHY, ...remote });
-        }
-      })
-      .catch(() => {
-        // Degrada al default sin interrumpir la UI.
-      });
-    return () => { cancelled = true; };
+
+    const applyRemote = () => {
+      if (hasExplicit.current) return;
+      getSiteContent<TypographyConfig>(REMOTE_KEY)
+        .then((remote) => {
+          if (cancelled || hasExplicit.current) return;
+          if (remote && typeof remote.fontId === 'string' && FONT_MAP.has(remote.fontId)) {
+            setConfigState({ ...DEFAULT_TYPOGRAPHY, ...remote });
+          }
+        })
+        .catch(() => {
+          // Degrada al default sin interrumpir la UI.
+        });
+    };
+
+    applyRemote();
+
+    const channel = supabase
+      .channel('public:site_content:typography')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'site_content',
+          filter: `key=eq.${REMOTE_KEY}`,
+        },
+        () => applyRemote(),
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
   }, []);
 
   const setConfig = useCallback((patch: Partial<TypographyConfig>) => {

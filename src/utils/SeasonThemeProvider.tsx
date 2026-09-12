@@ -9,6 +9,7 @@ import {
   type ThemeMode,
 } from './seasonThemes';
 import { getSiteContent } from '../services/siteContentService';
+import { supabase } from '../config/supabaseClient';
 
 const REMOTE_THEME_KEY = 'season_theme';
 
@@ -167,23 +168,46 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
 
   // Tema global publicado por el admin (site_content.season_theme). Aplica sólo
   // a visitantes sin preferencia propia: su elección local siempre tiene prioridad.
+  // Se suscribe a postgres_changes para reflejar el cambio en tiempo real, sin
+  // esperar a que el visitante recargue la pestaña.
   useEffect(() => {
-    if (hasExplicitPreference.current) return;
     let cancelled = false;
 
-    getSiteContent<RemoteThemePreference>(REMOTE_THEME_KEY)
-      .then((remote) => {
-        if (cancelled || hasExplicitPreference.current) return;
-        if (remote && isSeasonId(remote.season)) {
-          setStoredSeason(remote.season);
-          setModeState('manual');
-        }
-      })
-      .catch(() => {
-        // Degrada a la preferencia local/default sin romper la UI.
-      });
+    const applyRemote = () => {
+      if (hasExplicitPreference.current) return;
+      getSiteContent<RemoteThemePreference>(REMOTE_THEME_KEY)
+        .then((remote) => {
+          if (cancelled || hasExplicitPreference.current) return;
+          if (remote && isSeasonId(remote.season)) {
+            setStoredSeason(remote.season);
+            setModeState('manual');
+          }
+        })
+        .catch(() => {
+          // Degrada a la preferencia local/default sin romper la UI.
+        });
+    };
 
-    return () => { cancelled = true; };
+    applyRemote();
+
+    const channel = supabase
+      .channel('public:site_content:season_theme')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'site_content',
+          filter: `key=eq.${REMOTE_THEME_KEY}`,
+        },
+        () => applyRemote(),
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
   }, []);
 
   const setSeason = useCallback((season: SeasonId) => {
