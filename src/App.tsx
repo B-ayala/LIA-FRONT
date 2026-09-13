@@ -9,6 +9,7 @@ import { TypographyProvider } from './utils/TypographyProvider';
 import AppRouter from './routes/AppRouter';
 import WhatsAppButton from './components/common/WhatsAppButton/WhatsAppButton';
 import Footer from './components/common/Footer/Footer';
+import WelcomeAnnouncementModal from './users/components/WelcomeAnnouncementModal/WelcomeAnnouncementModal';
 import { useAuthStore } from './store/authStore';
 import { InitialLoadProvider, useInitialLoad } from './components/common/InitialLoad/InitialLoadProvider';
 import { AUTH_LOGOUT_EVENT } from './utils/apiFetch';
@@ -20,7 +21,7 @@ const AppContent = () => {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
   const setUserFromStorage = useAuthStore((state) => state.setUserFromStorage);
   const logout = useAuthStore((state) => state.logout);
-  const { completeTask } = useInitialLoad();
+  const { completeTask, isInitialLoading } = useInitialLoad();
 
   useEffect(() => {
     if (document.readyState === 'complete') {
@@ -64,6 +65,7 @@ const AppContent = () => {
       <AppRouter />
       {!isAdmin && <Footer />}
       {!isAdmin && !isAuthRoute && <WhatsAppButton />}
+      {!isAdmin && !isAuthRoute && !isInitialLoading && <WelcomeAnnouncementModal />}
     </>
   );
 };

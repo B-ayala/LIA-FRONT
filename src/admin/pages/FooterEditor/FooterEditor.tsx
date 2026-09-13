@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Save } from 'lucide-react';
+import { Save, Plus, Trash2 } from 'lucide-react';
 import { Checkbox, FormControlLabel, TextField } from '@mui/material';
 import { useAdminStore } from '../../store/adminStore';
-import { getSiteContent, normalizeBannerInfo, saveSiteContent } from '../../../services/siteContentService';
+import {
+  getSiteContent,
+  normalizeBannerInfo,
+  normalizeWelcomeModalInfo,
+  saveSiteContent,
+  DEFAULT_WELCOME_MODAL,
+} from '../../../services/siteContentService';
 import type { BannerInfo } from '../../../services/siteContentService';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './FooterEditor.css';
@@ -36,6 +42,9 @@ const FooterEditor = () => {
     const [copyright, setCopyright] = useState(footerInfo.copyright);
     const [bannerText, setBannerText] = useState('');
     const [bannerVisible, setBannerVisible] = useState(false);
+    const [welcomeEnabled, setWelcomeEnabled] = useState(DEFAULT_WELCOME_MODAL.enabled);
+    const [welcomeHeading, setWelcomeHeading] = useState(DEFAULT_WELCOME_MODAL.heading);
+    const [welcomeLines, setWelcomeLines] = useState<string[]>(DEFAULT_WELCOME_MODAL.lines);
     const [saved, setSaved] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -66,6 +75,14 @@ const FooterEditor = () => {
                     setBannerText(banner.text ?? '');
                     setBannerVisible(banner.visible ?? false);
                 }
+
+                const welcomeValue = await getSiteContent<unknown>('welcomeModal');
+                const welcome = normalizeWelcomeModalInfo(welcomeValue);
+                if (welcome) {
+                    setWelcomeEnabled(welcome.enabled);
+                    setWelcomeHeading(welcome.heading);
+                    setWelcomeLines(welcome.lines.length > 0 ? welcome.lines : ['']);
+                }
             } catch (err) {
                 console.error('Error loading site config:', err);
                 setError(err instanceof Error ? err.message : 'Error al cargar los datos.');
@@ -76,6 +93,18 @@ const FooterEditor = () => {
 
         loadFooterInfo();
     }, []);
+
+    const handleWelcomeLineChange = (index: number, value: string) => {
+        setWelcomeLines((prev) => prev.map((line, i) => (i === index ? value : line)));
+    };
+
+    const handleAddWelcomeLine = () => {
+        setWelcomeLines((prev) => (prev.length >= 8 ? prev : [...prev, '']));
+    };
+
+    const handleRemoveWelcomeLine = (index: number) => {
+        setWelcomeLines((prev) => prev.filter((_, i) => i !== index));
+    };
 
     const handleSave = async (e: { preventDefault: () => void }) => {
         e.preventDefault();
@@ -108,6 +137,12 @@ const FooterEditor = () => {
             };
 
             await saveSiteContent('banner', bannerInfo);
+
+            await saveSiteContent('welcomeModal', {
+                enabled: welcomeEnabled,
+                heading: welcomeHeading.trim(),
+                lines: welcomeLines.map((line) => line.trim()).filter((line) => line.length > 0),
+            });
 
             updateFooterInfo(newInfo);
             setSaved(true);
@@ -215,6 +250,59 @@ const FooterEditor = () => {
                         <FormControlLabel
                             control={<Checkbox checked={bannerVisible} onChange={(e) => setBannerVisible(e.target.checked)} />}
                             label="Mostrar banner"
+                        />
+                    </div>
+
+                    {/* Modal de bienvenida */}
+                    <h3 className="footer-editor-section-title">Modal de bienvenida</h3>
+                    <p className="footer-editor-section-hint">
+                        Se muestra una vez por visita, justo al entrar al sitio.
+                    </p>
+                    <div className="form-group">
+                        <TextField
+                            label="Título"
+                            value={welcomeHeading}
+                            onChange={(e) => setWelcomeHeading(e.target.value)}
+                            placeholder="ej: ✨️ Calzados e Indumentaria ✨️"
+                            fullWidth
+                            size="small"
+                        />
+                    </div>
+                    <div className="welcome-lines-list">
+                        {welcomeLines.map((line, index) => (
+                            <div className="welcome-line-row" key={index}>
+                                <TextField
+                                    label={`Línea ${index + 1}`}
+                                    value={line}
+                                    onChange={(e) => handleWelcomeLineChange(index, e.target.value)}
+                                    placeholder="ej: Enviamos a todo el país 🇦🇷"
+                                    fullWidth
+                                    size="small"
+                                />
+                                <button
+                                    type="button"
+                                    className="welcome-line-remove"
+                                    onClick={() => handleRemoveWelcomeLine(index)}
+                                    aria-label="Eliminar línea"
+                                    disabled={welcomeLines.length <= 1}
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <button
+                        type="button"
+                        className="admin-btn-secondary admin-flex-center gap-2"
+                        onClick={handleAddWelcomeLine}
+                        disabled={welcomeLines.length >= 8}
+                    >
+                        <Plus size={16} /> Agregar línea
+                    </button>
+                    <div className="form-group">
+                        <FormControlLabel
+                            control={<Checkbox checked={welcomeEnabled} onChange={(e) => setWelcomeEnabled(e.target.checked)} />}
+                            label="Mostrar modal de bienvenida"
                         />
                     </div>
 

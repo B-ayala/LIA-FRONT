@@ -5,6 +5,23 @@ export interface BannerInfo {
   visible: boolean;
 }
 
+export interface WelcomeModalInfo {
+  enabled: boolean;
+  heading: string;
+  lines: string[];
+}
+
+export const DEFAULT_WELCOME_MODAL: WelcomeModalInfo = {
+  enabled: true,
+  heading: '✨️ Calzados e Indumentaria ✨️',
+  lines: [
+    'Enviamos a todo el país 🇦🇷',
+    'Por pedido (con seña) y stock',
+    'Todos los medios de pago',
+    'De lunes a sábado',
+  ],
+};
+
 function normalizeSiteContentError(error: unknown, key: string, action: 'load' | 'save' | 'delete'): Error {
   if (error instanceof Error) {
     if (error.message.includes('no unique or exclusion constraint matching the ON CONFLICT specification')) {
@@ -90,4 +107,24 @@ export function normalizeBannerInfo(value: unknown): BannerInfo | null {
     text: textCandidate.trim(),
     visible,
   };
+}
+
+export function normalizeWelcomeModalInfo(value: unknown): WelcomeModalInfo | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const raw = value as Record<string, unknown>;
+
+  const heading = typeof raw.heading === 'string' ? raw.heading.trim() : '';
+  const lines = Array.isArray(raw.lines)
+    ? raw.lines.filter((line): line is string => typeof line === 'string' && line.trim().length > 0)
+    : [];
+  const enabled = typeof raw.enabled === 'boolean' ? raw.enabled : true;
+
+  if (!heading && lines.length === 0) {
+    return null;
+  }
+
+  return { enabled, heading, lines };
 }

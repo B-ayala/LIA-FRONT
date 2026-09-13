@@ -38,6 +38,48 @@
     background: #f8fafc;
 }
 
+.footer-editor-section-hint {
+    margin: -0.5rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.welcome-lines-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.welcome-line-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.welcome-line-remove {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #ef4444;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.welcome-line-remove:hover:not(:disabled) {
+    background: #fef2f2;
+}
+
+.welcome-line-remove:disabled {
+    color: #cbd5e1;
+    cursor: not-allowed;
+}
+
 /* Tablet */
 @media (min-width: 640px) {
     .admin-footer-editor {

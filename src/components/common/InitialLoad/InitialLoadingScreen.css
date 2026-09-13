@@ -1,11 +1,14 @@
-/* Mismo lenguaje visual que el skeleton del carrusel del Home: logo circular
-   pulsando sobre un shimmer, en vez de una tarjeta con texto. */
+/* Fondo on-brand (lila/magenta de la paleta, ver index.css --primary-*) en vez
+   del gris plano anterior: gradiente con leve respiración + glow detrás del
+   logo, para que la primera impresión del sitio se sienta premium. */
 .initial-loading-screen {
   position: fixed;
   inset: 0;
   z-index: 4000;
   overflow: hidden;
-  background: #c4c0c0;
+  background: linear-gradient(135deg, #2a1f33 0%, #6a3b6e 38%, #b8377d 68%, #e8a6c4 100%);
+  background-size: 180% 180%;
+  animation: initial-loading-bg-drift 6s ease-in-out infinite;
   pointer-events: auto;
 }
 
@@ -18,38 +21,62 @@
   justify-content: center;
 }
 
+/* Glow radial detrás del logo: profundidad sin agregar otro elemento en el DOM. */
+.initial-loading-screen__logo-wrap::before {
+  content: '';
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 70%);
+  animation: initial-loading-glow-pulse 1.8s ease-in-out infinite;
+}
+
 .initial-loading-screen__logo {
-  width: 120px;
-  height: 120px;
+  position: relative;
+  width: 130px;
+  height: 130px;
   object-fit: cover;
   border-radius: 50%;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 40px rgba(255, 255, 255, 0.25);
   animation: initial-loading-logo-pulse 1.8s ease-in-out infinite;
-  opacity: 0.92;
+}
+
+@keyframes initial-loading-bg-drift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes initial-loading-glow-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.15); opacity: 1; }
 }
 
 @keyframes initial-loading-logo-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.92; }
-  50% { transform: scale(1.07); opacity: 1; }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
 }
 
-/* Shimmer via transform (compositor-only, sin repaint) */
+/* Shimmer diagonal via transform (compositor-only, sin repaint) */
 .initial-loading-screen::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 25%, #d1cece 50%, transparent 75%);
-  animation: initial-loading-shimmer 1.5s infinite;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.16) 50%, transparent 70%);
+  animation: initial-loading-shimmer 2.2s infinite;
   will-change: transform;
 }
 
 @keyframes initial-loading-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% { transform: translateX(-60%); }
+  100% { transform: translateX(60%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .initial-loading-screen,
   .initial-loading-screen__logo,
+  .initial-loading-screen__logo-wrap::before,
   .initial-loading-screen::after {
     animation: none;
   }
@@ -57,7 +84,12 @@
 
 @media (max-width: 640px) {
   .initial-loading-screen__logo {
-    width: 90px;
-    height: 90px;
+    width: 96px;
+    height: 96px;
+  }
+
+  .initial-loading-screen__logo-wrap::before {
+    width: 200px;
+    height: 200px;
   }
 }

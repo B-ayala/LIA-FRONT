@@ -1,0 +1,122 @@
+.wam-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 12, 24, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 3500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  animation: wam-fade-in 0.25s ease-out;
+}
+
+.wam-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: var(--radius-xl, 20px);
+  padding: 36px 28px 28px;
+  text-align: center;
+  color: var(--white, #fff);
+  background: linear-gradient(160deg, var(--primary-dark, #9a86ac) 0%, var(--primary-accent, #b8377d) 100%);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  animation: wam-pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.wam-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  color: var(--white, #fff);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background-color 0.15s ease;
+}
+
+.wam-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.wam-heading {
+  margin: 0 0 18px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.wam-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wam-line {
+  font-size: 15px;
+  line-height: 1.4;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md, 8px);
+  padding: 10px 14px;
+}
+
+.wam-cta {
+  margin-top: 26px;
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  background: var(--white, #fff);
+  color: var(--primary-accent, #b8377d);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wam-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.wam-cta:active {
+  transform: translateY(0);
+}
+
+@keyframes wam-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wam-pop-in {
+  from { opacity: 0; transform: scale(0.92) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wam-overlay,
+  .wam-modal {
+    animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .wam-modal {
+    padding: 28px 20px 22px;
+  }
+
+  .wam-heading {
+    font-size: 19px;
+  }
+}
