@@ -24,6 +24,12 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   en vez de seguir mandando emails.
 
 ### Fixed
+- **Panel de Usuarios no mostraba nada en mobile (<768px)**: `Users.css` no
+  restablecía el `display` de `.admin-table` para el layout de tarjetas, así
+  que quedaba con el `display: none` base de `adminShared.css` y la tabla
+  entera desaparecía en viewport móvil (en desktop sí se veía). Ahora
+  `Users.css` fija `display: block/table` explícitamente en cada breakpoint,
+  igual que hacen las demás páginas admin con tabla propia.
 - **Panel de Usuarios no protegía al admin principal ("owner")**: `Users.tsx`
   ahora deshabilita "sacar admin" y "eliminar" para el usuario marcado como
   owner (`is_owner`, viene de `GET /api/users`) y muestra la insignia

@@ -23,8 +23,16 @@
 }
 
 /* Mobile: make user table rows into cards */
+.admin-users-page .admin-table {
+    display: block;
+}
+
 .admin-users-page .admin-table thead {
     display: none;
+}
+
+.admin-users-page .admin-table tbody {
+    display: block;
 }
 
 .admin-users-page .admin-table tbody tr {
@@ -160,8 +168,16 @@
 
 /* Tablet: restore table layout */
 @media (min-width: 768px) {
+    .admin-users-page .admin-table {
+        display: table;
+    }
+
     .admin-users-page .admin-table thead {
         display: table-header-group;
+    }
+
+    .admin-users-page .admin-table tbody {
+        display: table-row-group;
     }
 
     .admin-users-page .admin-table tbody tr {
