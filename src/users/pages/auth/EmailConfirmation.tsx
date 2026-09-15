@@ -11,6 +11,7 @@ export const EMAIL_CONFIRMED_CHANNEL = 'db_email_confirmation';
 export const EMAIL_CONFIRMED_STORAGE_KEY = 'db_email_confirmation_event';
 
 const EMAIL_CONFIRMED_EVENT = 'EMAIL_CONFIRMED';
+const AUTO_CLOSE_SECONDS = 5;
 
 const EmailConfirmation = () => {
   const [searchParams] = useSearchParams();
@@ -18,9 +19,17 @@ const EmailConfirmation = () => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(AUTO_CLOSE_SECONDS);
   const resolved = useRef(false);
+  const closeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useInitialLoadTask('route', status === 'loading');
+
+  useEffect(() => {
+    return () => {
+      if (closeIntervalRef.current) clearInterval(closeIntervalRef.current);
+    };
+  }, []);
 
   const broadcastAndShow = () => {
     if (resolved.current) return;
@@ -35,9 +44,18 @@ const EmailConfirmation = () => {
       window.localStorage.setItem(EMAIL_CONFIRMED_STORAGE_KEY, payload);
     } catch { /* localStorage not available */ }
     setStatus('success');
-    setMessage('Tu cuenta fue confirmada correctamente. Ya podés iniciar sesión.');
     setIsModalOpen(true);
-    setTimeout(() => window.close(), 1500);
+    setSecondsLeft(AUTO_CLOSE_SECONDS);
+    closeIntervalRef.current = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          if (closeIntervalRef.current) clearInterval(closeIntervalRef.current);
+          window.close();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   const showError = (msg: string) => {
@@ -80,6 +98,7 @@ const EmailConfirmation = () => {
   }, [searchParams]);
 
   const handleModalClose = () => {
+    if (closeIntervalRef.current) clearInterval(closeIntervalRef.current);
     setIsModalOpen(false);
     if (status === 'error') navigate('/');
     else window.close();
@@ -101,7 +120,11 @@ const EmailConfirmation = () => {
         onClose={handleModalClose}
         status={status === 'loading' ? 'error' : status}
         title={status === 'success' ? '¡Cuenta Confirmada!' : 'Error de Verificación'}
-        message={message}
+        message={
+          status === 'success'
+            ? `Tu cuenta fue confirmada correctamente. Ya podés iniciar sesión. Esta pestaña se cerrará en ${secondsLeft}s.`
+            : message
+        }
         actionButtonText={status === 'success' ? 'Cerrar pestaña' : 'Volver al Inicio'}
       />
     </div>
