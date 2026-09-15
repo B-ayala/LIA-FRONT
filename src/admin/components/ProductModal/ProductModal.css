@@ -286,7 +286,6 @@
 @media (min-width: 768px) {
     .product-modal-container {
         flex-direction: row;
-        min-height: 400px;
     }
 
     .product-modal-sidebar {

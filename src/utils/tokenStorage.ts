@@ -14,6 +14,11 @@ const ACCESS_KEY = 'db_access_token';
 const REFRESH_KEY = 'db_refresh_token';
 const USER_KEY = 'db_auth_user';
 
+// Flag de sessionStorage (no localStorage): vive solo mientras dura la sesión
+// del usuario. Se limpia en tokenStorage.clear() para que un logout + nuevo
+// login cuente como sesión nueva y el cartel pueda volver a mostrarse.
+export const WELCOME_ANNOUNCEMENT_SESSION_KEY = 'welcome-announcement-shown';
+
 export interface StoredUser {
   id: string;
   name: string;
@@ -68,5 +73,10 @@ export const tokenStorage = {
     safeRemove(ACCESS_KEY);
     safeRemove(REFRESH_KEY);
     safeRemove(USER_KEY);
+    try {
+      window.sessionStorage.removeItem(WELCOME_ANNOUNCEMENT_SESSION_KEY);
+    } catch {
+      /* storage disabled */
+    }
   },
 };
