@@ -15,6 +15,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   comprar. Sitio en mantenimiento, gracias por tu paciencia." (viene del
   backend, `PUT /api/users/:id` con `purchase_allowed_exclusive`).
 
+### Changed
+- **Reenviar confirmación de email y pedir reset de contraseña ahora pasan por
+  el backend propio** (`POST /api/auth/resend-confirmation` y
+  `/api/auth/forgot-password`) en vez de llamar a Supabase directo desde el
+  navegador (`services/authService.ts`). El backend limita a **3 intentos
+  cada 24hs por email**; al 4° pedido se muestra un mensaje pidiendo esperar
+  en vez de seguir mandando emails.
+
 ### Fixed
 - **Panel de Usuarios no protegía al admin principal ("owner")**: `Users.tsx`
   ahora deshabilita "sacar admin" y "eliminar" para el usuario marcado como

@@ -10,6 +10,7 @@
 import type { Session, User, EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../config/supabaseClient';
 import { tokenStorage, type StoredUser } from '../utils/tokenStorage';
+import { API_BASE_URL } from '../utils/apiFetch';
 
 export interface AuthUser extends StoredUser {}
 
@@ -174,16 +175,26 @@ export const confirmEmail = async (tokenHash: string, type: EmailOtpType = 'sign
   if (error) throw new Error(error.message);
 };
 
-export const resendConfirmation = async (email: string): Promise<void> => {
-  const { error } = await supabase.auth.resend({
-    type: 'signup',
-    email,
-    options: { emailRedirectTo: redirectUrl('/auth/confirm') },
+// Pasa por el backend propio (no llama a Supabase directo) para que el límite
+// de 3 intentos cada 24hs por email ([[emailActionLimiter]]) no se pueda
+// eludir limpiando el estado del navegador.
+const postPublicAuthAction = async (path: string, email: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
   });
-  if (error) {
-    const rateLimited = error.status === 429 || /rate limit/i.test(error.message);
-    throw codedError(error.message, rateLimited ? 'RATE_LIMIT' : undefined);
+  const data = await res.json().catch(() => null);
+  if (res.status === 429) {
+    throw codedError(data?.message ?? 'Alcanzaste el máximo de intentos.', 'MAX_ATTEMPTS_REACHED');
   }
+  if (!res.ok) {
+    throw codedError(data?.message ?? 'No se pudo completar la operación.');
+  }
+};
+
+export const resendConfirmation = async (email: string): Promise<void> => {
+  await postPublicAuthAction('/auth/resend-confirmation', email);
 };
 
 export const hasActiveSession = async (): Promise<boolean> => {
@@ -202,10 +213,7 @@ export const onPasswordRecovery = (callback: () => void): (() => void) => {
 
 // ─── Forgot / Reset password ───
 export const forgotPassword = async (email: string): Promise<void> => {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: redirectUrl('/auth/reset-password'),
-  });
-  if (error) throw new Error(error.message);
+  await postPublicAuthAction('/auth/forgot-password', email);
 };
 
 // El link de recuperación de Supabase establece una sesión temporal (evento

@@ -1,8 +1,8 @@
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 24px;
-  padding: 20px 0;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 16px 0;
   width: 100%;
 }
 
@@ -15,7 +15,7 @@
 
 .product-card-skeleton__img {
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 3 / 5;
   border-radius: 12px;
 }
 
@@ -33,36 +33,15 @@
   margin-top: 4px;
 }
 
-/* Tablet - 2 columns */
-@media (min-width: 768px) and (max-width: 1024px) {
+/* Tablet y desktop: ancho de card acotado (220-260px). La cantidad de
+   columnas se adapta al ancho disponible en vez de estirar las cards
+   al ancho completo de la fila (eso las hacía verse enormes con pocos
+   productos, sobre todo por el alto de imagen 3:5). */
+@media (min-width: 768px) {
   .product-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-  }
-}
-
-/* Desktop small - 3 columns */
-@media (min-width: 1025px) and (max-width: 1280px) {
-  .product-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
     gap: 24px;
-  }
-}
-
-/* Desktop large - 4-5 columns */
-@media (min-width: 1281px) {
-  .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 28px;
-  }
-}
-
-/* Mobile - 2 columns */
-@media (max-width: 767px) {
-  .product-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    padding: 16px 0;
+    padding: 20px 0;
   }
 }
 

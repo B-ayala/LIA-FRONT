@@ -92,8 +92,6 @@ export const resendConfirmationEmail = async (email: string): Promise<{ success:
       message: `Si la cuenta existe y está pendiente, te reenviamos el email a ${email}. Revisá tu bandeja de entrada (y carpeta de spam).`,
     };
   } catch (err) {
-    const code = codeOf(err);
-    if (code === 'RATE_LIMIT') throw new Error('RESEND_COOLDOWN:60');
     throw new Error(err instanceof Error ? err.message : 'Error al reenviar el email');
   }
 };

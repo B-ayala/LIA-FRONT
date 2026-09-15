@@ -516,13 +516,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
       setConfirmationError('');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error al reenviar el email';
-      if (message.startsWith('RESEND_COOLDOWN:')) {
-        const seconds = parseInt(message.split(':')[1], 10) || 60;
-        startResendCooldown(seconds);
-        setConfirmationError('');
-      } else {
-        setConfirmationError(message);
-      }
+      setConfirmationError(message);
     } finally {
       setIsResendingEmail(false);
     }
