@@ -13,6 +13,7 @@ import WelcomeAnnouncementModal from './users/components/WelcomeAnnouncementModa
 import { useAuthStore } from './store/authStore';
 import { InitialLoadProvider, useInitialLoad } from './components/common/InitialLoad/InitialLoadProvider';
 import { AUTH_LOGOUT_EVENT } from './utils/apiFetch';
+import { useTabAwayMarketing } from './hooks/useTabAwayMarketing';
 
 const AppContent = () => {
   const location = useLocation();
@@ -22,6 +23,8 @@ const AppContent = () => {
   const setUserFromStorage = useAuthStore((state) => state.setUserFromStorage);
   const logout = useAuthStore((state) => state.logout);
   const { completeTask, isInitialLoading } = useInitialLoad();
+
+  useTabAwayMarketing(!isAdmin && !isAuthRoute);
 
   useEffect(() => {
     if (document.readyState === 'complete') {

@@ -6,6 +6,16 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Added
+- **Favicon y título dinámicos al cambiar de pestaña** (`hooks/useTabAwayMarketing.ts`,
+  `config/tabAttention.ts`): mientras el usuario tiene la pestaña de LIA
+  activa se muestra el favicon oficial (`public/favicons/favicon-lia.svg`);
+  al salir de la pestaña, el favicon cambia a una variante con badge de
+  atención (`favicon-lia-away.svg`) y el título muestra un mensaje breve de
+  marketing elegido al azar (p. ej. "¡Volvé! 💕 | LIA"), estable mientras
+  dure la ausencia. Al volver se restauran de inmediato el favicon y el
+  título original de la página (el que corresponda a la ruta actual vía
+  `react-helmet-async`), sin parpadeos. Deshabilitado en `/admin` y
+  `/auth`. Un único listener de `visibilitychange` por montaje de `App`.
 - **Toggle "comprador habilitado" en Usuarios (admin)**: nuevo botón por fila
   (`admin/pages/Users/Users.tsx`) para marcar/desmarcar a un usuario como
   comprador exclusivo, con popup de confirmación (`ConfirmationModal`) antes de
