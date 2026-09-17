@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { fetchCarouselImages } from '../../../services/productService';
+import { fetchCarouselImages, fetchCarouselLayout, type CarouselLayout } from '../../../services/productService';
 import { buildCloudinaryUrl } from '../../../utils/cloudinary';
 import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
@@ -29,9 +29,15 @@ const slideVariants = {
   })
 };
 
-// Alto real del carrusel según los breakpoints definidos en Carousel.css
-// (viewport menos el header, que cambia de tamaño en cada breakpoint).
-function getCarouselHeight(width: number): number {
+// Alto real del carrusel según el layout y los breakpoints definidos en
+// Carousel.css. "collage" ocupa casi toda la pantalla (viewport menos header);
+// "single" es un banner más bajo y ancho, como una foto de portada.
+function getCarouselHeight(width: number, layout: CarouselLayout): number {
+  if (layout === 'single') {
+    return width <= 768
+      ? Math.min(window.innerHeight * 0.6, 520)
+      : Math.min(window.innerHeight * 0.7, 640);
+  }
   if (width <= 768) return window.innerHeight - 75;
   if (width <= 1024) return window.innerHeight - 85;
   return window.innerHeight - 95;
@@ -44,11 +50,11 @@ const MAX_DPR = 2;
 // `imageCount` es la cantidad de imágenes que realmente comparten el slide
 // (el último grupo puede tener menos que el máximo por dispositivo), ya que
 // cada una ocupa 1/imageCount del ancho vía flexbox.
-function getSlotSize(viewportWidth: number, imageCount: number): { width: number; height: number } {
+function getSlotSize(viewportWidth: number, imageCount: number, layout: CarouselLayout): { width: number; height: number } {
   const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
   return {
     width: Math.round((viewportWidth / Math.max(imageCount, 1)) * dpr),
-    height: Math.round(getCarouselHeight(viewportWidth) * dpr)
+    height: Math.round(getCarouselHeight(viewportWidth, layout) * dpr)
   };
 }
 
@@ -61,6 +67,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
   const [hasError, setHasError] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+  const [layout, setLayout] = useState<CarouselLayout>('collage');
   const hasReportedReady = useRef(false);
   const onReadyRef = useRef(onReady);
 
@@ -87,20 +94,27 @@ const Carousel = ({ onReady }: CarouselProps) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch carousel images and group them based on device type
+  // Fetch carousel images and group them based on device type + layout
   useEffect(() => {
     const deviceType = isMobile ? 'mobile' : 'desktop';
-    const imgsPerSlide = isMobile ? 2 : 3;
     let cancelled = false;
     hasReportedReady.current = false;
     setIsLoading(true);
     setHasError(false);
     setImagesLoaded(false);
 
-    fetchCarouselImages(deviceType)
-      .then(images => {
+    Promise.all([
+      fetchCarouselImages(deviceType),
+      // Si la tabla de configuración todavía no existe (script SQL no aplicado
+      // en este entorno) o falla la lectura, no debe romper el carrusel: se
+      // sigue viendo el collage de siempre.
+      fetchCarouselLayout(deviceType).catch(() => 'collage' as CarouselLayout)
+    ])
+      .then(([images, layoutSetting]) => {
         if (cancelled) return;
 
+        setLayout(layoutSetting);
+        const imgsPerSlide = layoutSetting === 'single' ? 1 : (isMobile ? 2 : 3);
         const grouped: Slide[] = [];
         for (let i = 0; i < images.length; i += imgsPerSlide) {
           grouped.push({ images: images.slice(i, i + imgsPerSlide).map(img => img.url) });
@@ -142,7 +156,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
       return;
     }
 
-    const firstSlideSize = getSlotSize(window.innerWidth, slides[0].images.length);
+    const firstSlideSize = getSlotSize(window.innerWidth, slides[0].images.length, layout);
     const optimizedUrl = buildCloudinaryUrl(firstImg, {
       width: firstSlideSize.width,
       height: firstSlideSize.height,
@@ -169,7 +183,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
       image.onerror = null;
       image.src = '';
     };
-  }, [slides, notifyReady]);
+  }, [slides, notifyReady, layout]);
 
   const nextSlide = () => {
     setDirection(1);
@@ -192,9 +206,11 @@ const Carousel = ({ onReady }: CarouselProps) => {
     return () => clearInterval(timer);
   }, [currentSlide, slides.length]);
 
+  const layoutClass = layout === 'single' ? 'carousel--single' : '';
+
   if (isLoading || (slides.length > 0 && !imagesLoaded)) {
     return (
-      <div className="carousel carousel--skeleton" role="status" aria-live="polite" aria-label="Cargando carrusel">
+      <div className={`carousel carousel--skeleton ${layoutClass}`} role="status" aria-live="polite" aria-label="Cargando carrusel">
         <span className="carousel-pulse-dot" aria-hidden="true" />
       </div>
     );
@@ -202,14 +218,14 @@ const Carousel = ({ onReady }: CarouselProps) => {
 
   if (hasError || slides.length === 0) {
     return (
-      <div className="carousel carousel--empty" role="status" aria-label="Sin imágenes de portada">
+      <div className={`carousel carousel--empty ${layoutClass}`} role="status" aria-label="Sin imágenes de portada">
         <img src={logoImg} alt="LIA" className="carousel-empty__logo" />
       </div>
     );
   }
 
   return (
-    <div className="carousel">
+    <div className={`carousel ${layoutClass}`}>
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={currentSlide}
@@ -229,7 +245,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
               <img
                 key={idx}
                 src={buildCloudinaryUrl(img, {
-                  ...getSlotSize(viewportWidth, slides[currentSlide].images.length),
+                  ...getSlotSize(viewportWidth, slides[currentSlide].images.length, layout),
                   quality: 'auto',
                   format: 'auto',
                   gravity: 'auto'

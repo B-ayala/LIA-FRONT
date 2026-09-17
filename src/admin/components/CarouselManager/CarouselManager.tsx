@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Reorder } from 'framer-motion';
-import { Trash2, Copy, GripVertical, EyeOff, Eye, Monitor, Smartphone } from 'lucide-react';
+import { Trash2, Copy, GripVertical, EyeOff, Eye, Monitor, Smartphone, GalleryHorizontal, Columns3, Check } from 'lucide-react';
 import { useAdminStore, type CarouselImage } from '../../store/adminStore';
 import {
     fetchAllCarouselImages,
@@ -8,6 +8,9 @@ import {
     updateCarouselImageDb,
     deleteCarouselImageDb,
     reorderCarouselImages,
+    fetchAllCarouselLayouts,
+    updateCarouselLayout,
+    type CarouselLayout,
 } from '../../../services/productService';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './CarouselManager.css';
@@ -19,13 +22,35 @@ const CarouselManager = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
+    const [layouts, setLayouts] = useState<Record<'desktop' | 'mobile', CarouselLayout>>({ desktop: 'collage', mobile: 'collage' });
+    const [savingLayout, setSavingLayout] = useState(false);
 
     useEffect(() => {
         fetchAllCarouselImages()
             .then(setCarouselImages)
             .catch(() => setError('No se pudieron cargar las imágenes del carrusel.'))
             .finally(() => setLoading(false));
+
+        fetchAllCarouselLayouts()
+            .then(setLayouts)
+            .catch(() => setError('No se pudo cargar el diseño del carrusel.'));
     }, [setCarouselImages]);
+
+    const handleLayoutChange = async (nextLayout: CarouselLayout) => {
+        if (layouts[viewMode] === nextLayout || savingLayout) return;
+        const previous = layouts[viewMode];
+        setLayouts(prev => ({ ...prev, [viewMode]: nextLayout }));
+        setSavingLayout(true);
+        setError('');
+        try {
+            await updateCarouselLayout(viewMode, nextLayout);
+        } catch {
+            setLayouts(prev => ({ ...prev, [viewMode]: previous }));
+            setError('No se pudo guardar el diseño del carrusel.');
+        } finally {
+            setSavingLayout(false);
+        }
+    };
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,7 +111,8 @@ const CarouselManager = () => {
     };
 
     const filteredImages = carouselImages.filter(img => img.deviceType === viewMode);
-    const imgsPerSlide = viewMode === 'mobile' ? 2 : 3;
+    const currentLayout = layouts[viewMode];
+    const imgsPerSlide = currentLayout === 'single' ? 1 : (viewMode === 'mobile' ? 2 : 3);
 
     return (
         <div className="admin-card carousel-manager">
@@ -109,10 +135,44 @@ const CarouselManager = () => {
                     </button>
                 </div>
             </div>
+
+            <div className="layout-picker" role="radiogroup" aria-label={`Diseño del carrusel en ${viewMode === 'desktop' ? 'desktop' : 'mobile'}`}>
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={currentLayout === 'single'}
+                    className={`layout-option ${currentLayout === 'single' ? 'active' : ''}`}
+                    onClick={() => handleLayoutChange('single')}
+                    disabled={savingLayout}
+                >
+                    <span className="layout-option-icon"><GalleryHorizontal size={22} /></span>
+                    <span className="layout-option-text">
+                        <span className="layout-option-title">Una imagen por slide {currentLayout === 'single' && <Check size={14} />}</span>
+                        <span className="layout-option-desc">Banner ancho, una sola foto ocupa todo el slide. Ideal para fotos de cuerpo completo.</span>
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={currentLayout === 'collage'}
+                    className={`layout-option ${currentLayout === 'collage' ? 'active' : ''}`}
+                    onClick={() => handleLayoutChange('collage')}
+                    disabled={savingLayout}
+                >
+                    <span className="layout-option-icon"><Columns3 size={22} /></span>
+                    <span className="layout-option-text">
+                        <span className="layout-option-title">Collage {currentLayout === 'collage' && <Check size={14} />}</span>
+                        <span className="layout-option-desc">
+                            Se agrupan {viewMode === 'mobile' ? '2' : '3'} imágenes lado a lado por slide, a pantalla completa.
+                        </span>
+                    </span>
+                </button>
+            </div>
+
             <p className="admin-card-desc">
-                {viewMode === 'desktop'
-                    ? 'Desktop: cada slide muestra 3 imágenes. Se agrupan de 3 en 3 según el orden establecido.'
-                    : 'Mobile: cada slide muestra 2 imágenes. Se agrupan de 2 en 2 según el orden establecido.'}
+                {currentLayout === 'single'
+                    ? `Single (${viewMode === 'desktop' ? 'Desktop' : 'Mobile'}): cada imagen que agregues es un slide completo.`
+                    : `Collage (${viewMode === 'desktop' ? 'Desktop' : 'Mobile'}): cada slide muestra ${imgsPerSlide} imágenes, agrupadas de a ${imgsPerSlide} según el orden establecido.`}
             </p>
 
             {error && (

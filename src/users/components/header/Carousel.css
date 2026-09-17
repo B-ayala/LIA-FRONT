@@ -6,6 +6,12 @@
   background: var(--primary-dark, #b0adad);
 }
 
+/* Layout "single": una imagen por slide, banner ancho tipo portada en vez de
+   pantalla completa (menos altura = menos recorte en fotos verticales). */
+.carousel--single {
+  height: min(70vh, 640px);
+}
+
 .carousel--skeleton,
 .carousel--empty {
   display: flex;
@@ -166,6 +172,10 @@
     height: calc(100vh - 85px);
   }
 
+  .carousel--single {
+    height: min(70vh, 640px);
+  }
+
   .carousel-arrow {
     width: 50px;
     height: 50px;
@@ -179,6 +189,10 @@
 @media (max-width: 768px) {
   .carousel {
     height: calc(100vh - 75px);
+  }
+
+  .carousel--single {
+    height: min(60vh, 520px);
   }
 
   .carousel-arrow {

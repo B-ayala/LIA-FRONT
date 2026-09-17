@@ -547,3 +547,42 @@ export const reorderCarouselImages = async (images: { id: string; order: number 
   if (failed?.error) throw failed.error;
 };
 
+// ── Carousel Layout (una imagen por slide vs. collage) ────────────────────────
+
+export type CarouselLayout = 'single' | 'collage';
+
+// Trae el layout de un solo dispositivo (público, lo usa el home)
+export const fetchCarouselLayout = async (deviceType: 'desktop' | 'mobile'): Promise<CarouselLayout> => {
+  const { data, error } = await supabase
+    .from('carousel_settings')
+    .select('layout')
+    .eq('device_type', deviceType)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.layout as CarouselLayout) ?? 'collage';
+};
+
+// Trae el layout de ambos dispositivos (admin)
+export const fetchAllCarouselLayouts = async (): Promise<Record<'desktop' | 'mobile', CarouselLayout>> => {
+  const { data, error } = await supabase
+    .from('carousel_settings')
+    .select('device_type, layout');
+  if (error) throw error;
+  const result: Record<'desktop' | 'mobile', CarouselLayout> = { desktop: 'collage', mobile: 'collage' };
+  for (const row of data || []) {
+    result[row.device_type as 'desktop' | 'mobile'] = row.layout as CarouselLayout;
+  }
+  return result;
+};
+
+export const updateCarouselLayout = async (
+  deviceType: 'desktop' | 'mobile',
+  layout: CarouselLayout
+): Promise<void> => {
+  const { error } = await supabase
+    .from('carousel_settings')
+    .update({ layout })
+    .eq('device_type', deviceType);
+  if (error) throw error;
+};
+
