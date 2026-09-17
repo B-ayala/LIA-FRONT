@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { fetchCarouselImages } from '../../../services/productService';
 import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
 
@@ -34,17 +35,24 @@ const Carousel = ({ onReady }: CarouselProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState(0);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const hasReportedReady = useRef(false);
+  const onReadyRef = useRef(onReady);
 
-  const notifyReady = () => {
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
+
+  const notifyReady = useCallback(() => {
     if (hasReportedReady.current) {
       return;
     }
 
     hasReportedReady.current = true;
-    onReady?.();
-  };
+    onReadyRef.current?.();
+  }, []);
 
   // Detect mobile/desktop based on window width
   useEffect(() => {
@@ -57,11 +65,16 @@ const Carousel = ({ onReady }: CarouselProps) => {
   useEffect(() => {
     const deviceType = isMobile ? 'mobile' : 'desktop';
     const imgsPerSlide = isMobile ? 2 : 3;
+    let cancelled = false;
     hasReportedReady.current = false;
+    setIsLoading(true);
+    setHasError(false);
     setImagesLoaded(false);
 
     fetchCarouselImages(deviceType)
       .then(images => {
+        if (cancelled) return;
+
         const grouped: Slide[] = [];
         for (let i = 0; i < images.length; i += imgsPerSlide) {
           grouped.push({ images: images.slice(i, i + imgsPerSlide).map(img => img.url) });
@@ -69,14 +82,27 @@ const Carousel = ({ onReady }: CarouselProps) => {
         setSlides(grouped);
         setCurrentSlide(0);
         if (grouped.length === 0) {
+          // No hay imágenes cargadas para este dispositivo: no es un estado de carga, es vacío.
+          setImagesLoaded(true);
           notifyReady();
         }
       })
       .catch((error) => {
+        if (cancelled) return;
         console.error(error);
+        setSlides([]);
+        setHasError(true);
+        setImagesLoaded(true);
         notifyReady();
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
       });
-  }, [isMobile, onReady]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isMobile, notifyReady]);
 
   useEffect(() => {
     if (slides.length === 0) {
@@ -85,6 +111,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
 
     const firstImg = slides[0]?.images[0];
     if (!firstImg) {
+      setImagesLoaded(true);
       notifyReady();
       return;
     }
@@ -113,7 +140,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
       image.onerror = null;
       image.src = '';
     };
-  }, [slides, isMobile, onReady]);
+  }, [slides, notifyReady]);
 
   const nextSlide = () => {
     setDirection(1);
@@ -136,12 +163,18 @@ const Carousel = ({ onReady }: CarouselProps) => {
     return () => clearInterval(timer);
   }, [currentSlide, slides.length]);
 
-  if (slides.length === 0 || !imagesLoaded) {
+  if (isLoading || (slides.length > 0 && !imagesLoaded)) {
     return (
-      <div className="carousel carousel--skeleton" role="status" aria-label="Cargando carrusel">
-        <div className="carousel-skeleton__logo-wrap">
-          <img src={logoImg} alt="LIA" className="carousel-skeleton__logo" />
-        </div>
+      <div className="carousel carousel--skeleton" role="status" aria-live="polite" aria-label="Cargando carrusel">
+        <LiaLoader variant="section" size="xl" />
+      </div>
+    );
+  }
+
+  if (hasError || slides.length === 0) {
+    return (
+      <div className="carousel carousel--empty" role="status" aria-label="Sin imágenes de portada">
+        <img src={logoImg} alt="LIA" className="carousel-empty__logo" />
       </div>
     );
   }

@@ -38,20 +38,41 @@ function normalizeSiteContentError(error: unknown, key: string, action: 'load' |
   return new Error(`No se pudo ${action === 'load' ? 'cargar' : action === 'save' ? 'guardar' : 'eliminar'} ${key}.`);
 }
 
-export async function getSiteContent<T>(key: string): Promise<T | null> {
-  const { data, error } = await supabase
-    .from('site_content')
-    .select('value, updated_at')
-    .eq('key', key)
-    .order('updated_at', { ascending: false, nullsFirst: false })
-    .limit(1)
-    .maybeSingle();
+// Varios componentes independientes (Footer, WhatsAppButton, providers de tema)
+// piden la misma key al montar en paralelo. Sin dedupe, cada uno dispara su
+// propio round-trip idéntico. Sólo se comparte la request en vuelo — una vez
+// resuelta se libera, así una key siempre refleja el próximo fetch real
+// (por ejemplo, tras una actualización por postgres_changes).
+const inFlightRequests = new Map<string, Promise<unknown>>();
 
-  if (error) {
-    throw normalizeSiteContentError(error, key, 'load');
+export async function getSiteContent<T>(key: string): Promise<T | null> {
+  const pending = inFlightRequests.get(key);
+  if (pending) {
+    return pending as Promise<T | null>;
   }
 
-  return (data?.value as T | undefined) ?? null;
+  const request = (async () => {
+    const { data, error } = await supabase
+      .from('site_content')
+      .select('value, updated_at')
+      .eq('key', key)
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw normalizeSiteContentError(error, key, 'load');
+    }
+
+    return (data?.value as T | undefined) ?? null;
+  })();
+
+  inFlightRequests.set(key, request);
+  try {
+    return await request;
+  } finally {
+    inFlightRequests.delete(key);
+  }
 }
 
 export async function saveSiteContent<T>(key: string, value: T): Promise<void> {

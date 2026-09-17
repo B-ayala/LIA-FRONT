@@ -231,14 +231,22 @@ export const fetchCategories = async (): Promise<string[]> => {
   return categories.sort();
 };
 
-// Fetch featured products from Supabase (for home page)
-export const fetchFeaturedProducts = async () => {
-  const { data, error } = await supabase
+// Fetch featured products from Supabase (for home page). `limit` acota filas
+// en origen: el Home sólo renderiza los primeros N, no tiene sentido traer y
+// descartar el resto en el cliente.
+export const fetchFeaturedProducts = async (limit?: number) => {
+  let query = supabase
     .from('productos')
     .select('*')
     .eq('featured', true)
     .eq('status', 'active')
     .order('created_at', { ascending: false });
+
+  if (limit) {
+    query = query.limit(limit);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Fetch featured products error:', error);

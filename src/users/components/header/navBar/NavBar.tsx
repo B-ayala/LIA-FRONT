@@ -63,7 +63,6 @@ const NavBar = () => {
     prevTotalRef.current = totalItems;
   }, [totalItems]);
   const [categoryTree, setCategoryTree] = useState<Category[]>([]);
-  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   // Mobile: track which level-1 and level-2 category the user drilled into
   const [mobileL1, setMobileL1] = useState<Category | null>(null);
   const [mobileL2, setMobileL2] = useState<Category | null>(null);
@@ -72,13 +71,15 @@ const NavBar = () => {
   const logout = useAuthStore(state => state.logout);
 
   useBodyScrollLock(mobileMenuOpen);
-  useInitialLoadTask('public-layout', isCategoriesLoading);
+  // El menú "Productos" ya tolera datos vacíos (no renderiza el item hasta que
+  // haya categorías, sin placeholder): no hace falta bloquear el splash global
+  // por este fetch, que no es crítico para el primer contenido visible.
+  useInitialLoadTask('public-layout', false);
 
   useEffect(() => {
     fetchCategoriesTree()
       .then(setCategoryTree)
-      .catch(console.error)
-      .finally(() => setIsCategoriesLoading(false));
+      .catch(console.error);
   }, []);
 
   const childMap = buildChildMap(categoryTree);

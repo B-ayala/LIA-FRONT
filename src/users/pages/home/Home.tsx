@@ -8,14 +8,19 @@ import type { Product } from '../../../types/product';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import './Home.css';
 
+const FEATURED_PRODUCTS_LIMIT = 10;
+
 const Home = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isFeaturedLoading, setIsFeaturedLoading] = useState(true);
 
-  useInitialLoadTask('route', isFeaturedLoading);
+  // El Home ya tiene loading/empty granular propio (carrusel + grilla de
+  // destacados): no hace falta retener el splash global hasta que ese fetch
+  // resuelva, sería bloquear el primer contenido por datos que no son LCP.
+  useInitialLoadTask('route', false);
 
   useEffect(() => {
-    fetchFeaturedProducts()
+    fetchFeaturedProducts(FEATURED_PRODUCTS_LIMIT)
       .then((rows) => setProducts(rows.map(mapDbRowToProduct)))
       .catch(console.error)
       .finally(() => setIsFeaturedLoading(false));
@@ -44,7 +49,7 @@ const Home = () => {
           ) : (
             <ProductGrid
               products={products}
-              limit={10}
+              limit={FEATURED_PRODUCTS_LIMIT}
               loading={isFeaturedLoading}
             />
           )}

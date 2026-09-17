@@ -17,7 +17,12 @@ type InitialLoadContextValue = {
   completeTask: (taskId: string) => void;
 };
 
-const REQUIRED_INITIAL_TASKS = ['auth', 'window', 'route', 'public-layout'] as const;
+// Nota de performance: estas tareas gatean únicamente la pantalla de shell
+// (splash) inicial, nunca datos remotos — cada tarea debe resolverse con
+// trabajo local/sincrónico. Bloquear el splash en un fetch (auth, categorías,
+// productos, etc.) retrasa el primer contenido sin necesidad: cada sección ya
+// tiene su propio loading/empty/error granular.
+const REQUIRED_INITIAL_TASKS = ['auth', 'route', 'public-layout'] as const;
 const MIN_SCREEN_TIME_MS = 450;
 
 const InitialLoadContext = createContext<InitialLoadContextValue | null>(null);

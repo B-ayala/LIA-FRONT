@@ -39,6 +39,29 @@ declare global {
   }
 }
 
+// El widget de Cloudinary sólo lo usa esta página (admin). Se carga on-demand
+// en vez de vía <script> global en index.html, para no sumar peso/red al sitio público.
+const CLOUDINARY_WIDGET_SRC = 'https://upload-widget.cloudinary.com/global/all.js';
+let cloudinaryWidgetPromise: Promise<void> | null = null;
+
+const loadCloudinaryWidget = (): Promise<void> => {
+  if (window.cloudinary) return Promise.resolve();
+  if (!cloudinaryWidgetPromise) {
+    cloudinaryWidgetPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = CLOUDINARY_WIDGET_SRC;
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        cloudinaryWidgetPromise = null;
+        reject(new Error('No se pudo cargar el widget de Cloudinary.'));
+      };
+      document.body.appendChild(script);
+    });
+  }
+  return cloudinaryWidgetPromise;
+};
+
 const formatBytes = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -179,6 +202,7 @@ const CloudinaryManager = () => {
     try {
       const config = await fetchCloudinaryConfig();
       const token = await getToken();
+      await loadCloudinaryWidget();
       const targetFolder = currentFolder || 'general';
 
       window.cloudinary.openUploadWidget(

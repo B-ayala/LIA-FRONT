@@ -27,27 +27,16 @@ const AppContent = () => {
   useTabAwayMarketing(!isAdmin && !isAuthRoute);
 
   useEffect(() => {
-    if (document.readyState === 'complete') {
-      completeTask('window');
-      return;
-    }
-    const handleWindowLoad = () => completeTask('window');
-    window.addEventListener('load', handleWindowLoad);
-    return () => window.removeEventListener('load', handleWindowLoad);
-  }, [completeTask]);
+    // Hidratación rápida y sincrónica desde localStorage: ya deja el estado de
+    // auth correcto para el primer render (login vs. avatar, redirect de admin).
+    setUserFromStorage();
+    completeTask('auth');
 
-  useEffect(() => {
-    const setupAuth = async () => {
-      try {
-        // Hidratación rápida desde localStorage para evitar flicker
-        setUserFromStorage();
-        // Validación contra backend (apiFetch hace refresh si access expiró)
-        await initializeAuth();
-      } finally {
-        completeTask('auth');
-      }
-    };
-    void setupAuth();
+    // Validación contra backend en segundo plano (apiFetch refresca el access
+    // token si hace falta). No bloquea el splash: es una revalidación, no una
+    // condición para mostrar el Home — si falla o tarda, AUTH_LOGOUT_EVENT ya
+    // se encarga de expulsar al usuario cuando corresponda.
+    void initializeAuth();
 
     // Cuando apiFetch detecta token inválido o refresh fallido, dispara este evento.
     const onForcedLogout = () => {
