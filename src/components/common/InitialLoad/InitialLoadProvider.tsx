@@ -9,6 +9,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 import InitialLoadingScreen from './InitialLoadingScreen';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 
 type InitialLoadContextValue = {
   isInitialLoading: boolean;
@@ -79,6 +80,11 @@ export const InitialLoadProvider = ({ children }: PropsWithChildren) => {
     setIsInitialLoading(false);
     setIsTracking(false);
   }, [isTracking, minimumTimeElapsed, pendingCount]);
+
+  // Mientras el splash cubre la pantalla, el contenido real ya está montado
+  // detrás (para no bloquear su fetch) y puede ser más alto que el viewport
+  // — sin este lock aparece un scrollbar de fondo debajo del overlay.
+  useBodyScrollLock(isInitialLoading);
 
   const value = useMemo<InitialLoadContextValue>(
     () => ({
