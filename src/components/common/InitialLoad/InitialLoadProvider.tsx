@@ -86,6 +86,21 @@ export const InitialLoadProvider = ({ children }: PropsWithChildren) => {
   // — sin este lock aparece un scrollbar de fondo debajo del overlay.
   useBodyScrollLock(isInitialLoading);
 
+  // Refuerzo del lock: cubre <html> además de <body> (por si el navegador usa
+  // el root como scroller) y fuerza scroll a 0 al montar — si el navegador
+  // llegó a restaurar el scroll de una visita anterior (bfcache, back/forward)
+  // antes de que corra este efecto, no queda visible detrás del splash.
+  useEffect(() => {
+    if (!isInitialLoading) return;
+    const { documentElement } = document;
+    const previousOverflow = documentElement.style.overflow;
+    documentElement.style.overflow = 'hidden';
+    window.scrollTo(0, 0);
+    return () => {
+      documentElement.style.overflow = previousOverflow;
+    };
+  }, [isInitialLoading]);
+
   const value = useMemo<InitialLoadContextValue>(
     () => ({
       isInitialLoading,
