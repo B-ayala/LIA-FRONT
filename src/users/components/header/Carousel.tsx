@@ -37,12 +37,18 @@ function getCarouselHeight(width: number): number {
   return window.innerHeight - 95;
 }
 
-function getSlotSize(): { width: number; height: number } {
-  const viewportWidth = window.innerWidth;
-  const imgsPerSlide = viewportWidth <= 768 ? 2 : 3;
+// Cuánto pedirle de más a Cloudinary para que se vea nítido en pantallas
+// retina/4K (si no, el navegador estira la imagen y se ve borrosa).
+const MAX_DPR = 2;
+
+// `imageCount` es la cantidad de imágenes que realmente comparten el slide
+// (el último grupo puede tener menos que el máximo por dispositivo), ya que
+// cada una ocupa 1/imageCount del ancho vía flexbox.
+function getSlotSize(viewportWidth: number, imageCount: number): { width: number; height: number } {
+  const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
   return {
-    width: Math.round(viewportWidth / imgsPerSlide),
-    height: Math.round(getCarouselHeight(viewportWidth))
+    width: Math.round((viewportWidth / Math.max(imageCount, 1)) * dpr),
+    height: Math.round(getCarouselHeight(viewportWidth) * dpr)
   };
 }
 
@@ -54,7 +60,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [slotSize, setSlotSize] = useState(() => getSlotSize());
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const hasReportedReady = useRef(false);
   const onReadyRef = useRef(onReady);
 
@@ -71,14 +77,11 @@ const Carousel = ({ onReady }: CarouselProps) => {
     onReadyRef.current?.();
   }, []);
 
-  // Detect mobile/desktop based on window width, y recalcula el tamaño real
-  // de cada slot para pedirle a Cloudinary un recorte que coincida con esas
-  // dimensiones (evita que el crop del navegador corte caras/cabezas al azar
-  // cuando la foto subida no matchea el marco).
+  // Detect mobile/desktop based on window width
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
-      setSlotSize(getSlotSize());
+      setViewportWidth(window.innerWidth);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -139,9 +142,10 @@ const Carousel = ({ onReady }: CarouselProps) => {
       return;
     }
 
+    const firstSlideSize = getSlotSize(window.innerWidth, slides[0].images.length);
     const optimizedUrl = buildCloudinaryUrl(firstImg, {
-      width: slotSize.width,
-      height: slotSize.height,
+      width: firstSlideSize.width,
+      height: firstSlideSize.height,
       quality: 'auto',
       format: 'auto',
       gravity: 'auto'
@@ -225,8 +229,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
               <img
                 key={idx}
                 src={buildCloudinaryUrl(img, {
-                  width: slotSize.width,
-                  height: slotSize.height,
+                  ...getSlotSize(viewportWidth, slides[currentSlide].images.length),
                   quality: 'auto',
                   format: 'auto',
                   gravity: 'auto'
