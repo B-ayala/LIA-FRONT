@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { fetchCarouselImages } from '../../../services/productService';
 import { buildCloudinaryUrl } from '../../../utils/cloudinary';
-import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
 
@@ -166,7 +165,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
   if (isLoading || (slides.length > 0 && !imagesLoaded)) {
     return (
       <div className="carousel carousel--skeleton" role="status" aria-live="polite" aria-label="Cargando carrusel">
-        <LiaLoader variant="section" size="xl" />
+        <span className="carousel-pulse-dot" aria-hidden="true" />
       </div>
     );
   }

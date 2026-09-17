@@ -23,6 +23,29 @@
   opacity: 0.92;
 }
 
+/* Indicador de carga del carrusel: deliberadamente distinto del LiaLoader del
+   splash inicial (que ya se ve un instante antes, arriba) — sin esto, ver el
+   mismo ícono aparecer dos veces seguidas lee como si la carga se reiniciara. */
+.carousel-pulse-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary-accent, #B8377D);
+  animation: carousel-pulse-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes carousel-pulse-breathe {
+  0%, 100% { transform: scale(0.85); opacity: 0.45; }
+  50% { transform: scale(1.15); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carousel-pulse-dot {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
 .carousel-slide {
   position: absolute;
   width: 100%;
