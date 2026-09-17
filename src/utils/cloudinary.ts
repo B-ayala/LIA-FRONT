@@ -13,16 +13,20 @@ export function buildCloudinaryUrl(
     quality?: 'auto' | number;
     format?: 'auto' | 'webp' | 'avif';
     crop?: 'fill' | 'fit' | 'limit';
+    gravity?: 'auto' | 'face' | 'center';
   } = {}
 ): string {
   if (!url || !url.includes('res.cloudinary.com')) return url;
 
-  const { width, height, quality = 'auto', format = 'auto', crop = 'fill' } = options;
+  const { width, height, quality = 'auto', format = 'auto', crop = 'fill', gravity } = options;
 
   const transforms: string[] = [];
   if (width) transforms.push(`w_${width}`);
   if (height) transforms.push(`h_${height}`);
   transforms.push(`c_${crop}`);
+  // La gravedad solo tiene efecto cuando el crop realmente recorta (fill con w y h);
+  // sin ambas dimensiones, Cloudinary solo escala y no hay nada que recortar.
+  if (gravity && crop === 'fill' && width && height) transforms.push(`g_${gravity}`);
   transforms.push(`f_${format}`);
   transforms.push(`q_${quality}`);
 

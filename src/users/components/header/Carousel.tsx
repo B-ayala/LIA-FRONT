@@ -29,6 +29,23 @@ const slideVariants = {
   })
 };
 
+// Alto real del carrusel según los breakpoints definidos en Carousel.css
+// (viewport menos el header, que cambia de tamaño en cada breakpoint).
+function getCarouselHeight(width: number): number {
+  if (width <= 768) return window.innerHeight - 75;
+  if (width <= 1024) return window.innerHeight - 85;
+  return window.innerHeight - 95;
+}
+
+function getSlotSize(): { width: number; height: number } {
+  const viewportWidth = window.innerWidth;
+  const imgsPerSlide = viewportWidth <= 768 ? 2 : 3;
+  return {
+    width: Math.round(viewportWidth / imgsPerSlide),
+    height: Math.round(getCarouselHeight(viewportWidth))
+  };
+}
+
 const Carousel = ({ onReady }: CarouselProps) => {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -37,6 +54,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [slotSize, setSlotSize] = useState(() => getSlotSize());
   const hasReportedReady = useRef(false);
   const onReadyRef = useRef(onReady);
 
@@ -53,9 +71,15 @@ const Carousel = ({ onReady }: CarouselProps) => {
     onReadyRef.current?.();
   }, []);
 
-  // Detect mobile/desktop based on window width
+  // Detect mobile/desktop based on window width, y recalcula el tamaño real
+  // de cada slot para pedirle a Cloudinary un recorte que coincida con esas
+  // dimensiones (evita que el crop del navegador corte caras/cabezas al azar
+  // cuando la foto subida no matchea el marco).
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+      setSlotSize(getSlotSize());
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -116,9 +140,11 @@ const Carousel = ({ onReady }: CarouselProps) => {
     }
 
     const optimizedUrl = buildCloudinaryUrl(firstImg, {
-      width: window.innerWidth <= 768 ? 600 : 1200,
+      width: slotSize.width,
+      height: slotSize.height,
       quality: 'auto',
-      format: 'auto'
+      format: 'auto',
+      gravity: 'auto'
     });
 
     const image = new Image();
@@ -199,9 +225,11 @@ const Carousel = ({ onReady }: CarouselProps) => {
               <img
                 key={idx}
                 src={buildCloudinaryUrl(img, {
-                  width: isMobile ? 600 : 1200,
+                  width: slotSize.width,
+                  height: slotSize.height,
                   quality: 'auto',
-                  format: 'auto'
+                  format: 'auto',
+                  gravity: 'auto'
                 })}
                 alt=""
                 className="carousel-image"
