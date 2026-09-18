@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabaseClient';
 import { type AdminProduct } from '../admin/store/adminStore';
 import type { Product } from '../types/product';
+import type { ProductCardOption } from '../types/productCardOption';
 import { apiFetch, authHeaders, API_BASE_URL } from '../utils/apiFetch';
 import { getProductStockFromVariants, sanitizeProductVariants } from '../utils/productVariants';
 import { extractCloudinaryPublicId } from '../utils/cloudinary';
@@ -584,5 +585,79 @@ export const updateCarouselLayout = async (
     .update({ layout })
     .eq('device_type', deviceType);
   if (error) throw error;
+};
+
+// ── Product Card Options (sellos configurables en la card de producto) ───────
+
+const mapProductCardOptionRow = (row: Record<string, unknown>): ProductCardOption => ({
+  id: row.id as string,
+  label: row.label as string,
+  icon: row.icon as string,
+  order: row.order as number,
+  isActive: row.is_active as boolean,
+});
+
+// Fetch activas y ordenadas (vistas públicas de listado)
+export const fetchProductCardOptions = async (): Promise<ProductCardOption[]> => {
+  const { data, error } = await supabase
+    .from('product_card_options')
+    .select('*')
+    .eq('is_active', true)
+    .order('order', { ascending: true });
+  if (error) throw error;
+  return (data || []).map(mapProductCardOptionRow);
+};
+
+// Fetch todas (admin)
+export const fetchAllProductCardOptions = async (): Promise<ProductCardOption[]> => {
+  const { data, error } = await supabase
+    .from('product_card_options')
+    .select('*')
+    .order('order', { ascending: true });
+  if (error) throw error;
+  return (data || []).map(mapProductCardOptionRow);
+};
+
+export const insertProductCardOption = async (
+  label: string,
+  icon: string,
+  order: number
+): Promise<ProductCardOption> => {
+  const { data, error } = await supabase
+    .from('product_card_options')
+    .insert([{ label, icon, order, is_active: true }])
+    .select()
+    .single();
+  if (error) throw error;
+  return mapProductCardOptionRow(data);
+};
+
+export const updateProductCardOptionDb = async (
+  id: string,
+  changes: { label?: string; icon?: string; order?: number; is_active?: boolean }
+): Promise<void> => {
+  const { error } = await supabase
+    .from('product_card_options')
+    .update(changes)
+    .eq('id', id);
+  if (error) throw error;
+};
+
+export const deleteProductCardOptionDb = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('product_card_options')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+};
+
+export const reorderProductCardOptions = async (options: { id: string; order: number }[]): Promise<void> => {
+  const results = await Promise.all(
+    options.map(opt =>
+      supabase.from('product_card_options').update({ order: opt.order }).eq('id', opt.id)
+    )
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw failed.error;
 };
 

@@ -6,8 +6,10 @@ import {
   DEFAULT_SEASON,
   SEASONS,
   buildCustomCssVars,
+  createCustomThemeId,
   detectSeasonFromDate,
   isSeasonId,
+  type CustomTheme,
   type SeasonId,
   type SeasonPalette,
   type ThemeMode,
@@ -27,6 +29,11 @@ interface RemoteThemePreference {
 // Remoto (opcional): tabla `site_content` con key='season_theme' — usado cuando
 // el admin elige "Aplicar a todos los usuarios". Si la lectura falla (RLS,
 // tabla inexistente), el provider degrada a la preferencia local sin romper.
+//
+// `customThemes` (la lista de temas personalizados con nombre propio que arma
+// el admin) es puramente local — sólo le importa al panel admin, no se publica
+// a los visitantes. Lo que sí se publica es `customPalette`: una foto del
+// tema personalizado que esté activo en ese momento, sin su nombre ni id.
 
 const STORAGE_KEY = 'lia.seasonTheme.v2';
 const STORAGE_KEY_LEGACY = 'lia.seasonTheme.v1';
@@ -52,6 +59,8 @@ interface PersistedPreference {
   mode: ThemeMode;
   animations: AnimationsEnabled;
   customPalette: SeasonPalette;
+  customThemes: CustomTheme[];
+  activeCustomThemeId: string | null;
 }
 
 const normalizePalette = (raw: unknown): SeasonPalette => {
@@ -70,6 +79,18 @@ const normalizeAnimations = (raw: unknown): AnimationsEnabled => {
   return out;
 };
 
+const normalizeCustomThemes = (raw: unknown): CustomTheme[] => {
+  if (!Array.isArray(raw)) return [];
+  const out: CustomTheme[] = [];
+  raw.forEach((item) => {
+    if (!item || typeof item !== 'object') return;
+    const { id, name, palette } = item as Partial<CustomTheme>;
+    if (typeof id !== 'string' || typeof name !== 'string') return;
+    out.push({ id, name, palette: normalizePalette(palette) });
+  });
+  return out;
+};
+
 const readLocalPreference = (): PersistedPreference | null => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(STORAGE_KEY_LEGACY);
@@ -82,6 +103,8 @@ const readLocalPreference = (): PersistedPreference | null => {
       mode,
       animations: normalizeAnimations(parsed.animations),
       customPalette: normalizePalette(parsed.customPalette),
+      customThemes: normalizeCustomThemes(parsed.customThemes),
+      activeCustomThemeId: typeof parsed.activeCustomThemeId === 'string' ? parsed.activeCustomThemeId : null,
     };
   } catch {
     return null;
@@ -122,13 +145,17 @@ interface SeasonThemeContextValue {
   detectedSeason: SeasonId;  // según la fecha actual
   isPreviewing: boolean;
   animations: AnimationsEnabled;
-  customPalette: SeasonPalette;
+  customPalette: SeasonPalette;        // paleta personalizada actualmente activa (si season === 'custom')
+  customThemes: CustomTheme[];         // lista de temas personalizados guardados por el admin
+  activeCustomThemeId: string | null;  // cuál de `customThemes` está aplicado ahora mismo
   isAnimationEnabled: (season: SeasonId) => boolean;
   setSeason: (season: SeasonId) => void;
   setMode: (mode: ThemeMode) => void;
   setAnimationEnabled: (season: SeasonId, enabled: boolean) => void;
-  setCustomPaletteColor: (field: keyof SeasonPalette, value: string) => void;
-  resetCustomPalette: () => void;
+  saveCustomTheme: (theme: { id?: string; name: string; palette: SeasonPalette }) => string;
+  deleteCustomTheme: (id: string) => void;
+  applyCustomTheme: (id: string) => void;
+  previewCustomPalette: (palette: SeasonPalette) => void;
   preview: (season: SeasonId) => void;
   clearPreview: () => void;
   resetToDefault: () => void;
@@ -156,6 +183,8 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
         mode: 'manual' as ThemeMode,
         animations: { ...DEFAULT_ANIMATIONS },
         customPalette: { ...DEFAULT_CUSTOM_PALETTE },
+        customThemes: [] as CustomTheme[],
+        activeCustomThemeId: null as string | null,
       },
       hadLocalPreference: stored !== null,
     };
@@ -169,7 +198,13 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   const [mode, setModeState] = useState<ThemeMode>(initial.mode);
   const [animations, setAnimations] = useState<AnimationsEnabled>(initial.animations);
   const [customPalette, setCustomPalette] = useState<SeasonPalette>(initial.customPalette);
+  const [customThemes, setCustomThemes] = useState<CustomTheme[]>(initial.customThemes);
+  const [activeCustomThemeId, setActiveCustomThemeId] = useState<string | null>(initial.activeCustomThemeId);
   const [previewSeason, setPreviewSeason] = useState<SeasonId | null>(null);
+  // Override temporal para previsualizar una paleta personalizada (hover sobre
+  // una tarjeta guardada, o mientras se edita el formulario) sin tocar la
+  // paleta realmente aplicada.
+  const [previewCustomOverride, setPreviewCustomOverride] = useState<SeasonPalette | null>(null);
   const [detectedSeason, setDetectedSeason] = useState<SeasonId>(() => detectSeasonFromDate());
 
   // Re-detecta al recuperar foco — la sesión puede cruzar un cambio de mes
@@ -180,26 +215,29 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
-  const effectiveSeason: SeasonId = previewSeason
-    ?? (mode === 'auto' ? detectedSeason : storedSeason);
+  const effectiveSeason: SeasonId = previewCustomOverride
+    ? 'custom'
+    : previewSeason ?? (mode === 'auto' ? detectedSeason : storedSeason);
+
+  const effectivePalette: SeasonPalette = previewCustomOverride ?? customPalette;
 
   // Aplica al DOM cuando cambia. Se ejecuta también en mount, garantizando que
   // el atributo `data-season` exista incluso si SSR/hidratación es agregado luego.
   const lastApplied = useRef<{ season: SeasonId | null; palette: SeasonPalette | null }>({ season: null, palette: null });
   useEffect(() => {
-    const paletteChanged = effectiveSeason === 'custom' && lastApplied.current.palette !== customPalette;
+    const paletteChanged = effectiveSeason === 'custom' && lastApplied.current.palette !== effectivePalette;
     if (lastApplied.current.season === effectiveSeason && !paletteChanged) return;
-    applySeasonToDocument(effectiveSeason, customPalette);
-    lastApplied.current = { season: effectiveSeason, palette: customPalette };
-  }, [effectiveSeason, customPalette]);
+    applySeasonToDocument(effectiveSeason, effectivePalette);
+    lastApplied.current = { season: effectiveSeason, palette: effectivePalette };
+  }, [effectiveSeason, effectivePalette]);
 
   // Persistencia local — sólo la preferencia confirmada por el usuario. No
   // persistimos el tema global aplicado automáticamente: así, si el admin lo
   // cambia, los visitantes pasivos lo reflejan en la próxima visita.
   useEffect(() => {
     if (!hasExplicitPreference.current) return;
-    writeLocalPreference({ season: storedSeason, mode, animations, customPalette });
-  }, [storedSeason, mode, animations, customPalette]);
+    writeLocalPreference({ season: storedSeason, mode, animations, customPalette, customThemes, activeCustomThemeId });
+  }, [storedSeason, mode, animations, customPalette, customThemes, activeCustomThemeId]);
 
   // Tema global publicado por el admin (site_content.season_theme). Aplica sólo
   // a visitantes sin preferencia propia: su elección local siempre tiene prioridad.
@@ -277,22 +315,70 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
     [animations],
   );
 
-  const setCustomPaletteColor = useCallback((field: keyof SeasonPalette, value: string) => {
+  // Crea o actualiza (si se pasa `id`) un tema personalizado guardado. Si ese
+  // tema es el que está aplicado ahora mismo, refresca también la paleta en
+  // vivo para que los cambios se vean sin tener que reaplicarlo a mano.
+  const saveCustomTheme = useCallback((theme: { id?: string; name: string; palette: SeasonPalette }): string => {
     hasExplicitPreference.current = true;
-    setCustomPalette((prev) => ({ ...prev, [field]: value }));
+    const id = theme.id ?? createCustomThemeId();
+    const name = theme.name.trim() || 'Sin nombre';
+    setCustomThemes((prev) => {
+      const idx = prev.findIndex((t) => t.id === id);
+      const next: CustomTheme = { id, name, palette: theme.palette };
+      if (idx === -1) return [...prev, next];
+      const copy = [...prev];
+      copy[idx] = next;
+      return copy;
+    });
+    setActiveCustomThemeId((prevActive) => {
+      if (prevActive === id) {
+        setCustomPalette(theme.palette);
+      }
+      return prevActive;
+    });
+    return id;
   }, []);
 
-  const resetCustomPalette = useCallback(() => {
+  // Borra completamente un tema guardado — si era el que estaba aplicado, cae
+  // al tema Clásico para no dejar el sitio con una paleta huérfana.
+  const deleteCustomTheme = useCallback((id: string) => {
     hasExplicitPreference.current = true;
-    setCustomPalette({ ...DEFAULT_CUSTOM_PALETTE });
+    setCustomThemes((prev) => prev.filter((t) => t.id !== id));
+    setActiveCustomThemeId((prevActive) => {
+      if (prevActive !== id) return prevActive;
+      setStoredSeason(DEFAULT_SEASON);
+      setModeState('manual');
+      setPreviewSeason(null);
+      setCustomPalette({ ...DEFAULT_CUSTOM_PALETTE });
+      return null;
+    });
+  }, []);
+
+  const applyCustomTheme = useCallback((id: string) => {
+    const theme = customThemes.find((t) => t.id === id);
+    if (!theme) return;
+    hasExplicitPreference.current = true;
+    setActiveCustomThemeId(id);
+    setCustomPalette(theme.palette);
+    setStoredSeason('custom');
+    setModeState('manual');
+    setPreviewSeason(null);
+  }, [customThemes]);
+
+  const previewCustomPalette = useCallback((palette: SeasonPalette) => {
+    setPreviewCustomOverride(palette);
   }, []);
 
   const preview = useCallback((season: SeasonId) => {
     if (!SEASONS[season]) return;
+    setPreviewCustomOverride(null);
     setPreviewSeason(season);
   }, []);
 
-  const clearPreview = useCallback(() => setPreviewSeason(null), []);
+  const clearPreview = useCallback(() => {
+    setPreviewSeason(null);
+    setPreviewCustomOverride(null);
+  }, []);
 
   const resetToDefault = useCallback(() => {
     hasExplicitPreference.current = true;
@@ -306,21 +392,25 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
     storedSeason,
     mode,
     detectedSeason,
-    isPreviewing: previewSeason !== null,
+    isPreviewing: previewSeason !== null || previewCustomOverride !== null,
     animations,
     customPalette,
+    customThemes,
+    activeCustomThemeId,
     isAnimationEnabled,
     setSeason,
     setMode,
     setAnimationEnabled,
-    setCustomPaletteColor,
-    resetCustomPalette,
+    saveCustomTheme,
+    deleteCustomTheme,
+    applyCustomTheme,
+    previewCustomPalette,
     preview,
     clearPreview,
     resetToDefault,
-  }), [effectiveSeason, storedSeason, mode, detectedSeason, previewSeason, animations, customPalette,
-       isAnimationEnabled, setSeason, setMode, setAnimationEnabled, setCustomPaletteColor,
-       resetCustomPalette, preview, clearPreview, resetToDefault]);
+  }), [effectiveSeason, storedSeason, mode, detectedSeason, previewSeason, previewCustomOverride, animations,
+       customPalette, customThemes, activeCustomThemeId, isAnimationEnabled, setSeason, setMode, setAnimationEnabled,
+       saveCustomTheme, deleteCustomTheme, applyCustomTheme, previewCustomPalette, preview, clearPreview, resetToDefault]);
 
   return (
     <SeasonThemeContext.Provider value={value}>

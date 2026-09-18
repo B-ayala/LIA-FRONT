@@ -488,6 +488,137 @@ Resultado: verificado estático (tsc + eslint en verde). `expiringStorage` envue
 
 ---
 
+## Casos — Opciones configurables de la card de producto (2026-09-18)
+
+> Feature: `admin/components/ProductCardOptionsManager` (tabla `product_card_options`,
+> RLS admin-only) + sección `product-card__badges` en `ProductCard`. Reemplaza los
+> círculos de color en las cards de listado (el detalle de producto no se tocó).
+> **Nota:** implementado y verificado con `tsc -b` + `eslint` (sin errores). No se
+> pudo correr en navegador vía Playwright en esta sesión (instancia ya en uso) —
+> casos marcados "no probado" quedan pendientes de una pasada E2E real antes de
+> dar la feature por cerrada.
+
+```
+ID: TC-CARDOPT-01
+Caso: Las cards de listado ya no muestran los círculos de color
+Tipo: happy
+Pasos:
+  1. Ir a /products (o Home) con un producto que tenga variante "Color".
+Esperado: la card no muestra círculos de color; el detalle del producto
+          (/product/:id) sigue mostrándolos igual que antes.
+Resultado: no probado (verificado por lectura de código: `product-card__colors`
+           eliminado de ProductCard.tsx, ProductDetail.tsx sin cambios).
+```
+
+```
+ID: TC-CARDOPT-02
+Caso: Admin — crear una opción de card
+Tipo: happy
+Pre-condición: sesión admin.
+Pasos:
+  1. Admin → Productos → "Opciones de la card de producto".
+  2. Escribir texto (ej. "Envío gratis"), elegir ícono, Añadir opción.
+Esperado: la opción aparece en la lista, activa por defecto; persiste tras recargar.
+Resultado: no probado.
+```
+
+```
+ID: TC-CARDOPT-03
+Caso: Admin — editar una opción existente
+Tipo: happy
+Pasos:
+  1. Click en lápiz (editar) sobre una opción → cambiar texto e ícono → Guardar (check).
+Esperado: se actualiza en la lista y en las cards públicas tras refrescar.
+Resultado: no probado.
+```
+
+```
+ID: TC-CARDOPT-04
+Caso: Admin — activar/desactivar una opción
+Tipo: happy
+Pasos:
+  1. Click en el toggle "Activa"/"Inactiva" de una opción.
+Esperado: cambia de estado con optimistic update; si falla el guardado en Supabase,
+          vuelve al estado anterior y muestra error. Las opciones inactivas no
+          aparecen en las cards públicas.
+Resultado: no probado.
+```
+
+```
+ID: TC-CARDOPT-05
+Caso: Admin — eliminar una opción
+Tipo: happy
+Pasos:
+  1. Click en tacho de basura sobre una opción.
+Esperado: desaparece de la lista y de las cards públicas; si falla el delete,
+          se restaura la lista anterior y muestra error.
+Resultado: no probado.
+```
+
+```
+ID: TC-CARDOPT-06
+Caso: Admin — reordenar opciones (drag & drop)
+Tipo: happy
+Pasos:
+  1. Arrastrar una opción a otra posición de la lista.
+Esperado: el nuevo orden persiste tras recargar y se refleja en el orden de los
+          badges dentro de cada card pública.
+Resultado: no probado.
+```
+
+```
+ID: TC-CARDOPT-07
+Caso: Card sin opciones configuradas/activas no deja espacio vacío
+Tipo: edge
+Pre-condición: ninguna opción activa (todas eliminadas o desactivadas).
+Pasos:
+  1. Ver el listado de productos.
+Esperado: la card no reserva espacio para la sección de badges (el bloque
+          `<ul>` no se renderiza cuando `cardOptions.length === 0`).
+Resultado: no probado (verificado por lectura de código: render condicional).
+```
+
+```
+ID: TC-CARDOPT-08
+Caso: Card con varias opciones y texto largo no rompe el diseño
+Tipo: edge
+Pasos:
+  1. Crear 5+ opciones activas, alguna con texto cercano al máximo (40 caracteres).
+  2. Ver la card en mobile (375px) y desktop.
+Esperado: los badges wrappean a la línea siguiente sin desbordar la card; el texto
+          largo se corta con ellipsis (`text-overflow: ellipsis`) y el título
+          completo aparece en el `title` del badge al hacer hover.
+Resultado: no probado.
+```
+
+```
+ID: TC-CARDOPT-09
+Caso: Usuario común (no admin) no puede escribir en product_card_options
+Tipo: security
+Pre-condición: sesión de usuario autenticado sin rol admin.
+Pasos:
+  1. Intentar INSERT/UPDATE/DELETE directo contra `product_card_options` con la
+     sesión de un usuario no-admin (ej. desde la consola, usando el cliente
+     Supabase ya autenticado).
+Esperado: rechazado por RLS (`product_card_options_insert_admin` /
+          `_update_admin` / `_delete_admin` exigen `is_admin()`); el SELECT sí
+          funciona (lectura pública).
+Resultado: no probado — requiere aplicar el script SQL
+           `db/migrations/2026-09-18_add_product_card_options.sql` en Supabase
+           antes de poder verificarlo.
+```
+
+```
+ID: TC-CARDOPT-10
+Caso: Usuario anónimo puede leer las opciones activas (para que el listado público funcione)
+Tipo: happy
+Pasos:
+  1. Sin sesión, cargar /products.
+Esperado: `fetchProductCardOptions()` responde con las opciones activas (política
+          `product_card_options_select_public`, rol `anon`).
+Resultado: no probado (mismo bloqueo que TC-CARDOPT-09: falta aplicar el script SQL).
+```
+
 ## Casos — Mobile 375px
 
 > Probado con Playwright en viewport 375×812 el 2026-06-19.

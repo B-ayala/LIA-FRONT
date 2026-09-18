@@ -245,6 +245,9 @@ export const SEASONS: Record<SeasonId, SeasonTheme> = {
   },
 };
 
+// 'custom' queda fuera de esta lista a propósito: no es una tarjeta fija sino
+// un modo — la grilla de temas personalizados del admin (múltiples, con nombre
+// propio) se renderiza aparte a partir de `customThemes` (ver SeasonThemeProvider).
 export const SEASON_LIST: SeasonTheme[] = [
   SEASONS.default,
   SEASONS.mono,
@@ -256,8 +259,18 @@ export const SEASON_LIST: SeasonTheme[] = [
   SEASONS.summer,
   SEASONS.autumn,
   SEASONS.winter,
-  SEASONS.custom,
 ];
+
+// Un tema que el admin arma a mano en el editor de colores y guarda con nombre
+// propio — puede haber varios, a diferencia de las estaciones fijas.
+export interface CustomTheme {
+  id: string;
+  name: string;
+  palette: SeasonPalette;
+}
+
+export const createCustomThemeId = (): string =>
+  `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 // Paleta inicial del editor de colores personalizados — misma identidad que
 // 'default' hasta que el admin la modifique.

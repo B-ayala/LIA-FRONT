@@ -71,11 +71,6 @@ const AboutEditor = () => {
         e.preventDefault();
         setError(null);
 
-        if (heroImageUrl && !heroAltText) {
-            setError('Por favor, completa el texto alternativo de la imagen hero.');
-            return;
-        }
-
         const newInfo = { title, description, imageUrl, mission, vision, values };
         const heroData: HeroImageData = {
             imageUrl: heroImageUrl,

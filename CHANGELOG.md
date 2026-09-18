@@ -6,6 +6,16 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Added
+- **Opciones configurables de la card de producto** (`admin/components/ProductCardOptionsManager`,
+  tabla `product_card_options`): desde Admin → Productos ahora se puede
+  agregar/editar/eliminar, activar/desactivar y reordenar (drag&drop) los
+  "sellos" que se muestran abajo de cada card en los listados (ej: Mercado
+  Pago, cuotas, envío gratis, retiro en el local), eligiendo texto e ícono
+  (`utils/cardOptionIcons.ts`, íconos de `lucide-react`) sin tocar código.
+  Las opciones activas se leen una sola vez por grilla
+  (`fetchProductCardOptions`) y se pasan a cada `ProductCard`; si no hay
+  ninguna activa, la card no reserva espacio vacío. El detalle de producto no
+  se modificó.
 - **Favicon y título dinámicos al cambiar de pestaña** (`hooks/useTabAwayMarketing.ts`,
   `config/tabAttention.ts`): mientras el usuario tiene la pestaña de LIA
   activa se muestra el favicon oficial (`public/favicons/favicon-lia.svg`);
@@ -26,6 +36,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   backend, `PUT /api/users/:id` con `purchase_allowed_exclusive`).
 
 ### Changed
+- **Cards de producto en los listados ya no muestran los círculos de color**
+  de la variante "Color" (`users/components/ProductCard/ProductCard.tsx`):
+  esa información se movió conceptualmente a los detalles de la variante en
+  el detalle del producto (que no se tocó). En su lugar, la card muestra la
+  nueva sección de opciones configurables desde Admin (ver arriba).
+- **Card de producto pide la imagen de Cloudinary con `srcSet` (400w/800w/1200w)**
+  en vez de un único ancho fijo de 400px: en pantallas de alta densidad
+  (retina, la mayoría de los celulares) la card se veía pixelada porque el
+  navegador escalaba una imagen más chica que el tamaño real en pantalla.
 - **Reenviar confirmación de email y pedir reset de contraseña ahora pasan por
   el backend propio** (`POST /api/auth/resend-confirmation` y
   `/api/auth/forgot-password`) en vez de llamar a Supabase directo desde el

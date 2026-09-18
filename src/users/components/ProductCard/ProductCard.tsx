@@ -1,17 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../../types/product';
-import { parseColorOption } from '../../../utils/constants';
+import type { ProductCardOption } from '../../../types/productCardOption';
 import { getProductPricing } from '../../../utils/pricing';
 import { productImageSrc } from '../../../utils/cloudinary';
+import { getCardOptionIcon } from '../../../utils/cardOptionIcons';
 import './ProductCard.css';
 
 interface ProductCardProps {
   product: Product;
   onReadMore?: (product: Product) => void;
+  cardOptions?: ProductCardOption[];
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOptions = [] }) => {
   const navigate = useNavigate();
 
   const handleReadMore = () => {
@@ -22,7 +24,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore }) => {
     }
   };
 
-  const colorVariant = product.variants?.find(v => v.name.toLowerCase() === 'color');
   const pricing = getProductPricing(product);
   const isOutOfStock = (product.stock ?? 0) <= 0;
 
@@ -40,6 +41,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore }) => {
             quality: 'auto',
             format: 'auto'
           })}
+          srcSet={[400, 800, 1200]
+            .map(w => `${productImageSrc(product.image, { width: w, quality: 'auto', format: 'auto' })} ${w}w`)
+            .join(', ')}
+          sizes="(min-width: 768px) 260px, 45vw"
           alt={product.name}
           className="product-card__image"
           loading="lazy"
@@ -67,20 +72,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore }) => {
           </p>
         </div>
         
-        {colorVariant && colorVariant.options && (
-          <div className="product-card__colors">
-            {colorVariant.options.map((color, index) => {
-              const { name, hex } = parseColorOption(color);
+        {cardOptions.length > 0 && (
+          <ul className="product-card__badges">
+            {cardOptions.map((option) => {
+              const Icon = getCardOptionIcon(option.icon);
               return (
-                <span
-                  key={index}
-                  className="product-card__color-circle"
-                  style={{ backgroundColor: hex }}
-                  title={name}
-                />
+                <li key={option.id} className="product-card__badge" title={option.label}>
+                  <Icon size={13} className="product-card__badge-icon" aria-hidden="true" />
+                  <span className="product-card__badge-label">{option.label}</span>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
 
         <div className="product-card__actions">

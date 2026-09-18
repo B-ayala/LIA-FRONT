@@ -4,6 +4,7 @@ import { Plus, Search, BarChart2 } from 'lucide-react';
 import { MenuItem, TextField } from '@mui/material';
 import ProductTable from '../../components/ProductTable/ProductTable';
 import ProductModal from '../../components/ProductModal/ProductModal';
+import ProductCardOptionsManager from '../../components/ProductCardOptionsManager/ProductCardOptionsManager';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
 import { fetchAllProducts } from '../../../services/productService';
 import { getProductStockFromVariants } from '../../../utils/productVariants';
@@ -97,6 +98,8 @@ const Products = () => {
                     </button>
                 </div>
             </div>
+
+            <ProductCardOptionsManager />
 
             <div className="admin-card products-toolbar">
                 <div className="search-input-wrapper">

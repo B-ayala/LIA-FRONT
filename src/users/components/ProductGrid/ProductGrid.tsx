@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Product } from '../../../types/product';
+import type { ProductCardOption } from '../../../types/productCardOption';
+import { fetchProductCardOptions } from '../../../services/productService';
 import ProductCard from '../ProductCard/ProductCard';
 import './ProductGrid.css';
 
@@ -18,6 +20,14 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   loading = false,
   skeletonCount = 6,
 }) => {
+  const [cardOptions, setCardOptions] = useState<ProductCardOption[]>([]);
+
+  useEffect(() => {
+    fetchProductCardOptions()
+      .then(setCardOptions)
+      .catch(() => setCardOptions([]));
+  }, []);
+
   if (loading) {
     return (
       <div className="product-grid" aria-busy="true" aria-label="Cargando productos">
@@ -42,6 +52,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           key={product.id}
           product={product}
           onReadMore={onReadMore}
+          cardOptions={cardOptions}
         />
       ))}
     </div>
