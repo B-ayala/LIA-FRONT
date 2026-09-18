@@ -1,11 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
+  CUSTOM_CSS_VAR_NAMES,
+  DEFAULT_CUSTOM_PALETTE,
   DEFAULT_SEASON,
   SEASONS,
+  buildCustomCssVars,
   detectSeasonFromDate,
   isSeasonId,
   type SeasonId,
+  type SeasonPalette,
   type ThemeMode,
 } from './seasonThemes';
 import { getSiteContent } from '../services/siteContentService';
@@ -15,6 +19,7 @@ const REMOTE_THEME_KEY = 'season_theme';
 
 interface RemoteThemePreference {
   season?: string;
+  customPalette?: Partial<SeasonPalette>;
 }
 
 // ─── Persistencia ──────────────────────────────────────────────────────────────
@@ -31,17 +36,29 @@ type AnimationsEnabled = Record<SeasonId, boolean>;
 const DEFAULT_ANIMATIONS: AnimationsEnabled = {
   default: false,
   mono: false,
+  rose: false,
+  emerald: false,
+  ocean: false,
+  burgundy: false,
   spring: true,
   summer: true,
   autumn: true,
   winter: true,
+  custom: false,
 };
 
 interface PersistedPreference {
   season: SeasonId;
   mode: ThemeMode;
   animations: AnimationsEnabled;
+  customPalette: SeasonPalette;
 }
+
+const normalizePalette = (raw: unknown): SeasonPalette => {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_CUSTOM_PALETTE };
+  const source = raw as Partial<SeasonPalette>;
+  return { ...DEFAULT_CUSTOM_PALETTE, ...source };
+};
 
 const normalizeAnimations = (raw: unknown): AnimationsEnabled => {
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_ANIMATIONS };
@@ -64,6 +81,7 @@ const readLocalPreference = (): PersistedPreference | null => {
       season: parsed.season,
       mode,
       animations: normalizeAnimations(parsed.animations),
+      customPalette: normalizePalette(parsed.customPalette),
     };
   } catch {
     return null;
@@ -83,9 +101,16 @@ const writeLocalPreference = (pref: PersistedPreference) => {
 // Setea el atributo `data-season` en <html> — los selectores de seasons.css
 // hacen el resto. Mantener este side-effect aislado evita re-renders en cascada.
 
-const applySeasonToDocument = (season: SeasonId) => {
+const applySeasonToDocument = (season: SeasonId, customPalette: SeasonPalette) => {
   if (typeof document === 'undefined') return;
-  document.documentElement.dataset.season = season;
+  const root = document.documentElement;
+  root.dataset.season = season;
+  if (season === 'custom') {
+    const vars = buildCustomCssVars(customPalette);
+    Object.entries(vars).forEach(([name, value]) => root.style.setProperty(name, value));
+  } else {
+    CUSTOM_CSS_VAR_NAMES.forEach((name) => root.style.removeProperty(name));
+  }
 };
 
 // ─── Contexto ──────────────────────────────────────────────────────────────────
@@ -97,10 +122,13 @@ interface SeasonThemeContextValue {
   detectedSeason: SeasonId;  // según la fecha actual
   isPreviewing: boolean;
   animations: AnimationsEnabled;
+  customPalette: SeasonPalette;
   isAnimationEnabled: (season: SeasonId) => boolean;
   setSeason: (season: SeasonId) => void;
   setMode: (mode: ThemeMode) => void;
   setAnimationEnabled: (season: SeasonId, enabled: boolean) => void;
+  setCustomPaletteColor: (field: keyof SeasonPalette, value: string) => void;
+  resetCustomPalette: () => void;
   preview: (season: SeasonId) => void;
   clearPreview: () => void;
   resetToDefault: () => void;
@@ -123,7 +151,12 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   const { initial, hadLocalPreference } = useMemo(() => {
     const stored = readLocalPreference();
     return {
-      initial: stored ?? { season: DEFAULT_SEASON, mode: 'manual' as ThemeMode, animations: { ...DEFAULT_ANIMATIONS } },
+      initial: stored ?? {
+        season: DEFAULT_SEASON,
+        mode: 'manual' as ThemeMode,
+        animations: { ...DEFAULT_ANIMATIONS },
+        customPalette: { ...DEFAULT_CUSTOM_PALETTE },
+      },
       hadLocalPreference: stored !== null,
     };
   }, []);
@@ -135,6 +168,7 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   const [storedSeason, setStoredSeason] = useState<SeasonId>(initial.season);
   const [mode, setModeState] = useState<ThemeMode>(initial.mode);
   const [animations, setAnimations] = useState<AnimationsEnabled>(initial.animations);
+  const [customPalette, setCustomPalette] = useState<SeasonPalette>(initial.customPalette);
   const [previewSeason, setPreviewSeason] = useState<SeasonId | null>(null);
   const [detectedSeason, setDetectedSeason] = useState<SeasonId>(() => detectSeasonFromDate());
 
@@ -151,20 +185,21 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
 
   // Aplica al DOM cuando cambia. Se ejecuta también en mount, garantizando que
   // el atributo `data-season` exista incluso si SSR/hidratación es agregado luego.
-  const lastApplied = useRef<SeasonId | null>(null);
+  const lastApplied = useRef<{ season: SeasonId | null; palette: SeasonPalette | null }>({ season: null, palette: null });
   useEffect(() => {
-    if (lastApplied.current === effectiveSeason) return;
-    applySeasonToDocument(effectiveSeason);
-    lastApplied.current = effectiveSeason;
-  }, [effectiveSeason]);
+    const paletteChanged = effectiveSeason === 'custom' && lastApplied.current.palette !== customPalette;
+    if (lastApplied.current.season === effectiveSeason && !paletteChanged) return;
+    applySeasonToDocument(effectiveSeason, customPalette);
+    lastApplied.current = { season: effectiveSeason, palette: customPalette };
+  }, [effectiveSeason, customPalette]);
 
   // Persistencia local — sólo la preferencia confirmada por el usuario. No
   // persistimos el tema global aplicado automáticamente: así, si el admin lo
   // cambia, los visitantes pasivos lo reflejan en la próxima visita.
   useEffect(() => {
     if (!hasExplicitPreference.current) return;
-    writeLocalPreference({ season: storedSeason, mode, animations });
-  }, [storedSeason, mode, animations]);
+    writeLocalPreference({ season: storedSeason, mode, animations, customPalette });
+  }, [storedSeason, mode, animations, customPalette]);
 
   // Tema global publicado por el admin (site_content.season_theme). Aplica sólo
   // a visitantes sin preferencia propia: su elección local siempre tiene prioridad.
@@ -181,6 +216,9 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
           if (remote && isSeasonId(remote.season)) {
             setStoredSeason(remote.season);
             setModeState('manual');
+            if (remote.customPalette) {
+              setCustomPalette(normalizePalette(remote.customPalette));
+            }
           }
         })
         .catch(() => {
@@ -239,6 +277,16 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
     [animations],
   );
 
+  const setCustomPaletteColor = useCallback((field: keyof SeasonPalette, value: string) => {
+    hasExplicitPreference.current = true;
+    setCustomPalette((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const resetCustomPalette = useCallback(() => {
+    hasExplicitPreference.current = true;
+    setCustomPalette({ ...DEFAULT_CUSTOM_PALETTE });
+  }, []);
+
   const preview = useCallback((season: SeasonId) => {
     if (!SEASONS[season]) return;
     setPreviewSeason(season);
@@ -260,15 +308,19 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
     detectedSeason,
     isPreviewing: previewSeason !== null,
     animations,
+    customPalette,
     isAnimationEnabled,
     setSeason,
     setMode,
     setAnimationEnabled,
+    setCustomPaletteColor,
+    resetCustomPalette,
     preview,
     clearPreview,
     resetToDefault,
-  }), [effectiveSeason, storedSeason, mode, detectedSeason, previewSeason, animations,
-       isAnimationEnabled, setSeason, setMode, setAnimationEnabled, preview, clearPreview, resetToDefault]);
+  }), [effectiveSeason, storedSeason, mode, detectedSeason, previewSeason, animations, customPalette,
+       isAnimationEnabled, setSeason, setMode, setAnimationEnabled, setCustomPaletteColor,
+       resetCustomPalette, preview, clearPreview, resetToDefault]);
 
   return (
     <SeasonThemeContext.Provider value={value}>

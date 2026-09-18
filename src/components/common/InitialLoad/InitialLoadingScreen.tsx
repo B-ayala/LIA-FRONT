@@ -10,6 +10,11 @@ const SEASON_LOADING_LABEL: Record<SeasonId, string> = {
   winter: 'Actualizando la moda ideal para invierno',
   default: 'Actualizando la moda ideal para vos',
   mono: 'Actualizando la moda ideal para vos',
+  rose: 'Actualizando la moda ideal para vos',
+  emerald: 'Actualizando la moda ideal para vos',
+  ocean: 'Actualizando la moda ideal para vos',
+  burgundy: 'Actualizando la moda ideal para vos',
+  custom: 'Actualizando la moda ideal para vos',
 };
 
 const InitialLoadingScreen = () => {

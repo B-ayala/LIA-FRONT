@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, EyeOff, Globe, Palette, RefreshCw, Save, Sparkles } from 'lucide-react';
+import { Check, EyeOff, Globe, Palette, RefreshCw, RotateCcw, Save, Sparkles } from 'lucide-react';
 import { supabase } from '../../../config/supabaseClient';
 import { useSeasonTheme } from '../../../utils/SeasonThemeProvider';
 import { useTypography } from '../../../utils/TypographyProvider';
@@ -8,6 +8,7 @@ import {
   SEASONS,
   isSeasonId,
   type SeasonId,
+  type SeasonPalette,
 } from '../../../utils/seasonThemes';
 import TypographySection from './TypographySection';
 import './ThemesManager.css';
@@ -19,7 +20,17 @@ const REMOTE_KEY = 'season_theme';
 interface RemoteThemePref {
   season: SeasonId;
   appliedAt: string;
+  customPalette?: SeasonPalette;
 }
+
+const CUSTOM_COLOR_FIELDS: { field: keyof SeasonPalette; label: string }[] = [
+  { field: 'primary', label: 'Primario' },
+  { field: 'primaryLight', label: 'Primario claro' },
+  { field: 'primaryDark', label: 'Primario oscuro' },
+  { field: 'primaryBg', label: 'Fondo' },
+  { field: 'accent', label: 'Acento' },
+  { field: 'textDark', label: 'Texto' },
+];
 
 const ThemesManager = () => {
   const {
@@ -29,9 +40,12 @@ const ThemesManager = () => {
     detectedSeason,
     isPreviewing,
     animations,
+    customPalette,
     setSeason,
     setMode,
     setAnimationEnabled,
+    setCustomPaletteColor,
+    resetCustomPalette,
     preview,
     clearPreview,
   } = useSeasonTheme();
@@ -80,6 +94,7 @@ const ThemesManager = () => {
     const payload: RemoteThemePref = {
       season: storedSeason,
       appliedAt: new Date().toISOString(),
+      ...(storedSeason === 'custom' ? { customPalette } : {}),
     };
     const { error } = await supabase
       .from('site_content')
@@ -155,6 +170,7 @@ const ThemesManager = () => {
             const isRemote = remoteSeason === s.id;
             const animationEnabled = animations[s.id];
             const toggleId = `anim-toggle-${s.id}`;
+            const palette = s.isCustom ? customPalette : s.palette;
             return (
               <article
                 key={s.id}
@@ -177,30 +193,30 @@ const ThemesManager = () => {
                 <div
                   className="theme-card-preview"
                   style={{
-                    background: s.palette.primaryBg,
-                    color: s.palette.textDark,
-                    borderColor: s.palette.primaryLight,
+                    background: palette.primaryBg,
+                    color: palette.textDark,
+                    borderColor: palette.primaryLight,
                   }}
                   aria-hidden="true"
                 >
                   <div className="theme-card-swatches">
-                    <span style={{ background: s.palette.primary }} title="Primario" />
-                    <span style={{ background: s.palette.primaryLight }} title="Primario claro" />
-                    <span style={{ background: s.palette.primaryDark }} title="Primario oscuro" />
-                    <span style={{ background: s.palette.accent }} title="Acento" />
+                    <span style={{ background: palette.primary }} title="Primario" />
+                    <span style={{ background: palette.primaryLight }} title="Primario claro" />
+                    <span style={{ background: palette.primaryDark }} title="Primario oscuro" />
+                    <span style={{ background: palette.accent }} title="Acento" />
                   </div>
                   <div className="theme-card-mock">
                     <button
                       type="button"
                       className="theme-card-mock-btn"
-                      style={{ background: s.palette.primary, color: '#fff' }}
+                      style={{ background: palette.primary, color: '#fff' }}
                       tabIndex={-1}
                     >
                       Comprar ahora
                     </button>
                     <span
                       className="theme-card-mock-tag"
-                      style={{ background: s.palette.accent, color: '#fff' }}
+                      style={{ background: palette.accent, color: '#fff' }}
                     >
                       Nuevo
                     </span>
@@ -252,6 +268,61 @@ const ThemesManager = () => {
               </article>
             );
           })}
+        </div>
+      </section>
+
+      <section className="themes-custom-card" aria-labelledby="themes-custom-title">
+        <div className="themes-custom-header">
+          <h2 id="themes-custom-title">
+            <Palette size={18} aria-hidden="true" /> Personalizar colores
+          </h2>
+          <p>
+            Elegí cada color a mano. Los cambios se ven al instante en la tarjeta{' '}
+            <strong>Personalizado</strong> — aplicala para usarlos en todo el sitio.
+          </p>
+        </div>
+        <div className="themes-custom-fields">
+          {CUSTOM_COLOR_FIELDS.map(({ field, label }) => (
+            <label key={field} className="themes-custom-field">
+              <span>{label}</span>
+              <div className="themes-custom-field-input">
+                <input
+                  type="color"
+                  value={customPalette[field]}
+                  onChange={(e) => setCustomPaletteColor(field, e.target.value)}
+                  aria-label={label}
+                />
+                <input
+                  type="text"
+                  value={customPalette[field]}
+                  onChange={(e) => {
+                    const raw = e.target.value.trim();
+                    if (/^#[0-9A-Fa-f]{0,6}$/.test(raw)) setCustomPaletteColor(field, raw);
+                  }}
+                  maxLength={7}
+                  spellCheck={false}
+                  aria-label={`${label} (código hex)`}
+                />
+              </div>
+            </label>
+          ))}
+        </div>
+        <div className="themes-custom-actions">
+          <button
+            type="button"
+            className="theme-card-apply"
+            onClick={() => handleApply('custom')}
+            disabled={storedSeason === 'custom'}
+          >
+            {storedSeason === 'custom' ? 'En uso' : 'Aplicar personalizado'}
+          </button>
+          <button
+            type="button"
+            className="themes-custom-reset"
+            onClick={resetCustomPalette}
+          >
+            <RotateCcw size={14} aria-hidden="true" /> Restablecer colores
+          </button>
         </div>
       </section>
 

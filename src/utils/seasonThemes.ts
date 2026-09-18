@@ -11,7 +11,18 @@
 // seasons.css con el mismo id. El resto del flujo (preview, apply, persistencia)
 // es data-driven.
 
-export type SeasonId = 'default' | 'mono' | 'spring' | 'summer' | 'autumn' | 'winter';
+export type SeasonId =
+  | 'default'
+  | 'mono'
+  | 'rose'
+  | 'emerald'
+  | 'ocean'
+  | 'burgundy'
+  | 'spring'
+  | 'summer'
+  | 'autumn'
+  | 'winter'
+  | 'custom';
 export type ThemeMode = 'auto' | 'manual';
 
 export interface SeasonPalette {
@@ -36,6 +47,9 @@ export interface SeasonTheme {
   months: number[];
   // Si una estación no tiene partículas, el backdrop no se renderiza.
   hasParticles: boolean;
+  // El admin edita su paleta a mano (color pickers) — la tarjeta de la grilla
+  // usa `customPalette` del provider en vez de `palette` para el preview.
+  isCustom?: boolean;
 }
 
 export const SEASONS: Record<SeasonId, SeasonTheme> = {
@@ -69,6 +83,74 @@ export const SEASONS: Record<SeasonId, SeasonTheme> = {
       accent: '#000000',
       surface: '#FFFFFF',
       textDark: '#0A0A0A',
+    },
+    months: [],
+    hasParticles: false,
+  },
+  rose: {
+    id: 'rose',
+    label: 'Rosa',
+    description: 'Rosa vibrante con acentos borravino, elegante y femenino.',
+    emoji: '🌹',
+    palette: {
+      primary: '#D6558C',
+      primaryLight: '#F2A8C4',
+      primaryDark: '#A83464',
+      primaryBg: '#FDF0F5',
+      accent: '#7A2048',
+      surface: '#FFFFFF',
+      textDark: '#3A1626',
+    },
+    months: [],
+    hasParticles: false,
+  },
+  emerald: {
+    id: 'emerald',
+    label: 'Esmeralda',
+    description: 'Verde esmeralda profundo con acentos dorados.',
+    emoji: '💎',
+    palette: {
+      primary: '#1E8A5F',
+      primaryLight: '#7ED9AE',
+      primaryDark: '#0F5C3D',
+      primaryBg: '#EAFBF3',
+      accent: '#C9A227',
+      surface: '#FFFFFF',
+      textDark: '#0E2A1F',
+    },
+    months: [],
+    hasParticles: false,
+  },
+  ocean: {
+    id: 'ocean',
+    label: 'Océano',
+    description: 'Azules profundos con un acento coral cálido.',
+    emoji: '🌊',
+    palette: {
+      primary: '#1878A8',
+      primaryLight: '#7FC4E0',
+      primaryDark: '#0E4A66',
+      primaryBg: '#EAF6FB',
+      accent: '#F2994A',
+      surface: '#FFFFFF',
+      textDark: '#0B2836',
+    },
+    months: [],
+    hasParticles: false,
+  },
+  burgundy: {
+    id: 'burgundy',
+    label: 'Borravino',
+    description: 'Vino tinto profundo con acentos dorados, look premium.',
+    emoji: '🍷',
+    palette: {
+      primary: '#7A2048',
+      primaryLight: '#C97A9C',
+      primaryDark: '#4A1129',
+      primaryBg: '#FBEFF3',
+      accent: '#C9A227',
+      surface: '#FFFFFF',
+      textDark: '#2A0E18',
     },
     months: [],
     hasParticles: false,
@@ -141,16 +223,82 @@ export const SEASONS: Record<SeasonId, SeasonTheme> = {
     months: [6, 7, 8],
     hasParticles: true,
   },
+  custom: {
+    id: 'custom',
+    label: 'Personalizado',
+    description: 'Elegí tus propios colores desde el editor y guardalos.',
+    emoji: '🎨',
+    // Placeholder — la tarjeta de la grilla usa `customPalette` (provider) en
+    // vez de este valor fijo para dibujar el preview.
+    palette: {
+      primary: '#B8A5C8',
+      primaryLight: '#D4C9E0',
+      primaryDark: '#9A86AC',
+      primaryBg: '#F5F0FA',
+      accent: '#B8377D',
+      surface: '#FFFFFF',
+      textDark: '#333333',
+    },
+    months: [],
+    hasParticles: false,
+    isCustom: true,
+  },
 };
 
 export const SEASON_LIST: SeasonTheme[] = [
   SEASONS.default,
   SEASONS.mono,
+  SEASONS.rose,
+  SEASONS.emerald,
+  SEASONS.ocean,
+  SEASONS.burgundy,
   SEASONS.spring,
   SEASONS.summer,
   SEASONS.autumn,
   SEASONS.winter,
+  SEASONS.custom,
 ];
+
+// Paleta inicial del editor de colores personalizados — misma identidad que
+// 'default' hasta que el admin la modifique.
+export const DEFAULT_CUSTOM_PALETTE: SeasonPalette = { ...SEASONS.default.palette };
+
+const hexToRgba = (hex: string, alpha: number): string => {
+  const clean = hex.replace('#', '').trim();
+  const normalized = clean.length === 3
+    ? clean.split('').map((c) => c + c).join('')
+    : clean;
+  const bigint = Number.parseInt(normalized, 16);
+  if (Number.isNaN(bigint) || normalized.length !== 6) return `rgba(0, 0, 0, ${alpha})`;
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+// Traduce la paleta elegida a mano por el admin al mismo set de CSS custom
+// properties que definen los bloques estáticos de `seasons.css` — se aplican
+// como estilos inline en <html> porque, a diferencia de las estaciones fijas,
+// no puede haber un bloque CSS pre-escrito para un color arbitrario.
+export const buildCustomCssVars = (palette: SeasonPalette): Record<string, string> => ({
+  '--primary-color': palette.primary,
+  '--primary-light': palette.primaryLight,
+  '--primary-dark': palette.primaryDark,
+  '--primary-bg': palette.primaryBg,
+  '--primary-accent': palette.accent,
+  '--bg-light': palette.primaryBg,
+  '--brand-green': palette.primaryDark,
+  '--button-dark': palette.primaryDark,
+  '--button-dark-hover': palette.primary,
+  '--season-gradient': `linear-gradient(135deg, ${palette.primaryDark} 0%, ${palette.primary} 50%, ${palette.accent} 100%)`,
+  '--season-soft': `linear-gradient(180deg, ${palette.primaryBg} 0%, ${palette.primaryLight} 100%)`,
+  '--season-ribbon': `linear-gradient(90deg, ${palette.primaryDark}, ${palette.primary}, ${palette.accent})`,
+  '--shadow-primary': `0 10px 30px ${hexToRgba(palette.primary, 0.35)}`,
+  '--shadow-primary-hover': `0 15px 40px ${hexToRgba(palette.primary, 0.5)}`,
+  '--shadow-2xl': `0 25px 80px -20px ${hexToRgba(palette.primary, 0.4)}, 0 15px 40px -10px rgba(0, 0, 0, 0.2)`,
+});
+
+export const CUSTOM_CSS_VAR_NAMES: string[] = Object.keys(buildCustomCssVars(DEFAULT_CUSTOM_PALETTE));
 
 // Default global cuando no hay preferencia guardada. Usamos 'default' porque
 // representa la identidad visual original de la marca.

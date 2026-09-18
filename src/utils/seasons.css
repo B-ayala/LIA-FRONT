@@ -72,6 +72,108 @@ body {
   --shadow-2xl: 0 25px 80px -20px rgba(0, 0, 0, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.25);
 }
 
+/* ─── Rosa ─────────────────────────────────────────────────────────────────── */
+:root[data-season='rose'] {
+  --primary-color: #D6558C;
+  --primary-light: #F2A8C4;
+  --primary-dark: #A83464;
+  --primary-bg: #FDF0F5;
+  --primary-accent: #7A2048;
+  --bg-light: #FDF0F5;
+
+  --brand-green: #A83464;
+  --button-dark: #A83464;
+  --button-dark-hover: #D6558C;
+
+  --season-gradient: linear-gradient(135deg, #A83464 0%, #D6558C 50%, #7A2048 100%);
+  --season-soft: linear-gradient(180deg, #FDF0F5 0%, #F9DCE8 100%);
+  --season-ribbon: linear-gradient(90deg, #7A2048, #D6558C, #F2A8C4);
+
+  --shadow-primary: 0 10px 30px rgba(214, 85, 140, 0.35);
+  --shadow-primary-hover: 0 15px 40px rgba(214, 85, 140, 0.5);
+  --shadow-2xl: 0 25px 80px -20px rgba(214, 85, 140, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Esmeralda ────────────────────────────────────────────────────────────── */
+:root[data-season='emerald'] {
+  --primary-color: #1E8A5F;
+  --primary-light: #7ED9AE;
+  --primary-dark: #0F5C3D;
+  --primary-bg: #EAFBF3;
+  --primary-accent: #C9A227;
+  --bg-light: #EAFBF3;
+
+  --brand-green: #0F5C3D;
+  --button-dark: #0F5C3D;
+  --button-dark-hover: #1E8A5F;
+
+  --season-gradient: linear-gradient(135deg, #0F5C3D 0%, #1E8A5F 50%, #C9A227 100%);
+  --season-soft: linear-gradient(180deg, #EAFBF3 0%, #D3F3E4 100%);
+  --season-ribbon: linear-gradient(90deg, #0F5C3D, #1E8A5F, #C9A227);
+
+  --shadow-primary: 0 10px 30px rgba(30, 138, 95, 0.35);
+  --shadow-primary-hover: 0 15px 40px rgba(30, 138, 95, 0.5);
+  --shadow-2xl: 0 25px 80px -20px rgba(30, 138, 95, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Océano ───────────────────────────────────────────────────────────────── */
+:root[data-season='ocean'] {
+  --primary-color: #1878A8;
+  --primary-light: #7FC4E0;
+  --primary-dark: #0E4A66;
+  --primary-bg: #EAF6FB;
+  --primary-accent: #F2994A;
+  --bg-light: #EAF6FB;
+
+  --brand-green: #0E4A66;
+  --button-dark: #0E4A66;
+  --button-dark-hover: #1878A8;
+
+  --season-gradient: linear-gradient(135deg, #0E4A66 0%, #1878A8 50%, #F2994A 100%);
+  --season-soft: linear-gradient(180deg, #EAF6FB 0%, #D2ECF7 100%);
+  --season-ribbon: linear-gradient(90deg, #0E4A66, #1878A8, #7FC4E0);
+
+  --shadow-primary: 0 10px 30px rgba(24, 120, 168, 0.35);
+  --shadow-primary-hover: 0 15px 40px rgba(24, 120, 168, 0.5);
+  --shadow-2xl: 0 25px 80px -20px rgba(24, 120, 168, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Borravino ────────────────────────────────────────────────────────────── */
+:root[data-season='burgundy'] {
+  --primary-color: #7A2048;
+  --primary-light: #C97A9C;
+  --primary-dark: #4A1129;
+  --primary-bg: #FBEFF3;
+  --primary-accent: #C9A227;
+  --bg-light: #FBEFF3;
+
+  --brand-green: #4A1129;
+  --button-dark: #4A1129;
+  --button-dark-hover: #7A2048;
+
+  --season-gradient: linear-gradient(135deg, #4A1129 0%, #7A2048 50%, #C9A227 100%);
+  --season-soft: linear-gradient(180deg, #FBEFF3 0%, #F3D9E2 100%);
+  --season-ribbon: linear-gradient(90deg, #4A1129, #7A2048, #C97A9C);
+
+  --shadow-primary: 0 10px 30px rgba(122, 32, 72, 0.35);
+  --shadow-primary-hover: 0 15px 40px rgba(122, 32, 72, 0.5);
+  --shadow-2xl: 0 25px 80px -20px rgba(122, 32, 72, 0.4), 0 15px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Personalizado ────────────────────────────────────────────────────────── *
+ * Sin bloque estático: los valores los define el admin en el editor y se
+ * aplican como estilos inline en <html> (ver SeasonThemeProvider/buildCustomCssVars),
+ * que tienen mayor especificidad que este selector y lo sobreescriben.
+ * Este fallback sólo cubre el instante antes de que el efecto de React corra. */
+:root[data-season='custom'] {
+  --primary-color: #B8A5C8;
+  --primary-light: #D4C9E0;
+  --primary-dark: #9A86AC;
+  --primary-bg: #F5F0FA;
+  --primary-accent: #B8377D;
+  --bg-light: #F5F0FA;
+}
+
 /* ─── Primavera ────────────────────────────────────────────────────────────── */
 :root[data-season='spring'] {
   --primary-color: #7BB661;
