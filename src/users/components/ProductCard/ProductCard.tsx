@@ -27,6 +27,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
   const pricing = getProductPricing(product);
   const isOutOfStock = (product.stock ?? 0) <= 0;
 
+  const rotationImages = (product.images && product.images.length > 0
+    ? product.images
+    : [product.image]
+  ).slice(0, 2);
+  const primaryImage = rotationImages[0] || product.image;
+  const secondaryImage = rotationImages.length > 1 ? rotationImages[1] : null;
+
   return (
     <div className={`product-card${isOutOfStock ? ' product-card--out-of-stock' : ''}`}>
       <div className="product-card__image-container" onClick={handleReadMore}>
@@ -36,13 +43,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
           <div className="product-card__discount-badge">-{pricing.discountPercentage}%</div>
         )}
         <img
-          src={productImageSrc(product.image, {
+          src={productImageSrc(primaryImage, {
             width: 400,
             quality: 'auto',
             format: 'auto'
           })}
           srcSet={[400, 800, 1200]
-            .map(w => `${productImageSrc(product.image, { width: w, quality: 'auto', format: 'auto' })} ${w}w`)
+            .map(w => `${productImageSrc(primaryImage, { width: w, quality: 'auto', format: 'auto' })} ${w}w`)
             .join(', ')}
           sizes="(min-width: 768px) 260px, 45vw"
           alt={product.name}
@@ -52,6 +59,25 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
           width={400}
           height={667}
         />
+        {secondaryImage && (
+          <img
+            src={productImageSrc(secondaryImage, {
+              width: 400,
+              quality: 'auto',
+              format: 'auto'
+            })}
+            srcSet={[400, 800, 1200]
+              .map(w => `${productImageSrc(secondaryImage, { width: w, quality: 'auto', format: 'auto' })} ${w}w`)
+              .join(', ')}
+            sizes="(min-width: 768px) 260px, 45vw"
+            alt={product.name}
+            className="product-card__image product-card__image--secondary"
+            loading="lazy"
+            decoding="async"
+            width={400}
+            height={667}
+          />
+        )}
       </div>
       
       <div className="product-card__content">

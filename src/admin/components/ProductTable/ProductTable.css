@@ -156,6 +156,19 @@
         display: none;
     }
 
+    /* La tabla no tenía wrapper con scroll horizontal: en pantallas de escritorio
+       más angostas (laptop con sidebar, zoom, etc.) las 7 columnas se
+       recortaban o desbordaban el layout en vez de scrollear. */
+    .admin-table-scroll {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-table-scroll .admin-table {
+        min-width: 720px;
+    }
+
     .stock-badge,
     .status-badge {
         font-size: 0.75rem;

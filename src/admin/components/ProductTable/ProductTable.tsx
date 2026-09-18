@@ -122,6 +122,7 @@ const ProductTable = ({ onEdit, searchTerm, filterCategory = '', filterStatus = 
             </div>
 
             {/* Tablet+: table layout */}
+            <div className="admin-table-scroll">
             <table className="admin-table">
                 <thead>
                     <tr>
@@ -181,6 +182,7 @@ const ProductTable = ({ onEdit, searchTerm, filterCategory = '', filterStatus = 
                     )}
                 </tbody>
             </table>
+            </div>
 
         {totalPages > 1 && (
             <Box display="flex" justifyContent="center" alignItems="center" pt={1} pb={0.5}>

@@ -751,6 +751,164 @@ Resultado: no probado
 
 ---
 
+## Casos — Rotación de imágenes en la card de producto (2026-09-18)
+
+> Feature: `users/components/ProductCard/ProductCard.tsx` + `ProductCard.css`.
+> La card usa únicamente las dos primeras imágenes de `product.images` (orden
+> configurado desde Admin → Productos), la 1ra como imagen inicial y la 2da
+> como imagen de interacción (hover en desktop; en mobile el propio `:hover`
+> de CSS se dispara con el primer tap, sin JS de touch adicional). De la 3ra
+> imagen en adelante no participan.
+> **Nota:** verificado con `tsc -b` (sin errores) y por lectura de código
+> (`productService.ts` confirma que `images[0]` es siempre igual a
+> `product.image` y que el array respeta el orden guardado por Admin). No se
+> pudo correr en navegador vía Playwright en esta sesión (instancia ya en
+> uso por otro proceso) — casos marcados "no probado" quedan pendientes de
+> una pasada E2E real antes de dar la feature por cerrada.
+
+```
+ID: TC-IMGROT-01
+Caso: Producto con 2+ imágenes — hover en desktop muestra la 2da imagen
+Tipo: happy
+Pre-condición: producto con `images` = [A, B, C] configurado en ese orden desde Admin.
+Pasos:
+  1. Ir a /products (o Home), ubicar la card del producto.
+  2. Pasar el mouse sobre la card (sin salir).
+  3. Sacar el mouse de la card.
+Esperado: al entrar el hover hace crossfade de A → B (imagen `images[1]`);
+          al salir vuelve a A. La imagen C nunca se muestra en la card.
+Resultado: no probado (verificado por lectura de código y `tsc -b`).
+```
+
+```
+ID: TC-IMGROT-02
+Caso: Producto con una sola imagen — no hay rotación
+Tipo: edge
+Pre-condición: producto con `images` = [A] (o sin array `images`, solo `image`).
+Pasos:
+  1. Ubicar la card en el listado.
+  2. Hacer hover.
+Esperado: se muestra siempre A; no se renderiza una segunda imagen ni hay
+          crossfade (sin parpadeo ni "flash" de imagen vacía).
+Resultado: no probado (verificado por lectura de código: `secondaryImage`
+           queda `null` y el segundo `<img>` no se renderiza).
+```
+
+```
+ID: TC-IMGROT-03
+Caso: Orden de imágenes respeta lo configurado en Admin tras guardar y recargar
+Tipo: happy
+Pre-condición: sesión admin.
+Pasos:
+  1. Admin → Productos → editar un producto → reordenar imágenes (mover una
+     imagen distinta a la posición 1 y otra a la posición 2) → Guardar.
+  2. Recargar la página del listado público (F5) sin cache de SPA.
+  3. Hacer hover sobre la card del producto editado.
+Esperado: la imagen inicial de la card es la que quedó en la posición 1;
+          el hover muestra la que quedó en la posición 2, coincidiendo con
+          el orden guardado en Admin.
+Resultado: no probado.
+```
+
+```
+ID: TC-IMGROT-04
+Caso: Mobile — tap en la card muestra la 2da imagen
+Tipo: happy
+Pasos:
+  1. Viewport mobile (375px) o dispositivo táctil real.
+  2. Tocar la card de un producto con 2+ imágenes (sin soltar/navegar).
+Esperado: el tap dispara el mismo estado `:hover` que en desktop y hace
+          crossfade a la 2da imagen; al tocar fuera de la card vuelve a la
+          imagen principal.
+Resultado: no probado en dispositivo real. La implementación depende del
+           comportamiento estándar de `:hover` por tap en navegadores
+           móviles WebKit/Blink (no hay JS de touch propio) — a confirmar
+           en un dispositivo táctil real antes de cerrar la feature.
+```
+
+---
+
+## Casos — Dropdown de categoría y tabla de productos en desktop (2026-09-18)
+
+> Fix: `admin/components/ProductModal/ProductModal.tsx`+`.css` (panel de
+> categoría montado en portal, `position: fixed`), `admin/components/
+> ProductTable/ProductTable.tsx`+`.css` (wrapper `.admin-table-scroll`) y
+> `admin/styles/adminShared.css` (`.toolbar-filters` deja de forzar
+> `nowrap` desde 640px). Verificado en vivo con Playwright contra
+> `localhost:5180` (front) + `localhost:3000` (back), login admin real.
+
+```
+ID: TC-CATDROP-01
+Caso: Dropdown de categoría abierto cerca del borde inferior del modal — no se recorta
+Tipo: happy
+Pre-condición: modal "Nuevo Producto" abierto, viewport 1366x800.
+Pasos:
+  1. Click en el select de Categoría.
+  2. Click en "ver más" de una categoría con hijos (ej: Calzado), luego de otra
+     (ej: Indumentaria) para alargar la lista.
+Esperado: el panel se posiciona debajo del trigger, nunca queda cortado por el
+          borde del modal; si el contenido supera el espacio disponible en el
+          viewport, el panel muestra su propio scroll interno (no el del modal).
+Resultado: OK — verificado (scrollHeight 694px / clientHeight 562px con
+           scroll interno funcional, último ítem "Sacos" visible al scrollear).
+```
+
+```
+ID: TC-CATDROP-02
+Caso: Dropdown de categoría en mobile (375px) dentro del modal fullscreen
+Tipo: edge
+Pasos:
+  1. Viewport 375x700, abrir "Nuevo Producto", abrir el select de Categoría.
+  2. Expandir "ver más" para alargar el listado.
+Esperado: mismo comportamiento que en desktop — el panel se ancla al trigger,
+          no se recorta contra el borde del modal fullscreen.
+Resultado: OK — verificado.
+```
+
+```
+ID: TC-CATDROP-03
+Caso: Cerrar el dropdown clickeando afuera (backdrop)
+Tipo: happy
+Pasos:
+  1. Abrir el dropdown de categoría.
+  2. Click fuera del panel (sobre el fondo oscurecido del modal).
+Esperado: el dropdown se cierra sin seleccionar ninguna categoría.
+Resultado: OK — el backdrop del portal recibe el click (z-index 2100, por
+           encima del Dialog de MUI en 2000) y cierra el panel.
+```
+
+```
+ID: TC-TABLE-01
+Caso: Filtros de Productos (categoría/estado/stock) no se cortan en desktop
+Tipo: happy
+Pre-condición: viewport 1366x800, sidebar admin visible.
+Pasos:
+  1. Ir a Admin → Productos.
+  2. Observar la fila de filtros debajo de "Buscar por nombre...".
+Esperado: los 3 selects ("Todas las categorías", "Todos los estados", "Todo el
+          stock") se ven completos; si no entran en una fila, bajan de línea
+          en vez de cortarse contra el borde del contenedor.
+Resultado: OK — antes del fix el tercer select ("Todo el stock") quedaba
+           cortado a la mitad; ahora se ve completo.
+```
+
+```
+ID: TC-TABLE-02
+Caso: Tabla de productos con scroll horizontal si el contenedor es angosto
+Tipo: edge
+Pasos:
+  1. Viewport de laptop angosta (ej: 1024px) con sidebar admin ocupando espacio.
+  2. Observar la tabla de productos (7 columnas).
+Esperado: si las columnas no entran, el wrapper `.admin-table-scroll` scrollea
+          horizontalmente en vez de desbordar el layout de la página.
+Resultado: OK (verificado por CSS: min-width 720px en `.admin-table` +
+           overflow-x auto en el wrapper; no se pudo forzar overflow real con
+           los 2 productos de prueba disponibles en esta sesión, pendiente
+           confirmar con un catálogo más largo).
+```
+
+---
+
 ## Matriz de cobertura
 
 > Casos `INI-*` usan numeración corta (01–10); casos del módulo Productos usan el

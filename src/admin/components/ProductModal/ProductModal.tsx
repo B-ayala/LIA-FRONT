@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Modal from '../../../components/common/Modal/Modal';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
@@ -51,6 +52,8 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const [deleteCatConfirm, setDeleteCatConfirm] = useState<{ id: string; name: string } | null>(null);
     const [catDropOpen, setCatDropOpen] = useState(false);
     const [expandedCatIds, setExpandedCatIds] = useState<Set<string>>(new Set());
+    const catDropTriggerRef = useRef<HTMLButtonElement>(null);
+    const [catDropPos, setCatDropPos] = useState<{ top: number; left: number; width: number; maxHeight: number; openUp: boolean } | null>(null);
     const [price, setPrice] = useState('');
     const [stock, setStock] = useState('');
     const [condition, setCondition] = useState<'new' | 'used'>('new');
@@ -136,6 +139,42 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             return next;
         });
     };
+
+    // Panel de categorías montado en un portal (document.body) para que no lo
+    // recorte el overflow del modal: se posiciona con coordenadas de viewport
+    // y se recalcula si el usuario hace scroll o resize con el panel abierto.
+    useEffect(() => {
+        if (!catDropOpen) return;
+
+        const GAP = 4;
+        const MARGIN = 12;
+        const MIN_PANEL_HEIGHT = 160;
+
+        const updatePosition = () => {
+            const trigger = catDropTriggerRef.current;
+            if (!trigger) return;
+            const rect = trigger.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom - MARGIN;
+            const spaceAbove = rect.top - MARGIN;
+            const openUp = spaceBelow < MIN_PANEL_HEIGHT && spaceAbove > spaceBelow;
+
+            setCatDropPos({
+                top: openUp ? rect.top - GAP : rect.bottom + GAP,
+                left: rect.left,
+                width: rect.width,
+                maxHeight: Math.max(120, openUp ? spaceAbove : spaceBelow),
+                openUp,
+            });
+        };
+
+        updatePosition();
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+        return () => {
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
+        };
+    }, [catDropOpen]);
 
     // Pre-compute tree once per dbCategories change — avoids O(n³) filters on every render
     const categoryTree = useMemo(() => (
@@ -694,14 +733,9 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                 <div className={`form-group${fieldErrors.category ? ' form-group--error' : ''}`}>
                                     <label>Categoría</label>
                                     <div className="cat-drop-wrapper">
-                                        {catDropOpen && (
-                                            <div
-                                                className="cat-drop-backdrop"
-                                                onClick={() => setCatDropOpen(false)}
-                                            />
-                                        )}
                                         <button
                                             type="button"
+                                            ref={catDropTriggerRef}
                                             className={`cat-drop-trigger${catDropOpen ? ' cat-drop-trigger--open' : ''}`}
                                             onClick={() => setCatDropOpen(o => !o)}
                                         >
@@ -712,8 +746,24 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                                 <polyline points="6 9 12 15 18 9" />
                                             </svg>
                                         </button>
-                                        {catDropOpen && (
-                                            <div className="cat-drop-panel">
+                                        {catDropOpen && catDropPos && createPortal(
+                                            <>
+                                                <div
+                                                    className="cat-drop-backdrop"
+                                                    onClick={() => setCatDropOpen(false)}
+                                                />
+                                                <div
+                                                    className="cat-drop-panel cat-drop-panel--portal"
+                                                    style={{
+                                                        position: 'fixed',
+                                                        left: catDropPos.left,
+                                                        width: catDropPos.width,
+                                                        maxHeight: catDropPos.maxHeight,
+                                                        ...(catDropPos.openUp
+                                                            ? { bottom: window.innerHeight - catDropPos.top, top: 'auto' }
+                                                            : { top: catDropPos.top, bottom: 'auto' }),
+                                                    }}
+                                                >
                                                 <div
                                                     className="cat-drop-item"
                                                     onClick={() => { setCategory(''); setCatDropOpen(false); }}
@@ -788,7 +838,9 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                                         </div>
                                                     );
                                                 })}
-                                            </div>
+                                                </div>
+                                            </>,
+                                            document.body
                                         )}
                                     </div>
                                     {dbCategories.length > 0 && (

@@ -66,6 +66,15 @@
   transform: scale(1.1);
 }
 
+.product-card__image--secondary {
+  opacity: 0;
+  transition: opacity 0.3s var(--transition-ease), transform 0.4s var(--transition-ease);
+}
+
+.product-card:hover .product-card__image--secondary {
+  opacity: 1;
+}
+
 .product-card--out-of-stock .product-card__image {
   filter: grayscale(60%);
   opacity: 0.75;

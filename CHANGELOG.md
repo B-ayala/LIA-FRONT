@@ -36,6 +36,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   backend, `PUT /api/users/:id` con `purchase_allowed_exclusive`).
 
 ### Changed
+- **Card de producto muestra la 2da imagen al interactuar (hover en desktop,
+  tap en mobile)** (`users/components/ProductCard/ProductCard.tsx`,
+  `ProductCard.css`): la rotación usa únicamente las dos primeras imágenes
+  del producto **según el orden configurado desde Admin** (`images[0]` como
+  imagen principal, `images[1]` como imagen de interacción); la 3ra imagen
+  en adelante no participa. Si el producto tiene una sola imagen, no se
+  renderiza ninguna imagen secundaria y no hay crossfade.
 - **Cards de producto en los listados ya no muestran los círculos de color**
   de la variante "Color" (`users/components/ProductCard/ProductCard.tsx`):
   esa información se movió conceptualmente a los detalles de la variante en
@@ -64,6 +71,26 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   owner (`is_owner`, viene de `GET /api/users`) y muestra la insignia
   "Principal" junto a su rol. Antes el único chequeo era "no te saques el rol
   a vos mismo", que no protegía ninguna cuenta específica.
+- **Dropdown de categoría (alta/edición de producto) se recortaba en vez de
+  scrollear**: el panel (`ProductModal.tsx`, `ProductModal.css`) era
+  `position: absolute` dentro de `.product-modal-content`, que tiene
+  `overflow-y: auto` — al abrirse cerca del borde inferior del modal, el
+  navegador lo recortaba en la línea de scroll del contenedor en vez de
+  mostrarlo completo o dejarlo scrollear. Ahora se monta en un portal a
+  `document.body`, se posiciona con coordenadas de viewport (`position:
+  fixed`) calculadas desde el trigger, y su alto máximo se ajusta al espacio
+  real disponible (abriendo hacia arriba si no entra hacia abajo),
+  recalculando en scroll/resize mientras está abierto.
+- **Tabla de productos y filtros no eran responsive en desktop**: la tabla
+  (`ProductTable.tsx`/`.css`) no tenía contenedor con scroll horizontal, así
+  que en anchos de escritorio angostos (laptop con sidebar, zoom) las 7
+  columnas podían desbordar el layout. Se agregó un wrapper
+  `.admin-table-scroll` con `overflow-x: auto` y `min-width` en la tabla. Además,
+  la barra de filtros (`adminShared.css`, compartida con Ventas y Despachos)
+  forzaba `flex-wrap: nowrap` con selects de ancho automático a partir de
+  640px, lo que hacía que el tercer filtro ("Todo el stock") quedara cortado
+  en vez de bajar de línea; se removió esa regla y quedan con `flex-wrap: wrap`
+  en todos los anchos.
 
 ### Changed
 - **Producto "Activo" sin stock ya no bloquea el guardado**: en `ProductModal`

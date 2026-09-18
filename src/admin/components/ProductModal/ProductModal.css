@@ -902,11 +902,13 @@
     width: 100%;
 }
 
-/* Backdrop for closing on outside click */
+/* Backdrop for closing on outside click. Montado en un portal a document.body
+   (ver ProductModal.tsx) para escapar del overflow:hidden del modal — por eso
+   necesita un z-index por encima del Dialog de MUI (zIndex: 2000). */
 .cat-drop-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 50;
+    z-index: 2100;
 }
 
 /* Trigger button */
@@ -969,6 +971,14 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     padding: 0.35rem 0;
+}
+
+/* Variante montada en portal (document.body): la posición real (top/left/width/
+   maxHeight) llega por inline style desde JS, calculada contra el viewport para
+   no quedar recortada por el overflow:hidden del modal. */
+.cat-drop-panel--portal {
+    right: auto;
+    z-index: 2101;
 }
 
 .cat-drop-panel::-webkit-scrollbar {

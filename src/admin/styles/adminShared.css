@@ -528,18 +528,9 @@
         margin-bottom: 1.25rem;
     }
 
-    .toolbar-filters {
-        flex-wrap: nowrap;
-    }
-
     .sales-summary,
     .dispatch-summary {
         grid-template-columns: repeat(4, 1fr);
-    }
-
-    .filter-select {
-        flex: none;
-        width: auto;
     }
 }
 
