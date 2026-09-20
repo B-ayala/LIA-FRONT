@@ -341,9 +341,11 @@ const ProductDetail = () => {
           {/* Columna izquierda - Carrusel */}
           <div className="product-detail__gallery">
             <div className="gallery__main">
-              <button className="gallery__arrow gallery__arrow--left" onClick={handlePreviousImage}>
-                ‹
-              </button>
+              {images.length > 1 && (
+                <button className="gallery__arrow gallery__arrow--left" onClick={handlePreviousImage}>
+                  ‹
+                </button>
+              )}
               <img
                 src={currentImage}
                 alt={product.name}
@@ -354,9 +356,11 @@ const ProductDetail = () => {
                 width={600}
                 height={800}
               />
-              <button className="gallery__arrow gallery__arrow--right" onClick={handleNextImage}>
-                ›
-              </button>
+              {images.length > 1 && (
+                <button className="gallery__arrow gallery__arrow--right" onClick={handleNextImage}>
+                  ›
+                </button>
+              )}
               
               {pricing.hasPromotion && pricing.discountPercentage && (
                 <div className="gallery__discount-badge">

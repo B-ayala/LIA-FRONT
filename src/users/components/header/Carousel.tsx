@@ -262,12 +262,16 @@ const Carousel = ({ onReady }: CarouselProps) => {
         </motion.div>
       </AnimatePresence>
 
-      <button className="carousel-arrow carousel-arrow-left" onClick={prevSlide} aria-label="Anterior">
-        <FiChevronLeft />
-      </button>
-      <button className="carousel-arrow carousel-arrow-right" onClick={nextSlide} aria-label="Siguiente">
-        <FiChevronRight />
-      </button>
+      {slides.length > 1 && (
+        <>
+          <button className="carousel-arrow carousel-arrow-left" onClick={prevSlide} aria-label="Anterior">
+            <FiChevronLeft />
+          </button>
+          <button className="carousel-arrow carousel-arrow-right" onClick={nextSlide} aria-label="Siguiente">
+            <FiChevronRight />
+          </button>
+        </>
+      )}
 
       <div className="carousel-dots">
         {slides.map((_, index) => (
