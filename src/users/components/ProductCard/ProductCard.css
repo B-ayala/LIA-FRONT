@@ -21,7 +21,6 @@
   /* Aspect ratio 3:5 - aún más alto */
   overflow: hidden;
   background-color: var(--gray-150);
-  cursor: pointer;
 }
 
 .product-card__discount-badge {

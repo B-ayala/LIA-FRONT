@@ -36,7 +36,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
 
   return (
     <div className={`product-card${isOutOfStock ? ' product-card--out-of-stock' : ''}`}>
-      <div className="product-card__image-container" onClick={handleReadMore}>
+      <div className="product-card__image-container">
         {isOutOfStock ? (
           <div className="product-card__stock-badge">Sin stock</div>
         ) : pricing.hasPromotion && pricing.discountPercentage && (
