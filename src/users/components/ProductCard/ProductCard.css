@@ -77,6 +77,9 @@
 
 .product-card--out-of-stock .product-card__image {
   filter: grayscale(60%);
+}
+
+.product-card--out-of-stock .product-card__image:not(.product-card__image--secondary) {
   opacity: 0.75;
 }
 

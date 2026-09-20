@@ -36,10 +36,16 @@
 /* Tablet y desktop: ancho de card acotado (220-260px). La cantidad de
    columnas se adapta al ancho disponible en vez de estirar las cards
    al ancho completo de la fila (eso las hacía verse enormes con pocos
-   productos, sobre todo por el alto de imagen 3:5). */
+   productos, sobre todo por el alto de imagen 3:5).
+   auto-fit (en vez de auto-fill) colapsa las columnas vacías cuando hay
+   menos productos que slots posibles, y justify-content: center centra
+   el bloque de cards resultante — así 1 o 2 productos quedan centrados
+   y balanceados en vez de pegados a la izquierda con un hueco enorme
+   a la derecha (como si faltara una card). */
 @media (min-width: 768px) {
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 260px));
+    justify-content: center;
     gap: 24px;
     padding: 20px 0;
   }
