@@ -60,6 +60,17 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   en vez de seguir mandando emails.
 
 ### Fixed
+- **Tema personalizado ("custom") publicado para todos los usuarios no llegaba
+  a los visitantes** (`ThemesManager.tsx`): al guardar, la paleta se buscaba en
+  `customThemes` (lista de temas con nombre, puramente local al navegador del
+  admin) por `activeCustomThemeId`; si se publicaba desde un navegador/sesión
+  sin ese tema guardado localmente, la búsqueda fallaba en silencio y se
+  publicaba `season: "custom"` sin `customPalette`. Los visitantes recibían
+  ese registro incompleto y quedaban con la paleta por defecto, mientras el
+  admin seguía viendo los colores correctos en su propio navegador (estado en
+  memoria). Ahora se publica directamente la paleta activa del provider
+  (`customPalette`), que siempre existe mientras el tema "custom" esté
+  aplicado.
 - **Panel de Usuarios no mostraba nada en mobile (<768px)**: `Users.css` no
   restablecía el `display` de `.admin-table` para el layout de tarjetas, así
   que quedaba con el `display: none` base de `adminShared.css` y la tabla

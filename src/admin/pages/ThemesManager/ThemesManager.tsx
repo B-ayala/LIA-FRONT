@@ -43,6 +43,7 @@ const ThemesManager = () => {
     detectedSeason,
     isPreviewing,
     animations,
+    customPalette,
     customThemes,
     activeCustomThemeId,
     setSeason,
@@ -106,11 +107,15 @@ const ThemesManager = () => {
   const saveThemeGlobal = async () => {
     setSavingRemote(true);
     setRemoteError(null);
-    const activeCustom = customThemes.find((t) => t.id === activeCustomThemeId);
+    // `customPalette` es la paleta realmente aplicada ahora mismo (vive en el
+    // provider), a diferencia de `customThemes`, que es la lista de temas con
+    // nombre guardados y es puramente local al navegador del admin. Publicar
+    // buscando por `activeCustomThemeId` en esa lista falla en silencio si se
+    // publica desde otro navegador/sesión sin esos temas guardados.
     const payload: RemoteThemePref = {
       season: storedSeason,
       appliedAt: new Date().toISOString(),
-      ...(storedSeason === 'custom' && activeCustom ? { customPalette: activeCustom.palette } : {}),
+      ...(storedSeason === 'custom' ? { customPalette } : {}),
     };
     const { error } = await supabase
       .from('site_content')
