@@ -29,6 +29,7 @@ const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
     discount: (p.discount as number) || undefined,
     condition: (p.condition as 'new' | 'used') || 'new',
     freeShipping: (p.free_shipping as boolean) || false,
+    hoverImageEnabled: (p.hover_image_enabled as boolean) ?? true,
     variants: (p.variants as AdminProduct['variants']) || undefined,
     specifications: (p.specifications as AdminProduct['specifications']) || undefined,
     features: (p.features as string[]) || undefined,

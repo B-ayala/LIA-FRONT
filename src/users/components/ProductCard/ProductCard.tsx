@@ -27,12 +27,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
   const pricing = getProductPricing(product);
   const isOutOfStock = (product.stock ?? 0) <= 0;
 
+  const hoverImageEnabled = product.hoverImageEnabled ?? true;
   const rotationImages = (product.images && product.images.length > 0
     ? product.images
     : [product.image]
   ).slice(0, 2);
   const primaryImage = rotationImages[0] || product.image;
-  const secondaryImage = rotationImages.length > 1 ? rotationImages[1] : null;
+  const secondaryImage = hoverImageEnabled && rotationImages.length > 1 ? rotationImages[1] : null;
 
   return (
     <div className={`product-card${isOutOfStock ? ' product-card--out-of-stock' : ''}`}>

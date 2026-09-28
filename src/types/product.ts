@@ -49,6 +49,7 @@ export interface Product {
   stock?: number;
   condition?: 'new' | 'used';
   freeShipping?: boolean;
+  hoverImageEnabled?: boolean;
   rating?: number;
   reviewCount?: number;
   variants?: Variant[];

@@ -18,6 +18,7 @@ export interface AdminProduct {
   discount?: number | null;
   condition?: 'new' | 'used';
   freeShipping?: boolean;
+  hoverImageEnabled?: boolean;
   variants?: Variant[];
   specifications?: Specification[];
   features?: string[];

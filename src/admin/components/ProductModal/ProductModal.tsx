@@ -60,6 +60,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const [status, setStatus] = useState<'active' | 'inactive'>('active');
     const [images, setImages] = useState<string[]>([]);
     const [pickerOpen, setPickerOpen] = useState(false);
+    const [hoverImageEnabled, setHoverImageEnabled] = useState(true);
 
     // Promociones
     const [originalPrice, setOriginalPrice] = useState('');
@@ -259,6 +260,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 setDiscount(product.discount?.toString() || '');
                 setDiscountTouched(false);
                 setFreeShipping(product.freeShipping || false);
+                setHoverImageEnabled(product.hoverImageEnabled ?? true);
                 setDescription(product.description || '');
                 setFeaturesText((product.features || []).join('\n'));
                 setWarranty(product.warranty || '');
@@ -304,6 +306,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         setDiscount('');
         setDiscountTouched(false);
         setFreeShipping(false);
+        setHoverImageEnabled(true);
         setDescription('');
         setFeaturesText('');
         setWarranty('');
@@ -343,6 +346,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             description,
             discount: discount ? parseFloat(discount) : undefined,
             freeShipping,
+            hoverImageEnabled,
             variants: builtVariants,
             specifications,
             features: featuresText.split('\n').map(f => f.trim()).filter(Boolean),
@@ -984,6 +988,17 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                             <Images size={14} /> Seleccionar de Cloudinary
                                         </button>
                                     </div>
+                                </div>
+                                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                    <label>Imagen alternativa al pasar el mouse</label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginTop: '0.5rem' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={hoverImageEnabled}
+                                            onChange={e => setHoverImageEnabled(e.target.checked)}
+                                        />
+                                        Mostrar la segunda imagen al pasar el mouse por la card
+                                    </label>
                                 </div>
                             </div>
                         </div>
