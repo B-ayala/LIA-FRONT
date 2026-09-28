@@ -4,7 +4,7 @@ import { FiSearch, FiChevronRight, FiArrowLeft, FiX, FiShoppingCart, FiChevronDo
 import { useBodyScrollLock } from '../../../../hooks/useBodyScrollLock';
 import { useClickOutside } from '../../../../hooks/useClickOutside';
 // @ts-ignore - vite-imagetools query param
-import logoImg from '../../../../assets/img/logo.jpeg?w=120&format=webp&quality=80';
+import logoImg from '../../../../assets/img/Adaptaciones3.jpg.jpeg?w=160&format=webp&quality=90';
 import AuthModal from '../../auth/AuthModal';
 import UserProfileDropdown from './UserProfileDropdown';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -176,7 +176,7 @@ const NavBar = () => {
 
         {/* Logo */}
         <Link to="/" className="navbar-logo" onClick={closeMenu}>
-          <img src={logoImg} alt="LIA Logo" className="logo-img" width={120} height={40} />
+          <img src={logoImg} alt="LIA Logo" className="logo-img" width={60} height={42} />
         </Link>
 
         {/* Desktop Navigation */}
