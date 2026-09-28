@@ -49,6 +49,15 @@
     gap: 24px;
     padding: 20px 0;
   }
+
+  /* Con 1 o 2 productos el tope de 260px deja demasiado espacio vacío a
+     los costados (bloque angosto centrado en una pantalla ancha). Ahí
+     dejamos crecer las cards bastante más para que ocupen mejor el
+     ancho disponible; con 3+ productos no aplica y se mantiene el
+     grid de cards chicas de arriba. */
+  .product-grid:has(> :nth-child(-n+2):last-child) {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 420px));
+  }
 }
 
 /* Extra small mobile */
