@@ -21,6 +21,26 @@ const AdminLayout = () => {
         }
     }, [location]);
 
+    // MUI bloquea el scroll del body (overflow: hidden) mientras hay un Dialog
+    // abierto, y lo libera cuando se cierra. Con dialogs anidados (ej: modal de
+    // producto + confirmación de "sin stock" encima) ese manejo interno puede
+    // desincronizarse y dejar el scroll bloqueado para siempre, aunque ya no
+    // quede ningún modal visible. Se detecta el momento exacto en que el último
+    // Dialog (portal montado en document.body) desaparece del DOM y, si el
+    // bloqueo sigue activo, se libera a mano.
+    useEffect(() => {
+        const clearStuckScrollLock = () => {
+            const anyDialogOpen = document.querySelector('.MuiModal-root[role="presentation"]');
+            if (!anyDialogOpen && document.body.style.overflow === 'hidden') {
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            }
+        };
+        const observer = new MutationObserver(clearStuckScrollLock);
+        observer.observe(document.body, { childList: true });
+        return () => observer.disconnect();
+    }, []);
+
     return (
         <div className="admin-layout-container">
             <AdminSidebar

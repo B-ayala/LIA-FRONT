@@ -201,7 +201,6 @@ const CloudinaryManager = () => {
     setUploading(true);
     try {
       const config = await fetchCloudinaryConfig();
-      const token = await getToken();
       await loadCloudinaryWidget();
       const targetFolder = currentFolder || 'general';
 
@@ -210,6 +209,10 @@ const CloudinaryManager = () => {
           cloudName: config.cloudName,
           apiKey: config.apiKey,
           uploadSignature: async (callback: (sig: string, ts: number) => void, paramsToSign: Record<string, unknown>) => {
+            // Token fresco en cada firma (no el capturado al abrir el widget):
+            // el usuario puede tardar en arrastrar el archivo y ese token
+            // quedar vencido, lo que hacía fallar el primer intento de carga.
+            const token = await getToken();
             const ts = Math.round(Date.now() / 1000);
             const res = await apiFetch(`${API_BASE_URL}/cloudinary/sign`, {
               method: 'POST',
@@ -228,6 +231,12 @@ const CloudinaryManager = () => {
         (err: unknown, result: { event: string }) => {
           if (!err && result?.event === 'success') {
             loadImages(currentFolder);
+          }
+          // El widget de Cloudinary a veces no restaura el overflow del body
+          // al cerrarse, dejando la sección sin scroll. Se fuerza el reset.
+          if (result?.event === 'close') {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
           }
         }
       );
@@ -492,6 +501,9 @@ const CloudinaryManager = () => {
 
           {/* Grid */}
           <div className="cloudinary-grid-card admin-card">
+            {uploading && (
+              <LiaLoader variant="overlay" size="lg" label="Abriendo el selector de Cloudinary..." />
+            )}
             {imagesLoading ? (
               <div className="cloudinary-loading">
                 <LiaLoader size="md" />

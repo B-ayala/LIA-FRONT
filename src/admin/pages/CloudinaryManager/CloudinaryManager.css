@@ -323,6 +323,7 @@
 
 /* ── Image grid card ─────────────────────────────────────── */
 .cloudinary-grid-card {
+  position: relative;
   padding: 1rem;
   min-height: 180px;
 }
