@@ -236,10 +236,14 @@ export const fetchCategories = async (): Promise<string[]> => {
 // Fetch featured products from Supabase (for home page). `limit` acota filas
 // en origen: el Home sólo renderiza los primeros N, no tiene sentido traer y
 // descartar el resto en el cliente.
+// select() acotado a lo que ProductGrid/ProductCard realmente renderizan en el
+// Home (nombre, precio, imagen, stock/variantes, descuento). Único consumidor
+// de este fetch: si en el futuro Home necesita otro campo (ej. category),
+// agregarlo acá explícitamente — no volver a `select('*')`.
 export const fetchFeaturedProducts = async (limit?: number) => {
   let query = supabase
     .from('productos')
-    .select('*')
+    .select('id, name, price, original_price, image_url, images, discount, stock, hover_image_enabled, variants')
     .eq('featured', true)
     .eq('status', 'active')
     .order('created_at', { ascending: false });

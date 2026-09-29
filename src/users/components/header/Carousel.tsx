@@ -4,6 +4,7 @@ import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { fetchCarouselImages, fetchCarouselLayout, type CarouselLayout } from '../../../services/productService';
 import { buildCloudinaryUrl } from '../../../utils/cloudinary';
 import { withTimeout } from '../../../utils/withTimeout';
+import { readCachedFirstImage, writeCachedFirstImage } from '../../../utils/carouselImageCache';
 import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
 
@@ -104,6 +105,26 @@ const Carousel = ({ onReady }: CarouselProps) => {
     setHasError(false);
     setImagesLoaded(false);
 
+    // Precarga especulativa: si la visita anterior dejó registrada cuál era
+    // la primera imagen de portada para este dispositivo, arrancamos su
+    // descarga ya mismo, en paralelo con el fetch real de abajo — así, si la
+    // URL sigue vigente, el <Image> real de más abajo la encuentra tibia en
+    // la cache HTTP del browser en vez de pagar el round-trip completo de
+    // nuevo. No cambia qué se muestra ni cuándo: solo evita el segundo
+    // network hop cuando la pista acierta. Si el admin cambió el carrusel,
+    // esta descarga de más se descarta sola, sin ningún efecto visible.
+    const cachedHint = readCachedFirstImage(deviceType);
+    if (cachedHint) {
+      const hintSize = getSlotSize(window.innerWidth, cachedHint.imageCount, cachedHint.layout);
+      const hintUrl = buildCloudinaryUrl(cachedHint.url, {
+        ...hintSize,
+        quality: 'auto',
+        format: 'auto',
+        gravity: 'auto',
+      });
+      new Image().src = hintUrl;
+    }
+
     Promise.all([
       // withTimeout evita que un fetch colgado (red inestable, request sin
       // respuesta) deje el banner de home en skeleton para siempre.
@@ -122,6 +143,18 @@ const Carousel = ({ onReady }: CarouselProps) => {
         const grouped: Slide[] = [];
         for (let i = 0; i < images.length; i += imgsPerSlide) {
           grouped.push({ images: images.slice(i, i + imgsPerSlide).map(img => img.url) });
+        }
+        // El tamaño real del slot depende de cuántas imágenes comparten el
+        // primer slide (el último grupo puede tener menos que `imgsPerSlide`),
+        // así que guardamos ese número real — no el máximo teórico — para que
+        // la próxima visita arme la URL especulativa con el mismo ancho
+        // exacto que va a pedir el flujo real más abajo.
+        if (grouped[0]?.images[0]) {
+          writeCachedFirstImage(deviceType, {
+            url: images[0].url,
+            layout: layoutSetting,
+            imageCount: grouped[0].images.length,
+          });
         }
         setSlides(grouped);
         setCurrentSlide(0);

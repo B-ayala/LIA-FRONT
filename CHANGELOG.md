@@ -5,6 +5,27 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Changed
+- **Performance del primer render del Home**: `Home` pasó de import `lazy()` a
+  import estático en `routes/AppRouter.tsx` (era la única ruta pública que
+  pagaba una vuelta de red extra para descargar su propio chunk antes de poder
+  arrancar sus fetches, siendo la puerta de entrada del sitio). `fetchFeaturedProducts`
+  (`services/productService.ts`) dejó de traer `select('*')` y ahora selecciona
+  explícitamente solo las columnas que el Home renderiza (id, name, price,
+  original_price, image_url, images, discount, stock, hover_image_enabled,
+  variants), reduciendo el payload y el tiempo de query de los productos
+  destacados. Sin cambios de comportamiento ni de UI.
+- **Precarga especulativa de la imagen del carrusel** (`users/components/header/Carousel.tsx`,
+  nuevo `utils/carouselImageCache.ts`): se guarda en `localStorage` (por
+  dispositivo) la URL y el tamaño de la primera imagen de portada de la última
+  visita, para arrancar su descarga en paralelo con el fetch real a Supabase
+  en la siguiente visita. Medido con Playwright contra un build de producción:
+  primera visita sin pista, imagen real ~300ms después del fetch; segunda
+  visita con pista, la imagen carga desde cache del browser (`transferSize: 0`)
+  a los ~80ms, sin esperar al fetch. Si el admin cambió el carrusel, la pista
+  queda obsoleta y se descarta sola sin ningún efecto visible — el flujo real
+  no cambió. Sin cambios de diseño ni de comportamiento visible.
+
 ### Added
 - **Opciones configurables de la card de producto** (`admin/components/ProductCardOptionsManager`,
   tabla `product_card_options`): desde Admin → Productos ahora se puede

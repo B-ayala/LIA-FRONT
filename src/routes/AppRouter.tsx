@@ -11,6 +11,12 @@ import { useAuthStore } from '../store/authStore';
 import UserLayout from '../users/layout/UserLayout';
 import AdminProtectedRoute from '../admin/routes/AdminProtectedRoute';
 import AdminLayout from '../admin/layout/AdminLayout';
+// Home también queda EAGER: es la puerta de entrada del sitio (la ruta "/" que
+// recibe la gran mayoría de las visitas nuevas). Si se carga con lazy(), el
+// browser paga una vuelta de red extra (descargar+parsear el bundle principal,
+// recién ahí pedir el chunk de Home) antes de que arranque el fetch de
+// productos destacados/carrusel, retrasando el primer contenido visible.
+import Home from '../users/pages/home/Home';
 
 // Redirige a /admin si hay una sesión de admin activa.
 // Usa isAuthenticated que ya está hidratado sincrónicamente desde localStorage,
@@ -23,8 +29,7 @@ const AdminRedirect = () => {
 
 // Páginas hoja: lazy. Esto permite que el bundle público no arrastre el
 // código admin (y viceversa). El chunk de cada página se carga cuando se
-// navega a ella.
-const Home = lazy(() => import('../users/pages/home/Home'));
+// navega a ella. Home es la excepción (import eager arriba).
 const Products = lazy(() => import('../users/pages/products/Products'));
 const ProductDetail = lazy(() => import('../users/pages/producDetail/ProductDetail'));
 const Checkout = lazy(() => import('../users/pages/checkout/Checkout'));
