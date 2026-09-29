@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import './Products.css';
 import ProductGrid from '../../components/ProductGrid/ProductGrid';
 import SEO from '../../../components/common/SEO/SEO';
-import { fetchProducts, mapDbRowToProduct, fetchCategoriesTree, type Category } from '../../../services/productService';
+import { fetchCatalogProducts, mapDbRowToProduct, fetchCategoriesTree, type Category } from '../../../services/productService';
 import { cleanText } from '../../../utils/formatters';
 import type { Product } from '../../../types/product';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
@@ -42,7 +42,7 @@ const Products = () => {
     // withTimeout evita que un fetch colgado (red inestable, request sin
     // respuesta) deje el catálogo en skeleton para siempre.
     Promise.all([
-      withTimeout(fetchProducts().then((rows) => rows.map(mapDbRowToProduct))),
+      withTimeout(fetchCatalogProducts().then((rows) => rows.map(mapDbRowToProduct))),
       withTimeout(fetchCategoriesTree()),
     ])
       .then(([prods, cats]) => {

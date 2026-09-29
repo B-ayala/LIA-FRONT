@@ -25,6 +25,19 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   a los ~80ms, sin esperar al fetch. Si el admin cambió el carrusel, la pista
   queda obsoleta y se descarta sola sin ningún efecto visible — el flujo real
   no cambió. Sin cambios de diseño ni de comportamiento visible.
+- **Performance de `ProductDetail` y del catálogo `/products`**: `ProductDetail`
+  pasó de `lazy()` a import estático en `routes/AppRouter.tsx` (recibe tráfico
+  de entrada directo por link compartido/SEO, igual que Home) — ya no tiene
+  chunk propio, verificado en `dist/`. Nuevo `fetchCatalogProducts`
+  (`services/productService.ts`) con `select` acotado a las columnas que
+  `ProductGrid`/`ProductCard` y el filtro por categoría del catálogo
+  realmente usan; `Products.tsx` lo usa en vez de `fetchProducts`, que sigue
+  intacta para los consumidores admin (`FeaturedProductsManager`,
+  `ProductGallery`, `admin/Products`) que sí necesitan el row completo.
+- **Waterfall evitable en About**: `About.tsx` pedía las keys `about` y
+  `hero_image` de `site_content` en dos `await` seguidos sin ninguna
+  dependencia entre sí; ahora se piden con `Promise.all`. El hero (candidato
+  a LCP de la página) ya no espera a que resuelva primero el texto.
 
 ### Added
 - **Opciones configurables de la card de producto** (`admin/components/ProductCardOptionsManager`,

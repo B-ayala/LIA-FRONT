@@ -11,12 +11,17 @@ import { useAuthStore } from '../store/authStore';
 import UserLayout from '../users/layout/UserLayout';
 import AdminProtectedRoute from '../admin/routes/AdminProtectedRoute';
 import AdminLayout from '../admin/layout/AdminLayout';
-// Home también queda EAGER: es la puerta de entrada del sitio (la ruta "/" que
-// recibe la gran mayoría de las visitas nuevas). Si se carga con lazy(), el
-// browser paga una vuelta de red extra (descargar+parsear el bundle principal,
-// recién ahí pedir el chunk de Home) antes de que arranque el fetch de
-// productos destacados/carrusel, retrasando el primer contenido visible.
+// Home y ProductDetail también quedan EAGER: son las dos puertas de entrada
+// reales del sitio para tráfico nuevo — Home recibe la mayoría de las visitas
+// directas a "/", y ProductDetail recibe visitas directas por link compartido
+// (WhatsApp, redes, resultados de búsqueda con su propio SEO). Si se cargan
+// con lazy(), el browser paga una vuelta de red extra (descargar+parsear el
+// bundle principal, recién ahí pedir el chunk de la página) antes de arrancar
+// su fetch, retrasando el primer contenido visible. El resto de las rutas
+// solo se llega navegando desde dentro del sitio, así que lazy() ahí no paga
+// ese costo extra en el peor caso de entrada.
 import Home from '../users/pages/home/Home';
+import ProductDetail from '../users/pages/producDetail/ProductDetail';
 
 // Redirige a /admin si hay una sesión de admin activa.
 // Usa isAuthenticated que ya está hidratado sincrónicamente desde localStorage,
@@ -29,9 +34,8 @@ const AdminRedirect = () => {
 
 // Páginas hoja: lazy. Esto permite que el bundle público no arrastre el
 // código admin (y viceversa). El chunk de cada página se carga cuando se
-// navega a ella. Home es la excepción (import eager arriba).
+// navega a ella. Home y ProductDetail son la excepción (import eager arriba).
 const Products = lazy(() => import('../users/pages/products/Products'));
-const ProductDetail = lazy(() => import('../users/pages/producDetail/ProductDetail'));
 const Checkout = lazy(() => import('../users/pages/checkout/Checkout'));
 const CheckoutResult = lazy(() => import('../users/pages/checkout/CheckoutResult'));
 const Contact = lazy(() => import('../users/pages/contact/Contact'));

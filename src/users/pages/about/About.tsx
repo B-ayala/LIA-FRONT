@@ -40,13 +40,18 @@ const About = () => {
 
     const loadAbout = async () => {
       try {
-        const data = await withTimeout(getSiteContent<AboutInfo>('about'));
+        // 'about' y 'hero_image' son keys independientes de site_content —
+        // no hay razón para esperar una para recién pedir la otra. En serie,
+        // el hero (candidato a LCP de la página) esperaba innecesariamente
+        // a que resuelva primero el contenido de texto.
+        const [data, heroData] = await Promise.all([
+          withTimeout(getSiteContent<AboutInfo>('about')),
+          withTimeout(getSiteContent<HeroImageData>('hero_image')),
+        ]);
 
         if (!cancelled && data) {
           setAboutInfo(data);
         }
-
-        const heroData = await withTimeout(getSiteContent<HeroImageData>('hero_image'));
 
         if (!cancelled && heroData) {
           setHeroImage(heroData);

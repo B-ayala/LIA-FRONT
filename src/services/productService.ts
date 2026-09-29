@@ -296,6 +296,28 @@ export const fetchProducts = async (activeOnly = true) => {
   return data || [];
 };
 
+// Fetch para el catálogo público (/products). select() acotado a lo que
+// ProductGrid/ProductCard renderizan + `category` (filtro por categoría del
+// catálogo) — a diferencia de fetchProducts/fetchAllProducts (admin), acá no
+// hacen falta description/specifications/features/faqs/warranty/return_policy/
+// size_guide, que solo se usan en el detalle de producto. No reemplaza a
+// fetchProducts: los consumidores admin (FeaturedProductsManager,
+// ProductGallery, admin/Products) siguen necesitando el row completo.
+export const fetchCatalogProducts = async () => {
+  const { data, error } = await supabase
+    .from('productos')
+    .select('id, name, price, original_price, image_url, images, category, discount, stock, hover_image_enabled, variants')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Fetch catalog products error:', error);
+    throw error;
+  }
+
+  return data || [];
+};
+
 /** @deprecated Use fetchProducts(false) instead */
 export const fetchAllProducts = () => fetchProducts(false);
 
