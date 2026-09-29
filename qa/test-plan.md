@@ -24,7 +24,11 @@
   - **Estándar:** `brian.ayala.pt@gmail.com`
 - Datos al momento de la prueba: 3 productos `featured=true` y `status=active`
   (`zapatos` id 14, `sandalias` id 13, `Campera` id 11), todos con stock > 0.
-- Para simular "visitante nuevo": borrar `localStorage` clave `lia.seasonTheme.v2`.
+- El tema (color + tipografía) ya no tiene preferencia local por dispositivo:
+  toda pestaña/equipo siempre refleja `site_content.season_theme` /
+  `site_content.typography`. La única clave de `localStorage` relacionada que
+  sigue existiendo es `lia.seasonTheme.customThemes.v1` (libreta de temas
+  guardados del admin, no afecta a los visitantes).
 
 ---
 
@@ -76,7 +80,7 @@ Tipo: failure (sincronización)
 Pre-condición: panel Temas con "Invierno" publicado como Global
                (`site_content.season_theme = winter`). Sin `localStorage`.
 Pasos:
-  1. Borrar `lia.seasonTheme.v2`.
+  1. Borrar `lia.seasonTheme.v2` (clave legacy, si existiera).
   2. Recargar /.
 Esperado: `document.documentElement.dataset.season === "winter"`.
 Resultado: ok (post-fix). Antes: FAIL — siempre quedaba "default"; el provider no
@@ -84,15 +88,54 @@ Resultado: ok (post-fix). Antes: FAIL — siempre quedaba "default"; el provider
 ```
 
 ```
-ID: TC-INI-05
-Caso: La preferencia manual del usuario tiene prioridad sobre el tema global
-Tipo: edge
-Pre-condición: tema global = winter. Usuario con elección propia.
+ID: TC-INI-05 — DEPRECATED
+Caso: (antiguo) La preferencia manual del usuario tenía prioridad sobre el tema global
+Motivo de baja: esa preferencia local por dispositivo (`localStorage`) era la
+                causa raíz del bug reportado — un dispositivo que alguna vez
+                fijaba una elección quedaba bloqueado para siempre a una copia
+                vieja, sin ningún control equivalente del lado del visitante
+                que la hiciera necesaria. Se eliminó: el tema es 100% global,
+                lo define sólo el admin. Reemplazado por TC-INI-05b.
+```
+
+```
+ID: TC-INI-05b
+Caso: Cambiar el tema/tipografía desde Admin se refleja en TODOS los
+      dispositivos, incluso los que ya interactuaron antes con el panel
+Tipo: failure (regresión del bug reportado — multi-dispositivo)
+Pre-condición: dos navegadores/equipos distintos (A y B). En B, ingresar
+               previamente al panel Temas y aplicar cualquier tema (para
+               dejarlo en el estado "ya interactuó" que antes rompía la sync).
 Pasos:
-  1. Setear `lia.seasonTheme.v2` con `{season:'summer', mode:'manual'}`.
-  2. Recargar /.
-Esperado: `dataset.season === "summer"` (el global NO pisa la elección del usuario).
-Resultado: ok (post-fix).
+  1. Desde A (Admin → Temas): elegir "Verano", ajustar tipografía a "Inter" y
+     tocar "Guardar para todos".
+  2. En B, sin borrar `localStorage`, sólo recargar la pestaña pública (no el
+     panel admin).
+  3. Repetir el paso 2 en una ventana de incógnito de B.
+Esperado: A, B (recargado) e incógnito de B muestran el mismo
+          `dataset.season === "summer"` y la misma tipografía. B no debe
+          quedar en un tema viejo por haber usado el panel antes.
+Resultado: ok (post-fix). Antes: FAIL en B (no incógnito) — quedaba con el
+           tema/tipografía previos, y "borrar caché del navegador" (sin
+           borrar "datos del sitio"/localStorage) no lo resolvía.
+```
+
+```
+ID: TC-INI-05c
+Caso: Modo Automático/Manual y animaciones por estación publicados afectan a
+      todos los visitantes
+Tipo: edge (regresión — antes estos campos no se publicaban)
+Pre-condición: ninguna.
+Pasos:
+  1. Admin → Temas: activar "Automático", desactivar la animación de
+     "Invierno" y Guardar para todos.
+  2. Desde otro dispositivo/incógnito, abrir / durante un mes cuya estación
+     detectada sea "Invierno".
+Esperado: se aplica el tema de la estación detectada automáticamente y no se
+          muestran partículas de invierno.
+Resultado: ok (post-fix). Antes: `mode` y `animations` nunca se guardaban en
+           `site_content`, así que sólo tenían efecto en el navegador del
+           admin.
 ```
 
 ```

@@ -6,6 +6,7 @@ import Modal from '../../../components/common/Modal/Modal';
 import SEO from '../../../components/common/SEO/SEO';
 import type { FooterInfo } from '../../../admin/store/adminStore';
 import { getSiteContent } from '../../../services/siteContentService';
+import { withTimeout } from '../../../utils/withTimeout';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './Contact.css';
 
@@ -34,21 +35,29 @@ const Contact = () => {
 
   // Cargar datos del footer desde Supabase
   useEffect(() => {
+    let cancelled = false;
+
     const loadFooter = async () => {
       try {
-        const data = await getSiteContent<FooterInfo>('footer');
+        const data = await withTimeout(getSiteContent<FooterInfo>('footer'));
 
-        if (data) {
+        if (!cancelled && data) {
           setFooterInfo(data);
         }
       } catch (err) {
         console.error('Error loading footer info:', err);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadFooter();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleInputChange = (

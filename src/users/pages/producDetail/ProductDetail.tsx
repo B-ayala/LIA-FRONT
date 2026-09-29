@@ -15,6 +15,7 @@ import { useCartStore } from '../../../store/cartStore';
 import type { UnitVariants } from '../../../store/cartStore';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
+import { withTimeout } from '../../../utils/withTimeout';
 import {
   areUnitVariantSelectionsValid,
   getAvailableQuantityForSelection,
@@ -81,7 +82,11 @@ const ProductDetail = () => {
   useEffect(() => {
     let cancelled = false;
 
-    fetchProductById(id!)
+    // withTimeout evita que un fetch colgado (red inestable, request sin
+    // respuesta) deje la ficha de producto en skeleton para siempre: pasado
+    // el timeout se resuelve con null y cae en el mismo camino de "no
+    // disponible" que ya se usa para errores reales.
+    withTimeout(fetchProductById(id!))
       .then((row) => {
         if (cancelled) return;
         // Producto inactivo, retirado o inexistente (null): estado "no disponible".

@@ -4,7 +4,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
@@ -122,34 +121,11 @@ export const useTypography = (): TypographyContextValue => {
 };
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
+// La tipografía es configuración global del sitio: la define el admin desde el
+// panel y se publica en `site_content` (key='typography'). No hay preferencia
+// local del visitante — todo dispositivo siempre refleja lo último publicado.
 
-const STORAGE_KEY = 'lia.typography.v1';
 const REMOTE_KEY = 'typography';
-
-const readLocal = (): TypographyConfig | null => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<TypographyConfig>;
-    if (typeof parsed.fontId !== 'string' || !FONT_MAP.has(parsed.fontId)) return null;
-    return {
-      fontId: parsed.fontId,
-      fontWeight: typeof parsed.fontWeight === 'number' ? parsed.fontWeight : DEFAULT_TYPOGRAPHY.fontWeight,
-      letterSpacing: typeof parsed.letterSpacing === 'number' ? parsed.letterSpacing : DEFAULT_TYPOGRAPHY.letterSpacing,
-      lineHeight: typeof parsed.lineHeight === 'number' ? parsed.lineHeight : DEFAULT_TYPOGRAPHY.lineHeight,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const writeLocal = (config: TypographyConfig): void => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch {
-    // Storage lleno o deshabilitado — el cambio vive en memoria.
-  }
-};
 
 // ─── DOM: Google Fonts ────────────────────────────────────────────────────────
 
@@ -181,13 +157,7 @@ const injectGoogleFont = (fontId: string): void => {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const TypographyProvider = ({ children }: { children: ReactNode }) => {
-  const { initial, hadLocal } = useMemo(() => {
-    const stored = readLocal();
-    return { initial: stored ?? { ...DEFAULT_TYPOGRAPHY }, hadLocal: stored !== null };
-  }, []);
-
-  const hasExplicit = useRef(hadLocal);
-  const [config, setConfigState] = useState<TypographyConfig>(initial);
+  const [config, setConfigState] = useState<TypographyConfig>({ ...DEFAULT_TYPOGRAPHY });
   const [publishState, setPublishState] = useState<PublishState>('idle');
   const [publishError, setPublishError] = useState<string | null>(null);
 
@@ -196,22 +166,15 @@ export const TypographyProvider = ({ children }: { children: ReactNode }) => {
     injectGoogleFont(config.fontId);
   }, [config.fontId]);
 
-  // Persist local whenever the config changes (only after the user made an explicit choice).
-  useEffect(() => {
-    if (!hasExplicit.current) return;
-    writeLocal(config);
-  }, [config]);
-
-  // Fetch global default from Supabase when the user has no local preference,
-  // y se re-suscribe a postgres_changes para reflejarlo en tiempo real.
+  // Fetch global config from Supabase al montar, y se suscribe a
+  // postgres_changes para reflejarlo en tiempo real en cualquier dispositivo.
   useEffect(() => {
     let cancelled = false;
 
     const applyRemote = () => {
-      if (hasExplicit.current) return;
       getSiteContent<TypographyConfig>(REMOTE_KEY)
         .then((remote) => {
-          if (cancelled || hasExplicit.current) return;
+          if (cancelled) return;
           if (remote && typeof remote.fontId === 'string' && FONT_MAP.has(remote.fontId)) {
             setConfigState({ ...DEFAULT_TYPOGRAPHY, ...remote });
           }
@@ -244,12 +207,10 @@ export const TypographyProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const setConfig = useCallback((patch: Partial<TypographyConfig>) => {
-    hasExplicit.current = true;
     setConfigState((prev) => ({ ...prev, ...patch }));
   }, []);
 
   const resetConfig = useCallback(() => {
-    hasExplicit.current = true;
     setConfigState({ ...DEFAULT_TYPOGRAPHY });
   }, []);
 

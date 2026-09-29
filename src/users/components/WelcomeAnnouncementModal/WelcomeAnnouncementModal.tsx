@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   DEFAULT_WELCOME_MODAL,
   getSiteContent,
@@ -13,6 +14,7 @@ import './WelcomeAnnouncementModal.css';
 const SESSION_FLAG = WELCOME_ANNOUNCEMENT_SESSION_KEY;
 
 const WelcomeAnnouncementModal = () => {
+  const navigate = useNavigate();
   const [info, setInfo] = useState<{ heading: string; lines: string[] } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -81,7 +83,13 @@ const WelcomeAnnouncementModal = () => {
           ))}
         </ul>
 
-        <button className="wam-cta" onClick={() => setIsOpen(false)}>
+        <button
+          className="wam-cta"
+          onClick={() => {
+            setIsOpen(false);
+            navigate('/products');
+          }}
+        >
           Ver catálogo
         </button>
       </div>

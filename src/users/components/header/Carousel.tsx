@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { fetchCarouselImages, fetchCarouselLayout, type CarouselLayout } from '../../../services/productService';
 import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+import { withTimeout } from '../../../utils/withTimeout';
 import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
 
@@ -104,15 +105,18 @@ const Carousel = ({ onReady }: CarouselProps) => {
     setImagesLoaded(false);
 
     Promise.all([
-      fetchCarouselImages(deviceType),
+      // withTimeout evita que un fetch colgado (red inestable, request sin
+      // respuesta) deje el banner de home en skeleton para siempre.
+      withTimeout(fetchCarouselImages(deviceType)),
       // Si la tabla de configuración todavía no existe (script SQL no aplicado
       // en este entorno) o falla la lectura, no debe romper el carrusel: se
       // sigue viendo el collage de siempre.
       fetchCarouselLayout(deviceType).catch(() => 'collage' as CarouselLayout)
     ])
-      .then(([images, layoutSetting]) => {
+      .then(([timedOutImages, layoutSetting]) => {
         if (cancelled) return;
 
+        const images = timedOutImages ?? [];
         setLayout(layoutSetting);
         const imgsPerSlide = layoutSetting === 'single' ? 1 : (isMobile ? 2 : 3);
         const grouped: Slide[] = [];

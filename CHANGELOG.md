@@ -36,6 +36,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   backend, `PUT /api/users/:id` con `purchase_allowed_exclusive`).
 
 ### Changed
+- **Favicon de la pestaña usa el isotipo real de la marca** (`public/favicons/favicon-lia.png`,
+  `favicon-lia-away.png`, `apple-touch-icon.png`, generados a partir de
+  `src/assets/img/Adaptaciones3.jpg.jpeg`): se reemplaza el corazón genérico
+  por un recorte cuadrado del tacón ("A" del isotipo LIA) sobre fondo
+  transparente, legible a 16px. La variante de "pestaña inactiva"
+  (`useTabAwayMarketing.ts`) conserva el mismo isotipo con el badge de
+  atención en la esquina. `index.html` pasa de un único `<link rel="icon">`
+  SVG a PNG.
 - **Card de producto muestra la 2da imagen al interactuar (hover en desktop,
   tap en mobile)** (`users/components/ProductCard/ProductCard.tsx`,
   `ProductCard.css`): la rotación usa únicamente las dos primeras imágenes
@@ -60,6 +68,24 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   en vez de seguir mandando emails.
 
 ### Fixed
+- **Color y tipografía publicados desde Admin no llegaban a otros dispositivos**
+  (`SeasonThemeProvider.tsx`, `TypographyProvider.tsx`): ambos providers
+  guardaban en `localStorage` un flag de "preferencia explícita" cada vez que
+  se llamaba a `setSeason`/`setConfig`/etc., y mientras ese flag estuviera
+  activo el dispositivo dejaba de aplicar lo publicado por el admin — para
+  siempre, sin importar cuántas veces se volviera a guardar. El panel Admin
+  (`ThemesManager.tsx`, `TypographySection.tsx`) usaba esos mismos setters
+  para armar la vista previa, así que cualquier equipo donde alguna vez se
+  hubiera abierto el panel de temas quedaba bloqueado a una copia local
+  vieja — no se resolvía borrando el caché del navegador porque esa acción no
+  limpia `localStorage`. No existía ningún control equivalente del lado del
+  visitante, así que esa persistencia local no tenía uso funcional. Se quitó
+  por completo: ambos providers ahora siempre reflejan lo último publicado en
+  `site_content` (fetch al montar + suscripción realtime), sin ninguna copia
+  local que pueda pisarlo. De paso, el modo Automático/Manual y las
+  animaciones por estación —que tampoco se publicaban nunca al backend— ahora
+  se incluyen en el payload de `season_theme`, así que también son reales
+  para todos los visitantes.
 - **Tema personalizado ("custom") publicado para todos los usuarios no llegaba
   a los visitantes** (`ThemesManager.tsx`): al guardar, la paleta se buscaba en
   `customThemes` (lista de temas con nombre, puramente local al navegador del

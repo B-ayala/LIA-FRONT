@@ -7,6 +7,7 @@ import { fetchProducts, mapDbRowToProduct, fetchCategoriesTree, type Category } 
 import { cleanText } from '../../../utils/formatters';
 import type { Product } from '../../../types/product';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
+import { withTimeout } from '../../../utils/withTimeout';
 
 function getAllDescendantNames(categories: Category[], rootName: string): Set<string> {
   const root = categories.find(c => c.name.toLowerCase() === rootName.toLowerCase());
@@ -38,13 +39,15 @@ const Products = () => {
   const activeSubSub = searchParams.get('subsubcategory') || '';
 
   useEffect(() => {
+    // withTimeout evita que un fetch colgado (red inestable, request sin
+    // respuesta) deje el catálogo en skeleton para siempre.
     Promise.all([
-      fetchProducts().then((rows) => rows.map(mapDbRowToProduct)),
-      fetchCategoriesTree(),
+      withTimeout(fetchProducts().then((rows) => rows.map(mapDbRowToProduct))),
+      withTimeout(fetchCategoriesTree()),
     ])
       .then(([prods, cats]) => {
-        setProducts(prods);
-        setCategories(cats);
+        setProducts(prods ?? []);
+        setCategories(cats ?? []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));

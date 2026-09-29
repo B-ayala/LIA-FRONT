@@ -21,22 +21,25 @@ const REMOTE_THEME_KEY = 'season_theme';
 
 interface RemoteThemePreference {
   season?: string;
+  mode?: ThemeMode;
+  animations?: Partial<AnimationsEnabled>;
   customPalette?: Partial<SeasonPalette>;
 }
 
 // ─── Persistencia ──────────────────────────────────────────────────────────────
-// Local: rápido, no requiere red, sobrevive recargas.
-// Remoto (opcional): tabla `site_content` con key='season_theme' — usado cuando
-// el admin elige "Aplicar a todos los usuarios". Si la lectura falla (RLS,
-// tabla inexistente), el provider degrada a la preferencia local sin romper.
+// El tema (color + tipografía) es una configuración global del sitio: la define
+// el admin desde el panel y se publica en la tabla `site_content` (key=
+// 'season_theme'). No existe — ni debe existir — una preferencia local que el
+// visitante pueda fijar por su cuenta: todo dispositivo siempre refleja lo
+// último publicado, vía fetch al montar + suscripción realtime.
 //
 // `customThemes` (la lista de temas personalizados con nombre propio que arma
-// el admin) es puramente local — sólo le importa al panel admin, no se publica
-// a los visitantes. Lo que sí se publica es `customPalette`: una foto del
-// tema personalizado que esté activo en ese momento, sin su nombre ni id.
+// el admin para elegir rápido) es la única pieza que sigue siendo local: es
+// una libreta de borradores de ese navegador, no algo que vean los visitantes.
+// Lo que sí se publica es `customPalette`: una foto del tema personalizado que
+// esté activo en ese momento, sin su nombre ni id.
 
-const STORAGE_KEY = 'lia.seasonTheme.v2';
-const STORAGE_KEY_LEGACY = 'lia.seasonTheme.v1';
+const CUSTOM_THEMES_STORAGE_KEY = 'lia.seasonTheme.customThemes.v1';
 
 type AnimationsEnabled = Record<SeasonId, boolean>;
 
@@ -53,15 +56,6 @@ const DEFAULT_ANIMATIONS: AnimationsEnabled = {
   winter: true,
   custom: false,
 };
-
-interface PersistedPreference {
-  season: SeasonId;
-  mode: ThemeMode;
-  animations: AnimationsEnabled;
-  customPalette: SeasonPalette;
-  customThemes: CustomTheme[];
-  activeCustomThemeId: string | null;
-}
 
 const normalizePalette = (raw: unknown): SeasonPalette => {
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_CUSTOM_PALETTE };
@@ -91,32 +85,22 @@ const normalizeCustomThemes = (raw: unknown): CustomTheme[] => {
   return out;
 };
 
-const readLocalPreference = (): PersistedPreference | null => {
+const readLocalCustomThemes = (): CustomTheme[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(STORAGE_KEY_LEGACY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!isSeasonId(parsed.season)) return null;
-    const mode: ThemeMode = parsed.mode === 'auto' ? 'auto' : 'manual';
-    return {
-      season: parsed.season,
-      mode,
-      animations: normalizeAnimations(parsed.animations),
-      customPalette: normalizePalette(parsed.customPalette),
-      customThemes: normalizeCustomThemes(parsed.customThemes),
-      activeCustomThemeId: typeof parsed.activeCustomThemeId === 'string' ? parsed.activeCustomThemeId : null,
-    };
+    const raw = localStorage.getItem(CUSTOM_THEMES_STORAGE_KEY);
+    if (!raw) return [];
+    return normalizeCustomThemes(JSON.parse(raw));
   } catch {
-    return null;
+    return [];
   }
 };
 
-const writeLocalPreference = (pref: PersistedPreference) => {
+const writeLocalCustomThemes = (themes: CustomTheme[]): void => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(pref));
+    localStorage.setItem(CUSTOM_THEMES_STORAGE_KEY, JSON.stringify(themes));
   } catch {
-    // Storage lleno o deshabilitado — el cambio sigue vivo en memoria,
-    // simplemente no persiste entre sesiones.
+    // Storage lleno o deshabilitado — la lista de borradores sigue viva en
+    // memoria, simplemente no persiste entre sesiones.
   }
 };
 
@@ -140,7 +124,7 @@ const applySeasonToDocument = (season: SeasonId, customPalette: SeasonPalette) =
 
 interface SeasonThemeContextValue {
   season: SeasonId;          // estación realmente aplicada al DOM
-  storedSeason: SeasonId;    // estación elegida por el usuario (manual)
+  storedSeason: SeasonId;    // estación publicada globalmente (o en edición por el admin)
   mode: ThemeMode;
   detectedSeason: SeasonId;  // según la fecha actual
   isPreviewing: boolean;
@@ -174,36 +158,16 @@ interface SeasonThemeProviderProps {
 }
 
 export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
-  // Lectura sincrónica para evitar el flash de tema neutral en el primer paint.
-  const { initial, hadLocalPreference } = useMemo(() => {
-    const stored = readLocalPreference();
-    return {
-      initial: stored ?? {
-        season: DEFAULT_SEASON,
-        mode: 'manual' as ThemeMode,
-        animations: { ...DEFAULT_ANIMATIONS },
-        customPalette: { ...DEFAULT_CUSTOM_PALETTE },
-        customThemes: [] as CustomTheme[],
-        activeCustomThemeId: null as string | null,
-      },
-      hadLocalPreference: stored !== null,
-    };
-  }, []);
-
-  // Distingue "el usuario eligió un tema" de "todavía no tocó nada". Sólo
-  // persistimos y bloqueamos el tema global cuando la elección es explícita.
-  const hasExplicitPreference = useRef(hadLocalPreference);
-
-  const [storedSeason, setStoredSeason] = useState<SeasonId>(initial.season);
-  const [mode, setModeState] = useState<ThemeMode>(initial.mode);
-  const [animations, setAnimations] = useState<AnimationsEnabled>(initial.animations);
-  const [customPalette, setCustomPalette] = useState<SeasonPalette>(initial.customPalette);
-  const [customThemes, setCustomThemes] = useState<CustomTheme[]>(initial.customThemes);
-  const [activeCustomThemeId, setActiveCustomThemeId] = useState<string | null>(initial.activeCustomThemeId);
+  const [storedSeason, setStoredSeason] = useState<SeasonId>(DEFAULT_SEASON);
+  const [mode, setModeState] = useState<ThemeMode>('manual');
+  const [animations, setAnimations] = useState<AnimationsEnabled>({ ...DEFAULT_ANIMATIONS });
+  const [customPalette, setCustomPalette] = useState<SeasonPalette>({ ...DEFAULT_CUSTOM_PALETTE });
+  const [customThemes, setCustomThemes] = useState<CustomTheme[]>(() => readLocalCustomThemes());
+  const [activeCustomThemeId, setActiveCustomThemeId] = useState<string | null>(null);
   const [previewSeason, setPreviewSeason] = useState<SeasonId | null>(null);
   // Override temporal para previsualizar una paleta personalizada (hover sobre
   // una tarjeta guardada, o mientras se edita el formulario) sin tocar la
-  // paleta realmente aplicada.
+  // paleta realmente publicada.
   const [previewCustomOverride, setPreviewCustomOverride] = useState<SeasonPalette | null>(null);
   const [detectedSeason, setDetectedSeason] = useState<SeasonId>(() => detectSeasonFromDate());
 
@@ -231,36 +195,34 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
     lastApplied.current = { season: effectiveSeason, palette: effectivePalette };
   }, [effectiveSeason, effectivePalette]);
 
-  // Persistencia local — sólo la preferencia confirmada por el usuario. No
-  // persistimos el tema global aplicado automáticamente: así, si el admin lo
-  // cambia, los visitantes pasivos lo reflejan en la próxima visita.
+  // Persistencia de la libreta de temas personalizados del admin — puramente
+  // local, no afecta lo que ven los visitantes.
   useEffect(() => {
-    if (!hasExplicitPreference.current) return;
-    writeLocalPreference({ season: storedSeason, mode, animations, customPalette, customThemes, activeCustomThemeId });
-  }, [storedSeason, mode, animations, customPalette, customThemes, activeCustomThemeId]);
+    writeLocalCustomThemes(customThemes);
+  }, [customThemes]);
 
-  // Tema global publicado por el admin (site_content.season_theme). Aplica sólo
-  // a visitantes sin preferencia propia: su elección local siempre tiene prioridad.
-  // Se suscribe a postgres_changes para reflejar el cambio en tiempo real, sin
-  // esperar a que el visitante recargue la pestaña.
+  // Tema global publicado por el admin (site_content.season_theme). Se aplica
+  // siempre — no hay preferencia local que lo bloquee — y se suscribe a
+  // postgres_changes para reflejar el cambio en tiempo real en cualquier
+  // dispositivo, sin esperar a que se recargue la pestaña.
   useEffect(() => {
     let cancelled = false;
 
     const applyRemote = () => {
-      if (hasExplicitPreference.current) return;
       getSiteContent<RemoteThemePreference>(REMOTE_THEME_KEY)
         .then((remote) => {
-          if (cancelled || hasExplicitPreference.current) return;
+          if (cancelled) return;
           if (remote && isSeasonId(remote.season)) {
             setStoredSeason(remote.season);
-            setModeState('manual');
+            setModeState(remote.mode === 'auto' ? 'auto' : 'manual');
+            setAnimations(normalizeAnimations(remote.animations));
             if (remote.customPalette) {
               setCustomPalette(normalizePalette(remote.customPalette));
             }
           }
         })
         .catch(() => {
-          // Degrada a la preferencia local/default sin romper la UI.
+          // Degrada al default sin romper la UI.
         });
     };
 
@@ -286,24 +248,26 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
     };
   }, []);
 
+  // Los setters de abajo alimentan el estado en memoria que usa el panel admin
+  // para armar/previsualizar el tema antes de publicarlo — no persisten nada
+  // por su cuenta. La única persistencia real ocurre al llamar `saveThemeGlobal`
+  // en el panel, que escribe en `site_content`.
+
   const setSeason = useCallback((season: SeasonId) => {
     if (!SEASONS[season]) return;
-    hasExplicitPreference.current = true;
     setStoredSeason(season);
     setPreviewSeason(null);
-    // Elegir una estación implica salir de auto: el usuario tomó control.
+    // Elegir una estación implica salir de auto: el admin tomó control manual.
     setModeState('manual');
   }, []);
 
   const setMode = useCallback((next: ThemeMode) => {
-    hasExplicitPreference.current = true;
     setModeState(next);
     setPreviewSeason(null);
   }, []);
 
   const setAnimationEnabled = useCallback((season: SeasonId, enabled: boolean) => {
     if (!SEASONS[season]) return;
-    hasExplicitPreference.current = true;
     setAnimations((prev) => {
       if (prev[season] === enabled) return prev;
       return { ...prev, [season]: enabled };
@@ -319,7 +283,6 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   // tema es el que está aplicado ahora mismo, refresca también la paleta en
   // vivo para que los cambios se vean sin tener que reaplicarlo a mano.
   const saveCustomTheme = useCallback((theme: { id?: string; name: string; palette: SeasonPalette }): string => {
-    hasExplicitPreference.current = true;
     const id = theme.id ?? createCustomThemeId();
     const name = theme.name.trim() || 'Sin nombre';
     setCustomThemes((prev) => {
@@ -342,7 +305,6 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   // Borra completamente un tema guardado — si era el que estaba aplicado, cae
   // al tema Clásico para no dejar el sitio con una paleta huérfana.
   const deleteCustomTheme = useCallback((id: string) => {
-    hasExplicitPreference.current = true;
     setCustomThemes((prev) => prev.filter((t) => t.id !== id));
     setActiveCustomThemeId((prevActive) => {
       if (prevActive !== id) return prevActive;
@@ -357,7 +319,6 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   const applyCustomTheme = useCallback((id: string) => {
     const theme = customThemes.find((t) => t.id === id);
     if (!theme) return;
-    hasExplicitPreference.current = true;
     setActiveCustomThemeId(id);
     setCustomPalette(theme.palette);
     setStoredSeason('custom');
@@ -381,7 +342,6 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
   }, []);
 
   const resetToDefault = useCallback(() => {
-    hasExplicitPreference.current = true;
     setStoredSeason(DEFAULT_SEASON);
     setModeState('manual');
     setPreviewSeason(null);

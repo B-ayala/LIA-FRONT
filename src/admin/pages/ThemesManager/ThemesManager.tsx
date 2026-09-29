@@ -11,6 +11,7 @@ import {
   type CustomTheme,
   type SeasonId,
   type SeasonPalette,
+  type ThemeMode,
 } from '../../../utils/seasonThemes';
 import TypographySection from './TypographySection';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
@@ -22,6 +23,8 @@ const REMOTE_KEY = 'season_theme';
 
 interface RemoteThemePref {
   season: SeasonId;
+  mode: ThemeMode;
+  animations: Record<SeasonId, boolean>;
   appliedAt: string;
   customPalette?: SeasonPalette;
 }
@@ -114,6 +117,8 @@ const ThemesManager = () => {
     // publica desde otro navegador/sesión sin esos temas guardados.
     const payload: RemoteThemePref = {
       season: storedSeason,
+      mode,
+      animations,
       appliedAt: new Date().toISOString(),
       ...(storedSeason === 'custom' ? { customPalette } : {}),
     };
@@ -542,8 +547,7 @@ const ThemesManager = () => {
           </h2>
           <p>
             Publica el tema <strong>{activeLabel}</strong> y la tipografía seleccionada
-            como predeterminados para todos los visitantes. Cada usuario podrá seguir personalizándolos
-            desde su navegador.
+            para todos los visitantes del sitio, en cualquier dispositivo.
           </p>
           {remoteError && <p className="themes-error" role="alert">{remoteError}</p>}
           {typoPublishError && <p className="themes-error" role="alert">{typoPublishError}</p>}

@@ -4,6 +4,7 @@ import SEO from '../../../components/common/SEO/SEO';
 import { buildCloudinaryUrl } from '../../../utils/cloudinary';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import { getSiteContent } from '../../../services/siteContentService';
+import { withTimeout } from '../../../utils/withTimeout';
 import './About.css';
 
 interface AboutInfo {
@@ -35,27 +36,35 @@ const About = () => {
   useInitialLoadTask('route', isLoading || (!!image && !isImageReady) || (!!heroImage?.imageUrl && !isHeroImageReady));
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadAbout = async () => {
       try {
-        const data = await getSiteContent<AboutInfo>('about');
+        const data = await withTimeout(getSiteContent<AboutInfo>('about'));
 
-        if (data) {
+        if (!cancelled && data) {
           setAboutInfo(data);
         }
 
-        const heroData = await getSiteContent<HeroImageData>('hero_image');
+        const heroData = await withTimeout(getSiteContent<HeroImageData>('hero_image'));
 
-        if (heroData) {
+        if (!cancelled && heroData) {
           setHeroImage(heroData);
         }
       } catch (error) {
         console.error('Error loading about content:', error);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadAbout();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

@@ -4,8 +4,8 @@
  * Para cambiar textos, íconos o comportamiento, editar solo este archivo.
  */
 export const TAB_ATTENTION_CONFIG = {
-  faviconDefault: '/favicons/favicon-lia.svg',
-  faviconAway: '/favicons/favicon-lia-away.svg',
+  faviconDefault: '/favicons/favicon-lia.png',
+  faviconAway: '/favicons/favicon-lia-away.png',
   awayMessages: [
     '¡Volvé! 💕 | LIA',
     '¡Te estamos esperando! 👀 | LIA',
