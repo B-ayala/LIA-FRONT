@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FiSearch, FiChevronRight, FiArrowLeft, FiX, FiShoppingCart, FiChevronDown, FiUser, FiLogOut, FiLock, FiShoppingBag } from 'react-icons/fi';
 import { useBodyScrollLock } from '../../../../hooks/useBodyScrollLock';
 import { useClickOutside } from '../../../../hooks/useClickOutside';
+import { supabase } from '../../../../config/supabaseClient';
+import { getSiteContent, normalizeNavbarStyleInfo } from '../../../../services/siteContentService';
 // @ts-ignore - vite-imagetools query param
 import logoImg from '../../../../assets/img/Adaptaciones3.jpg.jpeg?w=160&format=webp&quality=90';
 import AuthModal from '../../auth/AuthModal';
@@ -37,6 +39,60 @@ function buildChildMap(cats: Category[]): Map<string | null, Category[]> {
 
 const NavBar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+  // Solo en Home el navbar se superpone al carrusel: arranca transparente y
+  // pasa a sólido apenas hay scroll. En el resto de las páginas siempre es
+  // sólido (no hay hero detrás para justificar la transparencia).
+  const [isAtTop, setIsAtTop] = useState(() => isHome && window.scrollY < 10);
+
+  useEffect(() => {
+    if (!isHome) {
+      setIsAtTop(false);
+      return;
+    }
+    const handleScroll = () => setIsAtTop(window.scrollY < 10);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isHome]);
+
+  // Color de texto/íconos configurable desde el admin (Config. del sitio),
+  // aplicado sólo mientras el navbar está transparente sobre el carrusel:
+  // el estado sólido siempre usa el color por defecto, así nunca queda
+  // texto invisible sobre el fondo blanco al hacer scroll.
+  const [overlayTextColor, setOverlayTextColor] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNavbarStyle = async () => {
+      try {
+        const value = await getSiteContent<unknown>('navbarStyle');
+        const style = normalizeNavbarStyleInfo(value);
+        if (isMounted) setOverlayTextColor(style?.overlayTextColor ?? null);
+      } catch (error) {
+        console.error('Error loading navbar style:', error);
+      }
+    };
+
+    loadNavbarStyle();
+
+    const channel = supabase
+      .channel('public:site_content:navbarStyle')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'site_content', filter: 'key=eq.navbarStyle' },
+        () => { void loadNavbarStyle(); }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
@@ -154,13 +210,11 @@ const NavBar = () => {
   };
 
   return (
-    <nav className="navbar">
-      {/* Burbujas animadas */}
-      <div className="bubbles">
-        {[...Array(10)].map((_, i) => <div key={i} className="bubble"></div>)}
-      </div>
-
-      <div className="navbar-container">
+    <nav
+      className={`navbar${isAtTop ? ' navbar--transparent' : ''}`}
+      style={isAtTop && overlayTextColor ? ({ '--navbar-icon-color': overlayTextColor } as React.CSSProperties) : undefined}
+    >
+      <div className={`navbar-container${searchOpen ? ' navbar-container--search-open' : ''}`}>
         {/* Mobile Menu Toggle */}
         <button
           className="mobile-menu-toggle"

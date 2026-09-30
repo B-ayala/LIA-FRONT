@@ -5,139 +5,16 @@
   box-shadow: var(--shadow-sm);
   z-index: 100;
   transition: all var(--transition-base) var(--transition-ease);
+  /* Color de los links/íconos visibles directamente sobre el navbar (no
+     el de los paneles con fondo propio, como el menú mobile o dropdowns).
+     Sólo se sobreescribe vía JS mientras el navbar está transparente. */
+  --navbar-icon-color: var(--text-dark);
 }
 
-/* Contenedor de burbujas */
-.bubbles {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Burbujas individuales */
-.bubble {
-  position: absolute;
-  top: calc(100% + 60px);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(255, 240, 250, 0.7) 40%, rgba(255, 200, 230, 0.4) 100%);
-  border-radius: 50%;
-  opacity: 0.8;
-  animation: rise 15s infinite ease-in;
-  will-change: transform, opacity;
-  border: 2px solid rgba(255, 255, 255, 0.6);
-  box-shadow:
-    0 4px 15px rgba(255, 200, 230, 0.4),
-    inset 0 -10px 20px rgba(255, 230, 245, 0.3),
-    inset 0 10px 20px rgba(255, 255, 255, 0.5);
-}
-
-.bubble:nth-child(1) {
-  width: 40px;
-  height: 40px;
-  left: 10%;
-  animation-duration: 12s;
-  animation-delay: 0s;
-}
-
-.bubble:nth-child(2) {
-  width: 30px;
-  height: 30px;
-  left: 20%;
-  animation-duration: 14s;
-  animation-delay: 2s;
-}
-
-.bubble:nth-child(3) {
-  width: 50px;
-  height: 50px;
-  left: 35%;
-  animation-duration: 16s;
-  animation-delay: 1s;
-}
-
-.bubble:nth-child(4) {
-  width: 35px;
-  height: 35px;
-  left: 50%;
-  animation-duration: 13s;
-  animation-delay: 3s;
-}
-
-.bubble:nth-child(5) {
-  width: 45px;
-  height: 45px;
-  left: 65%;
-  animation-duration: 15s;
-  animation-delay: 0.5s;
-}
-
-.bubble:nth-child(6) {
-  width: 38px;
-  height: 38px;
-  left: 75%;
-  animation-duration: 14s;
-  animation-delay: 2.5s;
-}
-
-.bubble:nth-child(7) {
-  width: 42px;
-  height: 42px;
-  left: 85%;
-  animation-duration: 13s;
-  animation-delay: 1.5s;
-}
-
-.bubble:nth-child(8) {
-  width: 32px;
-  height: 32px;
-  left: 90%;
-  animation-duration: 16s;
-  animation-delay: 3.5s;
-}
-
-.bubble:nth-child(9) {
-  width: 48px;
-  height: 48px;
-  left: 5%;
-  animation-duration: 12s;
-  animation-delay: 4s;
-}
-
-.bubble:nth-child(10) {
-  width: 36px;
-  height: 36px;
-  left: 95%;
-  animation-duration: 15s;
-  animation-delay: 2s;
-}
-
-@keyframes rise {
-  0% {
-    transform: translateY(0) translateX(0) scale(0.8);
-    opacity: 0;
-  }
-
-  5% {
-    opacity: 0.9;
-  }
-
-  50% {
-    transform: translateY(-200px) translateX(50px) scale(1);
-    opacity: 0.9;
-  }
-
-  95% {
-    opacity: 0.9;
-  }
-
-  100% {
-    transform: translateY(-380px) translateX(100px) scale(0.9);
-    opacity: 0;
-  }
+/* Home en el tope: navbar transparente, superpuesto sobre el carrusel. */
+.navbar--transparent {
+  background: transparent;
+  box-shadow: none;
 }
 
 .navbar-container {
@@ -162,6 +39,9 @@
   z-index: 2;
   display: flex;
   align-items: center;
+  /* El logo nunca se achica: sin esto, en ~769-840px queda distorsionado
+     porque cede espacio a los links del medio en vez del texto/íconos. */
+  flex-shrink: 0;
 }
 
 .logo-img {
@@ -169,6 +49,7 @@
   width: auto;
   object-fit: contain;
   border-radius: 8px;
+  flex-shrink: 0;
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.10),
     0 1px 2px rgba(0, 0, 0, 0.06);
@@ -345,6 +226,7 @@
   align-items: center;
   gap: 0.5rem;
   position: relative;
+  min-width: 0;
 }
 
 .search-input {
@@ -354,6 +236,8 @@
   outline: none;
   font-size: 0.9rem;
   width: 200px;
+  /* Ancho flexible: se achica si no hay lugar, en vez de desbordar el navbar. */
+  min-width: 0;
   transition: all var(--transition-base) var(--transition-ease);
   animation: slideIn var(--transition-base) var(--transition-ease);
   background: var(--gray-100);
@@ -387,6 +271,8 @@
   justify-content: center;
   border-radius: var(--radius-full);
   transition: all var(--transition-base) var(--transition-ease);
+  /* Nunca se achica: el buscador cede espacio, no el ícono del carrito. */
+  flex-shrink: 0;
 }
 
 .icon-btn:hover {
@@ -395,7 +281,7 @@
 
 .icon {
   font-size: 1.3rem;
-  color: var(--text-dark);
+  color: var(--navbar-icon-color);
   transition: color var(--transition-base) var(--transition-ease);
 }
 
@@ -418,7 +304,7 @@
 .mobile-menu-toggle span {
   width: 25px;
   height: 2px;
-  background-color: var(--text-dark);
+  background-color: var(--navbar-icon-color);
   border-radius: 2px;
   transition: all var(--transition-base) var(--transition-ease);
 }
@@ -459,7 +345,7 @@
 
 .desktop-nav-link {
   text-decoration: none;
-  color: var(--text-dark);
+  color: var(--navbar-icon-color);
   font-weight: 500;
   font-size: 1rem;
   display: flex;
@@ -592,6 +478,7 @@
   align-items: center;
   gap: 0.5rem;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .login-btn:hover {
@@ -601,10 +488,39 @@
   box-shadow: 0 4px 10px rgba(184, 55, 125, 0.2);
 }
 
+/* Tablet: los gaps de desktop (2rem en tres lugares) son demasiado generosos
+   apenas se pasa a layout de escritorio — el contenido desborda el navbar
+   entre ~769-800px. Se ajustan sólo los gaps en ese rango. */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .navbar-container {
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  .desktop-nav {
+    margin-left: 0.5rem;
+  }
+
+  .desktop-nav-list {
+    gap: 1rem;
+  }
+
+  .desktop-nav-link {
+    white-space: nowrap;
+    font-size: 0.9rem;
+  }
+
+  .login-btn {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+  }
+}
+
 /* Responsive Overrides */
 @media (max-width: 768px) {
   .navbar-container {
     padding: 1rem;
+    gap: 0.75rem;
   }
 
   .search-input {
@@ -613,6 +529,23 @@
 
   .hide-mobile {
     display: none !important;
+  }
+
+  /* Buscador abierto en mobile: el hamburger y el logo ceden su lugar para
+     que el input tenga ancho usable, en vez de achicarse hasta ser
+     inutilizable. El carrito y el ícono de usuario siguen siempre visibles
+     (protegidos con flex-shrink: 0 más arriba). */
+  .navbar-container--search-open .mobile-menu-toggle,
+  .navbar-container--search-open .navbar-logo {
+    display: none;
+  }
+
+  .navbar-container--search-open .search-container {
+    flex: 1 1 auto;
+  }
+
+  .navbar-container--search-open .search-input {
+    width: 100%;
   }
 }
 

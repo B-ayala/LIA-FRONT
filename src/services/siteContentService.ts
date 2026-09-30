@@ -11,6 +11,14 @@ export interface WelcomeModalInfo {
   lines: string[];
 }
 
+export interface NavbarStyleInfo {
+  overlayTextColor: string;
+}
+
+export const DEFAULT_NAVBAR_STYLE: NavbarStyleInfo = {
+  overlayTextColor: '#333333',
+};
+
 export const DEFAULT_WELCOME_MODAL: WelcomeModalInfo = {
   enabled: true,
   heading: '✨️ Calzados e Indumentaria ✨️',
@@ -128,6 +136,21 @@ export function normalizeBannerInfo(value: unknown): BannerInfo | null {
     text: textCandidate.trim(),
     visible,
   };
+}
+
+export function normalizeNavbarStyleInfo(value: unknown): NavbarStyleInfo | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const raw = value as Record<string, unknown>;
+  const color = raw.overlayTextColor;
+
+  if (typeof color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+    return null;
+  }
+
+  return { overlayTextColor: color };
 }
 
 export function normalizeWelcomeModalInfo(value: unknown): WelcomeModalInfo | null {

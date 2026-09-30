@@ -5,8 +5,10 @@ import { useAdminStore } from '../../store/adminStore';
 import {
   getSiteContent,
   normalizeBannerInfo,
+  normalizeNavbarStyleInfo,
   normalizeWelcomeModalInfo,
   saveSiteContent,
+  DEFAULT_NAVBAR_STYLE,
   DEFAULT_WELCOME_MODAL,
 } from '../../../services/siteContentService';
 import type { BannerInfo } from '../../../services/siteContentService';
@@ -42,6 +44,7 @@ const FooterEditor = () => {
     const [copyright, setCopyright] = useState(footerInfo.copyright);
     const [bannerText, setBannerText] = useState('');
     const [bannerVisible, setBannerVisible] = useState(false);
+    const [navbarOverlayTextColor, setNavbarOverlayTextColor] = useState(DEFAULT_NAVBAR_STYLE.overlayTextColor);
     const [welcomeEnabled, setWelcomeEnabled] = useState(DEFAULT_WELCOME_MODAL.enabled);
     const [welcomeHeading, setWelcomeHeading] = useState(DEFAULT_WELCOME_MODAL.heading);
     const [welcomeLines, setWelcomeLines] = useState<string[]>(DEFAULT_WELCOME_MODAL.lines);
@@ -82,6 +85,12 @@ const FooterEditor = () => {
                     setWelcomeEnabled(welcome.enabled);
                     setWelcomeHeading(welcome.heading);
                     setWelcomeLines(welcome.lines.length > 0 ? welcome.lines : ['']);
+                }
+
+                const navbarStyleValue = await getSiteContent<unknown>('navbarStyle');
+                const navbarStyle = normalizeNavbarStyleInfo(navbarStyleValue);
+                if (navbarStyle) {
+                    setNavbarOverlayTextColor(navbarStyle.overlayTextColor);
                 }
             } catch (err) {
                 console.error('Error loading site config:', err);
@@ -143,6 +152,8 @@ const FooterEditor = () => {
                 heading: welcomeHeading.trim(),
                 lines: welcomeLines.map((line) => line.trim()).filter((line) => line.length > 0),
             });
+
+            await saveSiteContent('navbarStyle', { overlayTextColor: navbarOverlayTextColor });
 
             updateFooterInfo(newInfo);
             setSaved(true);
@@ -251,6 +262,39 @@ const FooterEditor = () => {
                             control={<Checkbox checked={bannerVisible} onChange={(e) => setBannerVisible(e.target.checked)} />}
                             label="Mostrar banner"
                         />
+                    </div>
+
+                    {/* Navbar */}
+                    <h3 className="footer-editor-section-title">Navbar</h3>
+                    <p className="footer-editor-section-hint">
+                        Color del texto y los íconos del navbar mientras está superpuesto sobre el
+                        carrusel de Inicio (arriba del todo, antes de hacer scroll). Al scrollear
+                        siempre vuelve al color por defecto, para que nunca quede ilegible sobre
+                        fondo blanco.
+                    </p>
+                    <div className="form-group">
+                        <label className="footer-editor-color-field">
+                            <span>Color de texto sobre el carrusel</span>
+                            <div className="footer-editor-color-input">
+                                <input
+                                    type="color"
+                                    value={navbarOverlayTextColor}
+                                    onChange={(e) => setNavbarOverlayTextColor(e.target.value)}
+                                    aria-label="Color de texto del navbar sobre el carrusel"
+                                />
+                                <input
+                                    type="text"
+                                    value={navbarOverlayTextColor}
+                                    onChange={(e) => {
+                                        const raw = e.target.value.trim();
+                                        if (/^#[0-9A-Fa-f]{0,6}$/.test(raw)) setNavbarOverlayTextColor(raw);
+                                    }}
+                                    maxLength={7}
+                                    spellCheck={false}
+                                    aria-label="Color de texto del navbar (código hex)"
+                                />
+                            </div>
+                        </label>
                     </div>
 
                     {/* Modal de bienvenida */}

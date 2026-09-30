@@ -31,18 +31,16 @@ const slideVariants = {
   })
 };
 
-// Alto real del carrusel según el layout y los breakpoints definidos en
-// Carousel.css. "collage" ocupa casi toda la pantalla (viewport menos header);
-// "single" es un banner más bajo y ancho, como una foto de portada.
+// Alto real del carrusel según el layout definido en Carousel.css. El navbar
+// se superpone (no reserva espacio), así que "collage" ocupa toda la
+// pantalla; "single" es un banner más bajo y ancho, como una foto de portada.
 function getCarouselHeight(width: number, layout: CarouselLayout): number {
   if (layout === 'single') {
     return width <= 768
       ? Math.min(window.innerHeight * 0.6, 520)
       : Math.min(window.innerHeight * 0.7, 640);
   }
-  if (width <= 768) return window.innerHeight - 75;
-  if (width <= 1024) return window.innerHeight - 85;
-  return window.innerHeight - 95;
+  return window.innerHeight;
 }
 
 // Cuánto pedirle de más a Cloudinary para que se vea nítido en pantallas
