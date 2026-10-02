@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+import MuiThemeScope from '../../../../components/common/MuiTheme/MuiThemeScope';
 import { useState, useEffect } from 'react';
 import { Collapse, Divider } from '@mui/material';
 import { FiPackage, FiChevronDown, FiChevronUp, FiShoppingBag, FiArrowLeft } from 'react-icons/fi';
@@ -450,7 +452,7 @@ const PurchaseItem = ({ purchase, onOpenProduct }: { purchase: Purchase; onOpenP
   );
 };
 
-const MyPurchasesModal = ({ isOpen, onClose, email }: MyPurchasesModalProps) => {
+const MyPurchasesModalContent = ({ isOpen, onClose, email }: MyPurchasesModalProps) => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -551,5 +553,13 @@ const MyPurchasesModal = ({ isOpen, onClose, email }: MyPurchasesModalProps) => 
     </Modal>
   );
 };
+
+// Monta el theme de MUI en su propio chunk (ver MuiThemeScope): este
+// componente solo se carga con lazy(), asi MUI no entra al bundle critico.
+const MyPurchasesModal = (props: ComponentProps<typeof MyPurchasesModalContent>) => (
+  <MuiThemeScope>
+    <MyPurchasesModalContent {...props} />
+  </MuiThemeScope>
+);
 
 export default MyPurchasesModal;

@@ -6,6 +6,41 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Changed
+- **MUI fuera del bundle crítico (−93 kB gzip en la carga inicial)**: el
+  `ThemeProvider` y el `CssBaseline` de MUI salieron de `App.tsx`, donde
+  envolvían toda la app y obligaban a descargar y parsear el chunk de MUI
+  (246 kB / 75 kB gzip) en el primer render de **toda** visita, incluida la de
+  un anónimo que entra al Home y nunca abre un componente MUI. Ahora el theme lo
+  monta cada consumidor vía el nuevo `components/common/MuiTheme/MuiThemeScope`
+  (público) y una sola vez a nivel de ruta para `/admin`. Para que MUI quedara
+  realmente fuera del camino crítico también pasaron a `lazy()` los componentes
+  que lo arrastraban desde módulos eager: los modales del `NavBar` (`AuthModal`,
+  `UserProfileDropdown`, `ChangePasswordModal`, `MyPurchasesModal`), el
+  `CartDrawer` (importaba `AuthModal`) y el `Modal` de guía de talles en
+  `ProductDetail`. El reset global que aportaba `CssBaseline` quedó replicado en
+  `index.css` (`box-sizing` en pseudo-elementos, `-webkit-text-size-adjust`,
+  `font-weight: 700` en negritas y `line-height: 1.5` en `body` — MUI se
+  inyectaba después del CSS propio y venía ganando con 1.5, así que el sitio
+  está diseñado contra ese valor). Verificado con Playwright contra el build de
+  producción: la ola crítica bajó de ~310 kB a 217 kB gzip y MUI se pide recién
+  en tiempo idle; `body`, `html` y pseudo-elementos computan exactamente los
+  mismos valores que antes del cambio. Sin cambios visuales ni de comportamiento.
+- **Caché en memoria para datos de configuración** (nuevo
+  `utils/createCachedFetcher.ts`): `fetchCategoriesTree` y
+  `fetchProductCardOptions` (`services/productService.ts`) memoizan por 5 minutos
+  y deduplican los pedidos en vuelo. Antes se repetían en cada mount — el árbol
+  de categorías se pedía de nuevo al entrar a `/products` aunque el NavBar ya lo
+  tuviera, y las opciones de card en cada `ProductGrid` que montara. Las
+  mutadoras (`createCategory`, `deleteCategory`, y las cuatro de
+  `product_card_options`) invalidan la caché, así que el admin nunca lee datos
+  viejos después de modificarlos.
+- **WebSocket de Realtime fuera del camino crítico** (nuevo
+  `utils/runWhenIdle.ts`): el canal de `site_content:navbarStyle` del `NavBar`
+  abría su conexión en el mount, compitiendo con el contenido crítico en mobile.
+  Ahora se suscribe cuando el hilo principal queda libre; la actualización en
+  vivo del color del navbar se mantiene igual. Con el mismo helper se
+  precalientan en idle los chunks de `AuthModal` y `CartDrawer`, para que abrir
+  el login siga siendo instantáneo pese a ser lazy.
 - **Performance del primer render del Home**: `Home` pasó de import `lazy()` a
   import estático en `routes/AppRouter.tsx` (era la única ruta pública que
   pagaba una vuelta de red extra para descargar su propio chunk antes de poder

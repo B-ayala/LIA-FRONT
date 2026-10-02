@@ -43,6 +43,11 @@ const About = lazy(() => import('../users/pages/about/About'));
 const EmailConfirmation = lazy(() => import('../users/pages/auth/EmailConfirmation'));
 const ResetPassword = lazy(() => import('../users/pages/auth/ResetPassword'));
 
+// El panel admin usa MUI en casi todas sus pantallas, así que su theme se monta
+// una sola vez acá, en la ruta. Al ser lazy, MUI no entra en el bundle crítico
+// del visitante público (AdminLayout sigue eager, como el resto de los layouts).
+const MuiThemeScope = lazy(() => import('../components/common/MuiTheme/MuiThemeScope'));
+
 const HomeManager = lazy(() => import('../admin/pages/HomeManager/HomeManager'));
 const AdminProducts = lazy(() => import('../admin/pages/Products/Products'));
 const AdminUsers = lazy(() => import('../admin/pages/Users/Users'));
@@ -74,7 +79,7 @@ const AppRouter = () => {
 
           {/* Admin Routes */}
           <Route element={<AdminProtectedRoute />}>
-            <Route path="/admin" element={<InitialRouteReady><AdminLayout /></InitialRouteReady>}>
+            <Route path="/admin" element={<InitialRouteReady><MuiThemeScope><AdminLayout /></MuiThemeScope></InitialRouteReady>}>
               <Route index element={<HomeManager />} />
               <Route path="home" element={<HomeManager />} />
               <Route path="products" element={<AdminProducts />} />

@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+import MuiThemeScope from '../../../components/common/MuiTheme/MuiThemeScope';
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -199,7 +201,7 @@ const fieldError = (msg?: string) =>
     </Box>
   ) : undefined;
 
-const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
+const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const navigate = useNavigate();
   const login = useAuthStore(state => state.login);
   const isMobile = useMediaQuery('(max-width:639px)');
@@ -1258,5 +1260,13 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     </Modal>
   );
 };
+
+// Monta el theme de MUI en su propio chunk (ver MuiThemeScope): este
+// componente solo se carga con lazy(), asi MUI no entra al bundle critico.
+const AuthModal = (props: ComponentProps<typeof AuthModalContent>) => (
+  <MuiThemeScope>
+    <AuthModalContent {...props} />
+  </MuiThemeScope>
+);
 
 export default AuthModal;

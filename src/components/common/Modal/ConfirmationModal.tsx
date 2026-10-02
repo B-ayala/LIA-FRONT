@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+import MuiThemeScope from '../MuiTheme/MuiThemeScope';
 import { Dialog, DialogContent, IconButton, Zoom, Box, Button, useMediaQuery } from '@mui/material';
 import { FiX, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import { keyframes } from '@emotion/react';
@@ -32,7 +34,7 @@ const statusColors: Record<string, { bg: string; hover: string; shadow: string }
   loading: { bg: '#9ca3af', hover: '#9ca3af', shadow: 'none' },
 };
 
-const ConfirmationModal = ({
+const ConfirmationModalContent = ({
   isOpen,
   onClose,
   title,
@@ -189,5 +191,13 @@ const ConfirmationModal = ({
     </Dialog>
   );
 };
+
+// Monta el theme de MUI en su propio chunk (ver MuiThemeScope): este
+// componente solo se carga con lazy(), asi MUI no entra al bundle critico.
+const ConfirmationModal = (props: ComponentProps<typeof ConfirmationModalContent>) => (
+  <MuiThemeScope>
+    <ConfirmationModalContent {...props} />
+  </MuiThemeScope>
+);
 
 export default ConfirmationModal;

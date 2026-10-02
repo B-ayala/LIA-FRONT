@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PackageX } from 'lucide-react';
 import logoImg from '../../../assets/img/logo.jpeg';
 import { fetchProductById, mapDbRowToProduct } from '../../../services/productService';
 import type { Product } from '../../../types/product';
-import Modal from '../../../components/common/Modal/Modal';
 import SEO from '../../../components/common/SEO/SEO';
 import VariantTable from '../../../components/common/VariantTable/VariantTable';
 import PurchaseVariantModal from '../../components/PurchaseVariantModal/PurchaseVariantModal';
@@ -27,6 +26,11 @@ import {
   getSelectionStockLimit,
 } from '../../../utils/productVariants';
 import './ProductDetail.css';
+
+// Lazy: ProductDetail es eager (entrada SEO directa por link compartido) y este
+// Modal arrastra MUI/Emotion. Solo se abre al tocar "Guía de talles", así que su
+// chunk no tiene por qué estar en el camino crítico del primer render.
+const Modal = lazy(() => import('../../../components/common/Modal/Modal'));
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -718,16 +722,18 @@ const ProductDetail = () => {
       )}
 
       {/* Modal de Variantes / Guía de talles */}
-      <Modal
-        isOpen={isSizeGuideOpen}
-        onClose={() => setIsSizeGuideOpen(false)}
-        title="Guía de Talles"
-      >
-        <VariantTable
-          sizeGuide={product.sizeGuide}
-          sizes={product.variants?.find(v => isSizeVariant(v.name))?.options ?? []}
-        />
-      </Modal>
+      <Suspense fallback={null}>
+        <Modal
+          isOpen={isSizeGuideOpen}
+          onClose={() => setIsSizeGuideOpen(false)}
+          title="Guía de Talles"
+        >
+          <VariantTable
+            sizeGuide={product.sizeGuide}
+            sizes={product.variants?.find(v => isSizeVariant(v.name))?.options ?? []}
+          />
+        </Modal>
+      </Suspense>
 
       {/* Modal de selección de variantes por unidad */}
       {isVariantModalOpen && product && (

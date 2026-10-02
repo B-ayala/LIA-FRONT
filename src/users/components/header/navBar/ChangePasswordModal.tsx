@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+import MuiThemeScope from '../../../../components/common/MuiTheme/MuiThemeScope';
 import { useState } from 'react';
 import { TextField, Button, Alert } from '@mui/material';
 import Modal from '../../../../components/common/Modal/Modal';
@@ -12,7 +14,7 @@ interface ChangePasswordModalProps {
   onClose: () => void;
 }
 
-const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProps) => {
+const ChangePasswordModalContent = ({ isOpen, onClose }: ChangePasswordModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<{
     type: 'success' | 'error';
@@ -178,5 +180,13 @@ const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProps) => {
     </Modal>
   );
 };
+
+// Monta el theme de MUI en su propio chunk (ver MuiThemeScope): este
+// componente solo se carga con lazy(), asi MUI no entra al bundle critico.
+const ChangePasswordModal = (props: ComponentProps<typeof ChangePasswordModalContent>) => (
+  <MuiThemeScope>
+    <ChangePasswordModalContent {...props} />
+  </MuiThemeScope>
+);
 
 export default ChangePasswordModal;

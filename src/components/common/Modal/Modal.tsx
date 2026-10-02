@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+import MuiThemeScope from '../MuiTheme/MuiThemeScope';
 import { type ReactNode } from 'react';
 import { Dialog, DialogTitle, DialogContent, IconButton, Grow, useMediaQuery } from '@mui/material';
 import { FiX } from 'react-icons/fi';
@@ -9,7 +11,7 @@ interface ModalProps {
   children: ReactNode;
 }
 
-const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
+const ModalContent = ({ isOpen, onClose, title, children }: ModalProps) => {
   const isMobile = useMediaQuery('(max-width:639px)');
 
   return (
@@ -136,5 +138,13 @@ const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
     </Dialog>
   );
 };
+
+// Monta el theme de MUI en su propio chunk (ver MuiThemeScope): este
+// componente solo se carga con lazy(), asi MUI no entra al bundle critico.
+const Modal = (props: ComponentProps<typeof ModalContent>) => (
+  <MuiThemeScope>
+    <ModalContent {...props} />
+  </MuiThemeScope>
+);
 
 export default Modal;

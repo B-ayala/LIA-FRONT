@@ -6,6 +6,13 @@ import { apiFetch, authHeaders, API_BASE_URL } from '../utils/apiFetch';
 import { getProductStockFromVariants, sanitizeProductVariants } from '../utils/productVariants';
 import { extractCloudinaryPublicId } from '../utils/cloudinary';
 import { cleanText, normalizeCategory } from '../utils/formatters';
+import { createCachedFetcher } from '../utils/createCachedFetcher';
+
+// Datos de configuración que el admin cambia muy de vez en cuando (categorías,
+// opciones de card) pero que el público pide en cada mount. Las mutadoras
+// invalidan su caché, así que el TTL solo cubre cambios hechos por fuera de
+// esta pestaña (otro admin, otro dispositivo).
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mapDbRowToProduct = (row: any): Product => {
@@ -153,7 +160,7 @@ export interface Category {
 }
 
 // Fetch full category tree from the categories table
-export const fetchCategoriesTree = async (): Promise<Category[]> => {
+const fetchCategoriesTreeFromDb = async (): Promise<Category[]> => {
   const { data, error } = await supabase
     .from('categories')
     .select('id, name, slug, parent_id, level')
@@ -170,6 +177,14 @@ export const fetchCategoriesTree = async (): Promise<Category[]> => {
   // navbar): se normaliza en origen para que ambos lados comparen texto limpio.
   return ((data ?? []) as Category[]).map((c) => ({ ...c, name: normalizeCategory(c.name) }));
 };
+
+// El árbol de categorías lo piden el NavBar (en todas las páginas públicas), el
+// catálogo y el modal de producto del admin: sin caché se repetía el mismo
+// request en cada mount. Las mutadoras de abajo invalidan, así que el admin
+// nunca lee un árbol viejo después de crear o borrar una categoría.
+const categoriesTreeCache = createCachedFetcher(fetchCategoriesTreeFromDb, CONFIG_CACHE_TTL_MS);
+
+export const fetchCategoriesTree = (): Promise<Category[]> => categoriesTreeCache.load();
 
 // Create a new category (or subcategory if parentId is provided)
 export const createCategory = async (
@@ -189,6 +204,7 @@ export const createCategory = async (
     .select('id, name, slug, parent_id, level')
     .single();
   if (error) throw new Error(error.message);
+  categoriesTreeCache.invalidate();
   return data as Category;
 };
 
@@ -199,6 +215,7 @@ export const deleteCategory = async (id: string): Promise<void> => {
     .delete()
     .eq('id', id);
   if (error) throw new Error(error.message);
+  categoriesTreeCache.invalidate();
 };
 
 // Fetch level-1 category names (used by NavBar dropdown)
@@ -626,7 +643,7 @@ const mapProductCardOptionRow = (row: Record<string, unknown>): ProductCardOptio
 });
 
 // Fetch activas y ordenadas (vistas públicas de listado)
-export const fetchProductCardOptions = async (): Promise<ProductCardOption[]> => {
+const fetchProductCardOptionsFromDb = async (): Promise<ProductCardOption[]> => {
   const { data, error } = await supabase
     .from('product_card_options')
     .select('*')
@@ -635,6 +652,15 @@ export const fetchProductCardOptions = async (): Promise<ProductCardOption[]> =>
   if (error) throw error;
   return (data || []).map(mapProductCardOptionRow);
 };
+
+// Las pide cada ProductGrid que monta (Home y catálogo): con caché, ir y volver
+// entre Home y /products deja de repetir el request. El admin lee por
+// fetchAllProductCardOptions (sin filtro ni caché), pero las mutadoras
+// invalidan igual para que el lado público no quede con datos viejos.
+const productCardOptionsCache = createCachedFetcher(fetchProductCardOptionsFromDb, CONFIG_CACHE_TTL_MS);
+
+export const fetchProductCardOptions = (): Promise<ProductCardOption[]> =>
+  productCardOptionsCache.load();
 
 // Fetch todas (admin)
 export const fetchAllProductCardOptions = async (): Promise<ProductCardOption[]> => {
@@ -657,6 +683,7 @@ export const insertProductCardOption = async (
     .select()
     .single();
   if (error) throw error;
+  productCardOptionsCache.invalidate();
   return mapProductCardOptionRow(data);
 };
 
@@ -669,6 +696,7 @@ export const updateProductCardOptionDb = async (
     .update(changes)
     .eq('id', id);
   if (error) throw error;
+  productCardOptionsCache.invalidate();
 };
 
 export const deleteProductCardOptionDb = async (id: string): Promise<void> => {
@@ -677,6 +705,7 @@ export const deleteProductCardOptionDb = async (id: string): Promise<void> => {
     .delete()
     .eq('id', id);
   if (error) throw error;
+  productCardOptionsCache.invalidate();
 };
 
 export const reorderProductCardOptions = async (options: { id: string; order: number }[]): Promise<void> => {
@@ -687,5 +716,6 @@ export const reorderProductCardOptions = async (options: { id: string; order: nu
   );
   const failed = results.find((r) => r.error);
   if (failed?.error) throw failed.error;
+  productCardOptionsCache.invalidate();
 };
 

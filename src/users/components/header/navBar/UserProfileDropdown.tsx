@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+import MuiThemeScope from '../../../../components/common/MuiTheme/MuiThemeScope';
 import { useState, useRef, useCallback } from 'react';
 import { FiUser, FiLock, FiLogOut, FiChevronDown, FiShoppingBag } from 'react-icons/fi';
 import { Divider } from '@mui/material';
@@ -11,7 +13,7 @@ interface UserProfileDropdownProps {
   onLogout: () => void;
 }
 
-const UserProfileDropdown = ({ user, onLogout }: UserProfileDropdownProps) => {
+const UserProfileDropdownContent = ({ user, onLogout }: UserProfileDropdownProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isPurchasesModalOpen, setIsPurchasesModalOpen] = useState(false);
@@ -107,5 +109,13 @@ const UserProfileDropdown = ({ user, onLogout }: UserProfileDropdownProps) => {
     </>
   );
 };
+
+// Monta el theme de MUI en su propio chunk (ver MuiThemeScope): este
+// componente solo se carga con lazy(), asi MUI no entra al bundle critico.
+const UserProfileDropdown = (props: ComponentProps<typeof UserProfileDropdownContent>) => (
+  <MuiThemeScope>
+    <UserProfileDropdownContent {...props} />
+  </MuiThemeScope>
+);
 
 export default UserProfileDropdown;

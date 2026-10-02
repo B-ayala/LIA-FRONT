@@ -1,25 +1,42 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FiSearch, FiChevronRight, FiArrowLeft, FiX, FiShoppingCart, FiChevronDown, FiUser, FiLogOut, FiLock, FiShoppingBag } from 'react-icons/fi';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useBodyScrollLock } from '../../../../hooks/useBodyScrollLock';
 import { useClickOutside } from '../../../../hooks/useClickOutside';
 import { supabase } from '../../../../config/supabaseClient';
+import { runWhenIdle } from '../../../../utils/runWhenIdle';
 import { getSiteContent, normalizeNavbarStyleInfo } from '../../../../services/siteContentService';
 // @ts-ignore - vite-imagetools query param
 import logoImg from '../../../../assets/img/Adaptaciones3.jpg.jpeg?w=160&format=webp&quality=90';
-import AuthModal from '../../auth/AuthModal';
-import UserProfileDropdown from './UserProfileDropdown';
-import ChangePasswordModal from './ChangePasswordModal';
 import { useAuthStore } from '../../../../store/authStore';
 import { fetchCategoriesTree, searchProducts, type Category, type ProductSearchResult } from '../../../../services/productService';
 import { getProductPricing } from '../../../../utils/pricing';
 import { buildCloudinaryUrl } from '../../../../utils/cloudinary';
 import { useCartStore } from '../../../../store/cartStore';
-import CartDrawer from '../../cart/CartDrawer';
-import MyPurchasesModal from './MyPurchasesModal';
 import { useInitialLoadTask } from '../../../../components/common/InitialLoad/InitialLoadProvider';
 import LiaLoader from '../../../../components/common/LiaLoader/LiaLoader';
 import './NavBar.css';
+
+// Lazy: estos cuatro (y su dependencia de MUI/Emotion, ~75kB gzip) solo hacen
+// falta tras una interacción del usuario (login, perfil, cambiar contraseña,
+// mis compras). Como NavBar es eager (vive en todas las páginas públicas),
+// importarlos estático arrastraba ese chunk al bundle crítico del primer
+// render para el 100% de las visitas, incluidas las anónimas que nunca los
+// abren. Con lazy(), el chunk se pide recién al interactuar — mismo
+// comportamiento, carga inicial más liviana.
+const AuthModal = lazy(() => import('../../auth/AuthModal'));
+const UserProfileDropdown = lazy(() => import('./UserProfileDropdown'));
+const ChangePasswordModal = lazy(() => import('./ChangePasswordModal'));
+const MyPurchasesModal = lazy(() => import('./MyPurchasesModal'));
+// CartDrawer también: importa AuthModal (para pedir login antes de pagar), así
+// que estático volvía a meter MUI en el bundle crítico por la puerta de atrás.
+const CartDrawer = lazy(() => import('../../cart/CartDrawer'));
+
+// Margen para que el WebSocket de Realtime no compita con el primer render.
+const REALTIME_SUBSCRIBE_DELAY_MS = 2000;
+// Igual, para precalentar los chunks de los modales (MUI incluido).
+const MODAL_PREFETCH_DELAY_MS = 2500;
 
 const staticNavBefore = [{ name: 'Inicio', path: '/' }];
 const staticNavAfter = [
@@ -78,18 +95,29 @@ const NavBar = () => {
 
     loadNavbarStyle();
 
-    const channel = supabase
-      .channel('public:site_content:navbarStyle')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'site_content', filter: 'key=eq.navbarStyle' },
-        () => { void loadNavbarStyle(); }
-      )
-      .subscribe();
+    // El canal de Realtime abre un WebSocket aparte — otro handshake además de
+    // los requests del primer render, que en mobile compite con el contenido
+    // crítico. Solo cubre el caso de que el admin cambie el color mientras
+    // alguien tiene la pestaña abierta, así que se suscribe cuando el hilo
+    // principal queda libre: se mantiene la actualización en vivo, pero fuera
+    // del camino crítico.
+    let channel: RealtimeChannel | null = null;
+    const cancelIdleSubscribe = runWhenIdle(() => {
+      if (!isMounted) return;
+      channel = supabase
+        .channel('public:site_content:navbarStyle')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'site_content', filter: 'key=eq.navbarStyle' },
+          () => { void loadNavbarStyle(); }
+        )
+        .subscribe();
+    }, REALTIME_SUBSCRIBE_DELAY_MS);
 
     return () => {
       isMounted = false;
-      void supabase.removeChannel(channel);
+      cancelIdleSubscribe();
+      if (channel) void supabase.removeChannel(channel);
     };
   }, []);
 
@@ -137,6 +165,16 @@ const NavBar = () => {
       .then(setCategoryTree)
       .catch(console.error);
   }, []);
+
+  // Los modales de arriba son lazy para no cargar MUI en el primer render, pero
+  // se abren con un tap: si el chunk se pidiera recién ahí, en mobile el usuario
+  // tocaría "Iniciar sesión" y no vería nada por unos cientos de ms. Lo
+  // precalentamos cuando el hilo principal ya está libre: fuera del camino
+  // crítico, pero tibio antes del primer tap.
+  useEffect(() => runWhenIdle(() => {
+    void import('../../auth/AuthModal');
+    void import('../../cart/CartDrawer');
+  }, MODAL_PREFETCH_DELAY_MS), []);
 
   const childMap = buildChildMap(categoryTree);
   const level1Cats = childMap.get(null) ?? [];
@@ -598,7 +636,9 @@ const NavBar = () => {
             )}
           </div>
           {currentUser ? (
-            <UserProfileDropdown user={currentUser} onLogout={handleLogout} />
+            <Suspense fallback={null}>
+              <UserProfileDropdown user={currentUser} onLogout={handleLogout} />
+            </Suspense>
           ) : (
             <>
               <button className="login-btn hide-mobile" onClick={() => setIsAuthModalOpen(true)}>
@@ -620,16 +660,18 @@ const NavBar = () => {
         </div>
       </div>
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
-      <ChangePasswordModal isOpen={isMobilePasswordModalOpen} onClose={() => setIsMobilePasswordModalOpen(false)} />
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-      {currentUser && (
-        <MyPurchasesModal
-          isOpen={isMobilePurchasesModalOpen}
-          onClose={() => setIsMobilePurchasesModalOpen(false)}
-          email={currentUser.email}
-        />
-      )}
+      <Suspense fallback={null}>
+        <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+        <ChangePasswordModal isOpen={isMobilePasswordModalOpen} onClose={() => setIsMobilePasswordModalOpen(false)} />
+        {currentUser && (
+          <MyPurchasesModal
+            isOpen={isMobilePurchasesModalOpen}
+            onClose={() => setIsMobilePurchasesModalOpen(false)}
+            email={currentUser.email}
+          />
+        )}
+        <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      </Suspense>
     </nav>
   );
 };

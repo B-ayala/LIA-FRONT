@@ -1,3 +1,4 @@
+import MuiThemeScope from '../../../components/common/MuiTheme/MuiThemeScope';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -77,7 +78,7 @@ const labelSx = {
   mb: 0.5,
 };
 
-const ResetPassword = () => {
+const ResetPasswordContent = () => {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
   // 'waiting' | 'recovery' (via email link) | 'change' (logged-in user) | 'success' | 'invalid' | 'error'
@@ -414,5 +415,13 @@ const ResetPassword = () => {
     </Box>
   );
 };
+
+// Monta el theme de MUI en su propio chunk (ver MuiThemeScope): este
+// componente solo se carga con lazy(), asi MUI no entra al bundle critico.
+const ResetPassword = () => (
+  <MuiThemeScope>
+    <ResetPasswordContent />
+  </MuiThemeScope>
+);
 
 export default ResetPassword;

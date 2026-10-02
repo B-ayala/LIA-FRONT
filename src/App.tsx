@@ -1,9 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { theme } from './utils/theme';
 import { SeasonThemeProvider } from './utils/SeasonThemeProvider';
 import { TypographyProvider } from './utils/TypographyProvider';
 import AppRouter from './routes/AppRouter';
@@ -62,21 +59,22 @@ const AppContent = () => {
   );
 };
 
+// El ThemeProvider de MUI no vive más acá: lo monta cada consumidor de MUI
+// (todos detrás de lazy()) vía MuiThemeScope, y el reset que aportaba
+// CssBaseline quedó replicado en index.css. Así el visitante que entra al Home
+// no descarga ~75 kB gzip de MUI que no va a usar. Ver src/index.css.
 function App() {
   return (
     <HelmetProvider>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <SeasonThemeProvider>
-          <TypographyProvider>
-            <BrowserRouter>
-              <InitialLoadProvider>
-                <AppContent />
-              </InitialLoadProvider>
-            </BrowserRouter>
-          </TypographyProvider>
-        </SeasonThemeProvider>
-      </ThemeProvider>
+      <SeasonThemeProvider>
+        <TypographyProvider>
+          <BrowserRouter>
+            <InitialLoadProvider>
+              <AppContent />
+            </InitialLoadProvider>
+          </BrowserRouter>
+        </TypographyProvider>
+      </SeasonThemeProvider>
     </HelmetProvider>
   );
 }

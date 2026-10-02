@@ -1,9 +1,30 @@
 @import './utils/seasons.css';
 
+/* Estas tres reglas las aportaba el CssBaseline de MUI, que se quitó de App.tsx
+   para que MUI no entre en el bundle crítico. Están replicadas tal cual se
+   medían en el navegador antes del cambio: box-sizing heredado también en los
+   pseudo-elementos, text-size-adjust para que iOS no infle el texto al rotar a
+   horizontal, y font-weight 700 en negritas (el default del browser, `bolder`,
+   puede resolver a 900 dentro de un elemento ya semibold). */
+html {
+  box-sizing: border-box;
+  -webkit-text-size-adjust: 100%;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+strong,
+b {
+  font-weight: 700;
 }
 
 /* Screen-reader only — visually hidden but accessible */
@@ -95,7 +116,11 @@
 
 body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  line-height: 1.6;
+  /* 1.5, no 1.6: el CssBaseline de MUI se inyectaba después de este archivo y
+     venía ganando con el line-height de su `body1`, así que todo el sitio se
+     diseñó contra 1.5. Al quitar CssBaseline hay que fijarlo acá o el texto
+     cambia de densidad en todas las pantallas. */
+  line-height: 1.5;
   color: var(--text-dark);
   background-color: #fff;
   margin: 0;

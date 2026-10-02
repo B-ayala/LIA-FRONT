@@ -970,6 +970,78 @@ Resultado: OK (verificado por CSS: min-width 720px en `.admin-table` +
 | Mobile 375px             | MOB-01,MOB-02,MOB-04,MOB-05,MOB-06,MOB-07,MOB-08 | MOB-03 | MOB-03 | | MOB-03 |
 | Compra restringida (admin) | RESTRICT-01,RESTRICT-04 | RESTRICT-02 | RESTRICT-03 | RESTRICT-03 | |
 
+## Casos — Performance de carga mobile / MUI fuera del bundle crítico (2026-10-02)
+
+Alcance: verificar que sacar MUI del camino crítico, cachear los fetchs de
+configuración y diferir el WebSocket de Realtime **no cambiaron nada visual ni
+funcional**. Pre-condición: `npm run build` + `npm run preview`.
+
+```
+ID: TC-PERF-01
+Caso: MUI no entra en la carga inicial del Home
+Tipo: happy
+Pasos:
+  1. npm run build && npm run preview
+  2. Abrir el Home con DevTools → Network (throttle "Slow 4G")
+  3. Mirar qué .js se piden antes del primer render
+Esperado: la ola inicial NO incluye mui-*.js; aparece después, en idle.
+          dist/index.html no lo lista como modulepreload.
+Resultado: ok (Playwright, build de producción: ola crítica 217 kB a los 22ms;
+           mui-*.js recién a los 85ms)
+
+ID: TC-PERF-02
+Caso: El reset global sigue computando igual sin CssBaseline
+Tipo: edge
+Pasos:
+  1. En el Home, consola: getComputedStyle(document.body) y (document.documentElement)
+  2. Comparar line-height, font-family/size/weight, color, background, margin,
+     box-sizing de html y de un pseudo-elemento ::before, y font-weight de <strong>
+Esperado: body line-height 24px (1.5), Poppins 16px/400, color rgb(51,51,51),
+          fondo blanco, html box-sizing border-box y -webkit-text-size-adjust 100%,
+          ::before border-box, strong 700.
+Resultado: ok (idénticos al baseline medido antes del cambio)
+
+ID: TC-PERF-03
+Caso: Los componentes MUI conservan el theme de marca (no el default azul)
+Tipo: happy
+Pasos:
+  1. Abrir el modal de login desde el navbar
+  2. Entrar a /admin → Ventas (TextField, Pagination) y Productos → "Nuevo Producto"
+Esperado: botones/acentos con el color de marca (no el azul #1976d2 de MUI),
+          inputs con borderRadius 8px y tipografía Poppins (no Roboto 4px).
+Resultado: ok (login, /admin/sales y modal de producto verificados)
+
+ID: TC-PERF-04
+Caso: Abrir el login no se siente lento pese a ser lazy
+Tipo: edge
+Pasos:
+  1. Cargar el Home en mobile con throttle, esperar ~3s sin tocar nada
+  2. Tocar "Iniciar sesión"
+Esperado: el modal abre de inmediato (el chunk se precalentó en idle).
+Resultado: no probado con throttle real — probar en dispositivo
+
+ID: TC-PERF-05
+Caso: La caché de categorías no deja ver datos viejos en el admin
+Tipo: failure
+Pre-condición: admin logueado. ⚠️ Escribe en la base: usar una categoría de prueba.
+Pasos:
+  1. /admin/products → "Nuevo Producto" → "Gestionar categorías"
+  2. Crear una categoría nueva y verificar que aparece en el árbol al instante
+  3. Borrarla y verificar que desaparece al instante
+Esperado: alta y baja se reflejan sin esperar el TTL de 5 min (las mutadoras
+          invalidan la caché).
+Resultado: no probado — no se ejecutó para no crear datos en la base real
+
+ID: TC-PERF-06
+Caso: El color del navbar sigue actualizándose en vivo
+Tipo: edge
+Pasos:
+  1. Abrir el Home en una pestaña y esperar unos segundos (la suscripción es diferida)
+  2. En otra pestaña, /admin → Config. del sitio → cambiar el color de texto del navbar
+Esperado: la primera pestaña toma el color nuevo sin recargar.
+Resultado: no probado — requiere dos sesiones simultáneas
+```
+
 ## Cross-browser / device
 
 | Combinación              | Estado     |

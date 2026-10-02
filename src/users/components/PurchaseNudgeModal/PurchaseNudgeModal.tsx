@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+import MuiThemeScope from '../../../components/common/MuiTheme/MuiThemeScope';
 import { Dialog, DialogContent, IconButton, Zoom, Box, Button, useMediaQuery } from '@mui/material';
 import { FiX } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
@@ -25,7 +27,7 @@ const VARIANT_SX: Record<OptionVariant, object> = {
   danger: { color: '#b91c1c', background: '#fef2f2', '&:hover': { background: '#fee2e2' } },
 };
 
-const PurchaseNudgeModal = ({ isOpen, busy, error, onRespond, onDismiss }: PurchaseNudgeModalProps) => {
+const PurchaseNudgeModalContent = ({ isOpen, busy, error, onRespond, onDismiss }: PurchaseNudgeModalProps) => {
   const isMobile = useMediaQuery('(max-width:479px)');
 
   return (
@@ -119,5 +121,13 @@ const PurchaseNudgeModal = ({ isOpen, busy, error, onRespond, onDismiss }: Purch
     </Dialog>
   );
 };
+
+// Monta el theme de MUI en su propio chunk (ver MuiThemeScope): este
+// componente solo se carga con lazy(), asi MUI no entra al bundle critico.
+const PurchaseNudgeModal = (props: ComponentProps<typeof PurchaseNudgeModalContent>) => (
+  <MuiThemeScope>
+    <PurchaseNudgeModalContent {...props} />
+  </MuiThemeScope>
+);
 
 export default PurchaseNudgeModal;
