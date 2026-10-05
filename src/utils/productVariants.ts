@@ -12,6 +12,20 @@ const DEFAULT_VARIANT_NAMES = ['Color', 'Talle'] as const;
 export const createDefaultVariantDrafts = (): { name: string; optionsText: string }[] =>
   DEFAULT_VARIANT_NAMES.map((name) => ({ name, optionsText: '' }));
 
+export const isPermanentVariant = (variantName: string): boolean =>
+  DEFAULT_VARIANT_NAMES.some((name) => name.toLowerCase() === variantName.trim().toLowerCase());
+
+// Garantiza Color y Talle (en ese orden, al principio) aunque el producto guardado no los traiga.
+export const withPermanentVariantDrafts = <T extends { name: string; optionsText: string }>(
+  drafts: T[],
+): (T | { name: string; optionsText: string })[] => {
+  const permanent = DEFAULT_VARIANT_NAMES.map(
+    (name) =>
+      drafts.find((draft) => draft.name.trim().toLowerCase() === name.toLowerCase()) ?? { name, optionsText: '' },
+  );
+  return [...permanent, ...drafts.filter((draft) => !isPermanentVariant(draft.name))];
+};
+
 export const normalizeVariantOption = (variantName: string, option: string): string => {
   const trimmed = option.trim();
 

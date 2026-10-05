@@ -5,7 +5,18 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Changed
+- **Color y Talle son variantes permanentes en el admin** (`ProductModal.tsx`,
+  `productVariants.ts`): siempre aparecen (también en productos guardados sin ellas),
+  con nombre bloqueado y sin botón "Eliminar variante". Dejarlas vacías equivale a no
+  usarlas (se descartan al guardar, como hasta ahora). Las demás variantes no cambian.
+
 ### Added
+- **Tutorial de Color y Talle en la pestaña Variantes** (`VariantsTutorialModal.tsx`,
+  `useVariantsTutorial.ts`, `adminPreferencesService.ts`): diálogo con guía de Color, Talle,
+  calzado (35–42) e indumentaria (XS–XXL). Se muestra solo la primera vez por admin; el
+  checkbox "No volver a mostrar este recordatorio" se guarda en base y sobrevive al logout.
+  El botón "Ver guía" lo abre siempre.
 - **Click en la foto de la card abre el detalle en desktop** (`ProductCard.tsx`,
   `ProductCard.css`): antes solo "Leer más" navegaba al producto. En dispositivos
   con hover, el click en la imagen lleva al mismo destino (con cursor de mano);

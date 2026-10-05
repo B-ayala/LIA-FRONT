@@ -1022,6 +1022,109 @@ Resultado: OK (revisión de código: `managesStockFromVariants` exige un talle c
 
 ---
 
+## Casos — Tutorial de Variantes (Color y Talle) (2026-10-04)
+
+```
+ID: TC-PROD-24
+Caso: Primer ingreso a Variantes auto-muestra el tutorial
+Tipo: happy
+Pre-condición: Admin que nunca descartó el tutorial (sin fila en admin_preferences).
+Pasos:
+  1. Login como admin nuevo.
+  2. Productos → Nuevo producto → pestaña Variantes.
+Esperado: Se abre solo el diálogo "Cómo configurar Color y Talle" con secciones Color, Talle, guía de calzado (35–42), guía de indumentaria (XS–XXL) y tip.
+Resultado: no probado
+```
+
+```
+ID: TC-PROD-25
+Caso: Marcar "No volver a mostrar" y Entendido: no reaparece
+Tipo: happy
+Pre-condición: Tutorial abierto automáticamente.
+Pasos:
+  1. Marcar "No volver a mostrar este recordatorio".
+  2. Tocar Entendido.
+  3. Cerrar el modal de producto y abrir otro → Variantes.
+Esperado: El botón muestra "Guardando…" y cierra; al volver a Variantes no se abre solo.
+Resultado: no probado
+```
+
+```
+ID: TC-PROD-26
+Caso: La preferencia persiste tras logout/login
+Tipo: happy
+Pre-condición: TC-PROD-24 descartado con checkbox.
+Pasos:
+  1. Cerrar sesión.
+  2. Iniciar sesión con el mismo admin.
+  3. Abrir producto → Variantes.
+Esperado: No se auto-muestra (preferencia guardada en admin_preferences).
+Resultado: no probado
+```
+
+```
+ID: TC-PROD-27
+Caso: Otro admin nuevo sí lo ve
+Tipo: edge
+Pre-condición: Admin A descartó; admin B sin preferencia.
+Pasos:
+  1. Login como admin B.
+  2. Abrir producto → Variantes.
+Esperado: El tutorial se muestra a B (preferencia por admin).
+Resultado: no probado
+```
+
+```
+ID: TC-PROD-28
+Caso: "Ver guía" abre aunque esté descartado
+Tipo: happy
+Pre-condición: Tutorial descartado.
+Pasos:
+  1. Abrir producto → Variantes.
+  2. Tocar "Ver guía".
+Esperado: El diálogo se abre siempre; cerrar con Entendido (sin checkbox) no modifica la preferencia.
+Resultado: no probado
+```
+
+```
+ID: TC-PROD-29
+Caso: Fallo de red al guardar muestra error y no cierra
+Tipo: failure
+Pre-condición: Tutorial abierto.
+Pasos:
+  1. Cortar la red (DevTools offline).
+  2. Marcar el checkbox y tocar Entendido.
+Esperado: Aparece mensaje de error (role=alert), el diálogo sigue abierto, el botón vuelve a habilitarse para reintentar.
+Resultado: no probado
+```
+
+```
+ID: TC-PROD-30
+Caso: Mobile 375px
+Tipo: edge
+Pre-condición: Viewport 375x667.
+Pasos:
+  1. Abrir tutorial.
+  2. Scrollear el contenido.
+  3. Verificar footer.
+Esperado: Diálogo a pantalla completa, sin scroll horizontal, footer en columna, checkbox y botón con alto >= 44px.
+Resultado: no probado
+```
+
+```
+ID: TC-PROD-31
+Caso: Teclado y Esc
+Tipo: a11y
+Pre-condición: Tutorial abierto.
+Pasos:
+  1. Navegar con Tab (checkbox, Entendido, X).
+  2. Presionar Esc.
+Esperado: Foco visible y atrapado en el diálogo; Esc cierra (con el estado del checkbox); el foco vuelve a la página.
+Resultado: no probado
+```
+
+---
+
 ## Matriz de cobertura
 
 > Casos `INI-*` usan numeración corta (01–10); casos del módulo Productos usan el
@@ -1039,6 +1142,7 @@ Resultado: OK (revisión de código: `managesStockFromVariants` exige un talle c
 | Saneo de datos / carrito |      | DATA-01,DATA-02,DATA-05 | DATA-03,DATA-04 |  |      |
 | Mobile 375px             | MOB-01,MOB-02,MOB-04,MOB-05,MOB-06,MOB-07,MOB-08 | MOB-03 | MOB-03 | | MOB-03 |
 | Productos: variantes estándar | P18,P19 | P20,P21,P22,P23 |  |  |  |
+| Productos: tutorial Variantes | P24,P25,P26,P28 | P27,P30 | P29 |  | P31 |
 | Compra restringida (admin) | RESTRICT-01,RESTRICT-04 | RESTRICT-02 | RESTRICT-03 | RESTRICT-03 | |
 
 ## Casos — Performance de carga mobile / MUI fuera del bundle crítico (2026-10-02)

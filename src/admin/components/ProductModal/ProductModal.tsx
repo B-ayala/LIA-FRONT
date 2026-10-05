@@ -10,8 +10,10 @@ import type { Specification, FAQ, SizeGuide, SizeGuideType } from '../../../type
 import { COLOR_MAP, parseColorOption } from '../../../utils/constants';
 import { calculateDiscountPercentage, getProductPricing } from '../../../utils/pricing';
 import { fetchCategoriesTree, createCategory, deleteCategory, type Category } from '../../../services/productService';
-import { getNormalizedVariantOptions, getProductStockFromVariants, isSizeVariant, normalizeVariantOption, sanitizeProductVariants, createDefaultVariantDrafts } from '../../../utils/productVariants';
-import { Folder, FolderOpen, Dot, Plus, X, Images } from 'lucide-react';
+import { getNormalizedVariantOptions, getProductStockFromVariants, isSizeVariant, normalizeVariantOption, sanitizeProductVariants, createDefaultVariantDrafts, isPermanentVariant, withPermanentVariantDrafts } from '../../../utils/productVariants';
+import { Folder, FolderOpen, Dot, Plus, X, Images, CircleHelp } from 'lucide-react';
+import { useVariantsTutorial } from '../VariantsTutorial/useVariantsTutorial';
+import VariantsTutorialModal from '../VariantsTutorial/VariantsTutorialModal';
 import CloudinaryImagePicker from '../CloudinaryImagePicker/CloudinaryImagePicker';
 import './ProductModal.css';
 import './ProductModalStylesExtension.css';
@@ -36,6 +38,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const { addProduct, updateProduct } = useAdminStore();
 
     const [activeTab, setActiveTab] = useState(tabs[0]);
+    const tutorial = useVariantsTutorial(activeTab === 'Variantes', isOpen);
     const [dbCategories, setDbCategories] = useState<Category[]>([]);
 
     // Datos Básicos
@@ -274,9 +277,8 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                         : v.stockByOption,
                     colorsByOption: v.colorsByOption,
                 }));
-                // Solo se precarga si el producto nunca configuró variantes: si el admin
-                // ya eligió cuáles usar (p. ej. borró Color y dejó Talle), se respeta.
-                setVariants(savedVariants.length > 0 ? savedVariants : createDefaultVariantDrafts());
+                // Color y Talle son permanentes: se muestran siempre; vacías = no se usan (se descartan al guardar).
+                setVariants(withPermanentVariantDrafts(savedVariants));
                 setSizeGuide(product.sizeGuide
                     ? {
                         type: product.sizeGuide.type ?? 'indumentaria',
@@ -1008,7 +1010,17 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                     {/* ── VARIANTES ── */}
                     {activeTab === 'Variantes' && (
                         <div className="tab-pane">
-                            <h3>Variantes</h3>
+                            <div className="variants-tutorial-header">
+                                <h3>Variantes</h3>
+                                <button
+                                    type="button"
+                                    className="variants-help-btn"
+                                    aria-label="Ver guía de Color y Talle"
+                                    onClick={tutorial.open}
+                                >
+                                    <CircleHelp size={18} aria-hidden="true" /> Ver guía
+                                </button>
+                            </div>
                             <p style={{ color: '#666', fontSize: '0.88rem', marginBottom: '1rem' }}>
                                 Ej: nombre "Color" con opciones desde la paleta — nombre "Talle" con opciones "S, M, L, XL"
                             </p>
@@ -1026,6 +1038,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                                     type="text"
                                                     placeholder="Ej: Color"
                                                     value={v.name}
+                                                    readOnly={isPermanentVariant(v.name)}
                                                     onChange={e => updateVariant(i, 'name', e.target.value)}
                                                 />
                                             </div>
@@ -1386,13 +1399,15 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                                 </div>
                                             );
                                         })()}
-                                        <button
-                                            className="admin-btn-secondary"
-                                            style={{ marginTop: '0.25rem' }}
-                                            onClick={() => removeVariant(i)}
-                                        >
-                                            Eliminar variante
-                                        </button>
+                                        {!isPermanentVariant(v.name) && (
+                                            <button
+                                                className="admin-btn-secondary"
+                                                style={{ marginTop: '0.25rem' }}
+                                                onClick={() => removeVariant(i)}
+                                            >
+                                                Eliminar variante
+                                            </button>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -2022,6 +2037,13 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             actionButtonText="Eliminar"
             cancelButtonText="Cancelar"
             onActionClick={confirmDeleteCategory}
+        />
+
+        <VariantsTutorialModal
+            isOpen={tutorial.isOpen}
+            saving={tutorial.saving}
+            saveError={tutorial.saveError}
+            onClose={tutorial.close}
         />
 
         <CloudinaryImagePicker
