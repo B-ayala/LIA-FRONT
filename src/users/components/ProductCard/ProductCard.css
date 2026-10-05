@@ -73,20 +73,12 @@
     cursor: pointer;
   }
 
-  .product-card:hover .product-card__image {
-    transform: scale(1.1);
-  }
-
   .product-card:hover .product-card__image--secondary {
     opacity: 1;
   }
 }
 
 @media (hover: none) {
-  .product-card--flipped .product-card__image {
-    transform: scale(1.1);
-  }
-
   .product-card--flipped .product-card__image--secondary {
     opacity: 1;
   }
