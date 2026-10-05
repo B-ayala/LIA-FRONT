@@ -16,6 +16,10 @@ const AppContent = () => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const isAuthRoute = location.pathname.startsWith('/auth');
+  // Un admin nunca ve el chrome público: AdminRedirect lo manda a /admin, pero
+  // entre el login y ese redirect la URL todavía es pública y el Footer parpadeaba.
+  const isAdminSession = useAuthStore((state) => state.isAuthenticated);
+  const showPublicChrome = !isAdmin && !isAdminSession;
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
   const setUserFromStorage = useAuthStore((state) => state.setUserFromStorage);
   const logout = useAuthStore((state) => state.logout);
@@ -52,9 +56,9 @@ const AppContent = () => {
   return (
     <>
       <AppRouter />
-      {!isAdmin && <Footer />}
-      {!isAdmin && !isAuthRoute && <WhatsAppButton />}
-      {!isAdmin && !isAuthRoute && !isInitialLoading && <WelcomeAnnouncementModal />}
+      {showPublicChrome && <Footer />}
+      {showPublicChrome && !isAuthRoute && <WhatsAppButton />}
+      {showPublicChrome && !isAuthRoute && !isInitialLoading && <WelcomeAnnouncementModal />}
     </>
   );
 };

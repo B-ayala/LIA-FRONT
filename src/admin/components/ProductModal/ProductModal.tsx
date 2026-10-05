@@ -7,6 +7,7 @@ import { getAuthToken } from '../../../utils/auth';
 import { extractErrorMessage } from '../../../utils/errorMessage';
 import { createProduct, updateProduct as updateProductApi } from '../../../services/productService';
 import type { Specification, FAQ, SizeGuide, SizeGuideType } from '../../../types/product';
+import { toTitleCase, toSentenceCase } from '../../../utils/textCase';
 import { COLOR_MAP, parseColorOption } from '../../../utils/constants';
 import { calculateDiscountPercentage, getProductPricing } from '../../../utils/pricing';
 import { fetchCategoriesTree, createCategory, deleteCategory, type Category } from '../../../services/productService';
@@ -322,7 +323,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         const validImages = images.filter(url => url.trim() !== '');
         const builtVariants = sanitizeProductVariants(
             variants.map((variant) => ({
-                name: variant.name,
+                name: toTitleCase(variant.name),
                 options: variant.optionsText.split(','),
                 stockByOption: variant.stockByOption,
                 colorsByOption: variant.colorsByOption,
@@ -331,24 +332,24 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         const totalStock = getProductStockFromVariants(builtVariants) ?? 0;
 
         return {
-            name,
-            category: category.trim().replace(/\b\w/g, c => c.toUpperCase()),
+            name: toTitleCase(name.trim()),
+            category: toTitleCase(category.trim()),
             price: parseFloat(price),
             originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
             stock: totalStock,
             imageUrl: validImages[0] || '',
             images: validImages,
             condition,
-            description,
+            description: toSentenceCase(description.trim()),
             discount: discount ? parseFloat(discount) : undefined,
             freeShipping,
             hoverImageEnabled,
             variants: builtVariants,
-            specifications,
-            features: featuresText.split('\n').map(f => f.trim()).filter(Boolean),
-            faqs,
-            warranty,
-            returnPolicy,
+            specifications: specifications.map(spec => ({ label: toTitleCase(spec.label.trim()), value: toSentenceCase(spec.value.trim()) })),
+            features: toSentenceCase(featuresText).split('\n').map(f => f.trim()).filter(Boolean),
+            faqs: faqs.map(faq => ({ question: toSentenceCase(faq.question.trim()), answer: toSentenceCase(faq.answer.trim()) })),
+            warranty: toSentenceCase(warranty.trim()),
+            returnPolicy: toSentenceCase(returnPolicy.trim()),
             sizeGuide: sizeGuide.rows.length > 0 ? sizeGuide : undefined,
             status,
         };
@@ -514,11 +515,11 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         setVariants(prev => prev.map((variant, index) => {
             if (index !== variantIndex) return variant;
 
-            const candidate = normalizeVariantOption(variant.name, rawValue);
+            const candidate = normalizeVariantOption(variant.name, isSizeVariant(variant.name) ? rawValue : toTitleCase(rawValue));
             if (!candidate) return variant;
 
             const currentOptions = getNormalizedOptionsFromText(variant.name, variant.optionsText);
-            if (currentOptions.includes(candidate)) return variant;
+            if (currentOptions.some(option => option.toLowerCase() === candidate.toLowerCase())) return variant;
 
             added = true;
             const syncedState = syncVariantState(
@@ -586,11 +587,11 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     };
 
     const addSizeGuideColumn = (col: string) => {
-        const trimmed = col.trim();
+        const trimmed = col.trim().toUpperCase();
         if (!trimmed) return;
         setSizeGuide(prev => ({
             ...prev,
-            columns: [...(prev.columns ?? []), trimmed].filter((c, i, a) => a.indexOf(c) === i),
+            columns: [...(prev.columns ?? []), trimmed].filter((c, i, a) => a.findIndex(o => o.toUpperCase() === c.toUpperCase()) === i),
         }));
         setNewColInput('');
     };
@@ -726,7 +727,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                         type="text"
                                         placeholder="Ej: Remera Básica"
                                         value={name}
-                                        onChange={e => { setName(e.target.value); if (fieldErrors.name) setFieldErrors(prev => { const n = {...prev}; delete n.name; return n; }); }}
+                                        onChange={e => { setName(toTitleCase(e.target.value)); if (fieldErrors.name) setFieldErrors(prev => { const n = {...prev}; delete n.name; return n; }); }}
                                     />
                                     {fieldErrors.name && <span className="field-error-msg">{fieldErrors.name}</span>}
                                 </div>
@@ -1022,7 +1023,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                                     placeholder="Ej: Color"
                                                     value={v.name}
                                                     readOnly={isPermanentVariant(v.name)}
-                                                    onChange={e => updateVariant(i, 'name', e.target.value)}
+                                                    onChange={e => updateVariant(i, 'name', toTitleCase(e.target.value))}
                                                 />
                                             </div>
                                             {isColorVariant ? (
@@ -1139,7 +1140,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                                                         className={`color-custom-add__name${isDuplicate ? ' color-custom-add__name--error' : ''}`}
                                                                         placeholder="Nombre (ej: Turquesa)"
                                                                         value={customColorName}
-                                                                        onChange={e => setCustomColorName(e.target.value)}
+                                                                        onChange={e => setCustomColorName(toTitleCase(e.target.value))}
                                                                     />
                                                                     <input
                                                                         type="color"
@@ -1484,7 +1485,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                                                     className="size-guide-table__input"
                                                                     placeholder={sizeGuide.type === 'calzado' ? 'Ej: Largo plantilla (cm)' : 'Ej: Pecho (cm)'}
                                                                     value={row.label}
-                                                                    onChange={e => updateSizeGuideRowLabel(rowIdx, e.target.value)}
+                                                                    onChange={e => updateSizeGuideRowLabel(rowIdx, toSentenceCase(e.target.value))}
                                                                 />
                                                             </td>
                                                             {(sizeGuide.columns ?? []).map(s => (
@@ -1593,7 +1594,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                     rows={5}
                                     placeholder="Descripción detallada del producto..."
                                     value={description}
-                                    onChange={e => setDescription(e.target.value)}
+                                    onChange={e => setDescription(toSentenceCase(e.target.value))}
                                 />
                             </div>
                             <div className="form-group">
@@ -1602,7 +1603,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                     rows={4}
                                     placeholder={"Tela de algodón 100%\nLavado a mano\nDisponible en varios colores"}
                                     value={featuresText}
-                                    onChange={e => setFeaturesText(e.target.value)}
+                                    onChange={e => setFeaturesText(toSentenceCase(e.target.value))}
                                 />
                             </div>
                             <div className="admin-form-grid">
@@ -1612,7 +1613,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                         type="text"
                                         placeholder="Ej: 6 meses"
                                         value={warranty}
-                                        onChange={e => setWarranty(e.target.value)}
+                                        onChange={e => setWarranty(toSentenceCase(e.target.value))}
                                     />
                                 </div>
                                 <div className="form-group">
@@ -1621,7 +1622,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                         type="text"
                                         placeholder="Ej: 30 días para devoluciones"
                                         value={returnPolicy}
-                                        onChange={e => setReturnPolicy(e.target.value)}
+                                        onChange={e => setReturnPolicy(toSentenceCase(e.target.value))}
                                     />
                                 </div>
                             </div>
@@ -1644,14 +1645,14 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                         type="text"
                                         placeholder="Característica"
                                         value={spec.label}
-                                        onChange={e => updateSpec(i, 'label', e.target.value)}
+                                        onChange={e => updateSpec(i, 'label', toTitleCase(e.target.value))}
                                         style={{ flex: 1 }}
                                     />
                                     <input
                                         type="text"
                                         placeholder="Valor"
                                         value={spec.value}
-                                        onChange={e => updateSpec(i, 'value', e.target.value)}
+                                        onChange={e => updateSpec(i, 'value', toSentenceCase(e.target.value))}
                                         style={{ flex: 1 }}
                                     />
                                     <button
@@ -1689,7 +1690,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                             type="text"
                                             placeholder="¿Cuál es el tiempo de entrega?"
                                             value={faq.question}
-                                            onChange={e => updateFaq(i, 'question', e.target.value)}
+                                            onChange={e => updateFaq(i, 'question', toSentenceCase(e.target.value))}
                                         />
                                     </div>
                                     <div className="form-group">
@@ -1698,7 +1699,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                             rows={3}
                                             placeholder="La entrega demora entre 3 y 5 días hábiles..."
                                             value={faq.answer}
-                                            onChange={e => updateFaq(i, 'answer', e.target.value)}
+                                            onChange={e => updateFaq(i, 'answer', toSentenceCase(e.target.value))}
                                         />
                                     </div>
                                     <button
@@ -1730,7 +1731,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                 type="text"
                                 placeholder="Ej: Vestidos"
                                 value={newCatName}
-                                onChange={e => setNewCatName(e.target.value)}
+                                onChange={e => setNewCatName(toTitleCase(e.target.value))}
                                 onKeyDown={e => { if (e.key === 'Enter' && newCatName.trim()) handleCreateCategory(); }}
                                 autoFocus
                             />

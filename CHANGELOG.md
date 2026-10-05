@@ -5,6 +5,12 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Added
+- Admin: el modal de producto autocorrige mayúsculas/minúsculas mientras se escribe (títulos en nombre, categoría, variantes y especificaciones; oraciones en descripción, características, garantía, devolución y FAQ) y las vuelve a normalizar al guardar (`utils/textCase.ts`).
+
+### Fixed
+- Login de admin: el Footer (y el botón de WhatsApp) ya no parpadea entre el login y el redirect a `/admin` (`App.tsx`).
+
 ### Changed
 - Admin: chips de opciones/stock por talle en el modal de producto ahora son negros y se mantienen en una sola fila en mobile.
 - **Color y Talle son variantes permanentes en el admin** (`ProductModal.tsx`,
