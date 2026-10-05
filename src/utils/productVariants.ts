@@ -5,6 +5,13 @@ export type SelectedVariants = Record<string, string>;
 export const isSizeVariant = (variantName: string): boolean =>
   variantName.trim().toLowerCase().startsWith('talle');
 
+const DEFAULT_VARIANT_NAMES = ['Color', 'Talle'] as const;
+
+// Color y Talle son estándar en el catálogo: se ofrecen precargadas en el formulario.
+// Si quedan sin valores, sanitizeProductVariants las descarta al guardar.
+export const createDefaultVariantDrafts = (): { name: string; optionsText: string }[] =>
+  DEFAULT_VARIANT_NAMES.map((name) => ({ name, optionsText: '' }));
+
 export const normalizeVariantOption = (variantName: string, option: string): string => {
   const trimmed = option.trim();
 

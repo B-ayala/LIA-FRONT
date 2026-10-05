@@ -952,6 +952,76 @@ Resultado: OK (verificado por CSS: min-width 720px en `.admin-table` +
 
 ---
 
+## Casos — Variantes Color y Talle precargadas (2026-10-04)
+
+```
+ID: TC-PROD-18
+Caso: Alta de producto muestra Color y Talle precargadas
+Tipo: happy
+Pre-condición: sesión admin en /admin/products
+Pasos:
+  1. "Nuevo Producto" → pestaña Variantes.
+Esperado: dos tarjetas, "Color" (con selector de colores) y "Talle" (con opciones),
+          sin valores; el botón "+ Agregar variante" sigue visible.
+Resultado: OK (Playwright 2026-10-04)
+
+ID: TC-PROD-19
+Caso: Se pueden agregar variantes extra además de las precargadas
+Tipo: happy
+Pasos:
+  1. Nuevo Producto → Variantes → "+ Agregar variante".
+Esperado: aparece una tercera tarjeta vacía; Color y Talle se mantienen.
+Resultado: OK (Playwright 2026-10-04)
+
+ID: TC-PROD-20
+Caso: Editar producto sin variantes las precarga; guardar sin completarlas no persiste vacías
+Tipo: edge
+Pre-condición: producto existente con variants = []
+Pasos:
+  1. Editar el producto → Variantes.
+  2. Guardar sin cargar colores ni talles.
+Esperado: paso 1 muestra Color y Talle vacías; el payload del PUT /api/products/:id
+          lleva `variants: []` y conserva el stock manual.
+Resultado: OK (Playwright 2026-10-04, "Sandalia - Taco chino": variants [] / stock 2;
+           PUT interceptado, sin escritura en la base)
+
+ID: TC-PROD-21
+Caso: Editar producto que ya tiene variantes muestra exactamente las guardadas
+Tipo: edge
+Pre-condición: producto con "Talle" (36 stock 2, 37 stock 3) y "color" (Rojo)
+Pasos:
+  1. Editar el producto → Variantes.
+  2. Guardar sin cambios.
+Esperado: exactamente esas dos tarjetas en ese orden, con sus valores y stock; sin
+          copias de Color/Talle. El payload conserva Talle 36/37 con stock y color Rojo.
+Resultado: OK (Playwright 2026-10-04, variantes inyectadas en la respuesta GET y PUT
+           interceptado: no hay productos con variantes en la base y no se escribió en prod)
+
+ID: TC-PROD-22
+Caso: Variante estándar eliminada no reaparece
+Tipo: edge
+Pasos:
+  1. Editar producto sin variantes → "Eliminar variante" en Color.
+  2. Agregar el talle "39" en Talle → Guardar.
+  3. Reabrir un producto guardado solo con Talle.
+Esperado: payload con solo Talle ["39"]; al reabrir se ve solo Talle (Color NO vuelve,
+          porque la precarga aplica solo a productos sin ninguna variante guardada).
+Resultado: OK (Playwright 2026-10-04: payload [{Talle, ["39"]}]; producto inyectado con
+           solo Talle 38 muestra únicamente Talle)
+
+ID: TC-PROD-23
+Caso: Precarga no altera el stock manual ni el modo de stock
+Tipo: edge
+Pasos:
+  1. Nuevo producto o producto sin variantes → Datos Básicos.
+Esperado: el campo sigue siendo "Stock disponible" editable (la tarjeta Talle vacía no
+          activa el "Stock total" calculado).
+Resultado: OK (revisión de código: `managesStockFromVariants` exige un talle con opciones;
+           confirmado en TC-PROD-20, el payload respeta el stock manual)
+```
+
+---
+
 ## Matriz de cobertura
 
 > Casos `INI-*` usan numeración corta (01–10); casos del módulo Productos usan el
@@ -968,6 +1038,7 @@ Resultado: OK (verificado por CSS: min-width 720px en `.admin-table` +
 | Productos: coherencia   | P06   |             | P07,P08,P09,P10,P12 |     |      |
 | Saneo de datos / carrito |      | DATA-01,DATA-02,DATA-05 | DATA-03,DATA-04 |  |      |
 | Mobile 375px             | MOB-01,MOB-02,MOB-04,MOB-05,MOB-06,MOB-07,MOB-08 | MOB-03 | MOB-03 | | MOB-03 |
+| Productos: variantes estándar | P18,P19 | P20,P21,P22,P23 |  |  |  |
 | Compra restringida (admin) | RESTRICT-01,RESTRICT-04 | RESTRICT-02 | RESTRICT-03 | RESTRICT-03 | |
 
 ## Casos — Performance de carga mobile / MUI fuera del bundle crítico (2026-10-02)

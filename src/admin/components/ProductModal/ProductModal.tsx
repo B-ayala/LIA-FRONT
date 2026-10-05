@@ -10,7 +10,7 @@ import type { Specification, FAQ, SizeGuide, SizeGuideType } from '../../../type
 import { COLOR_MAP, parseColorOption } from '../../../utils/constants';
 import { calculateDiscountPercentage, getProductPricing } from '../../../utils/pricing';
 import { fetchCategoriesTree, createCategory, deleteCategory, type Category } from '../../../services/productService';
-import { getNormalizedVariantOptions, getProductStockFromVariants, isSizeVariant, normalizeVariantOption, sanitizeProductVariants } from '../../../utils/productVariants';
+import { getNormalizedVariantOptions, getProductStockFromVariants, isSizeVariant, normalizeVariantOption, sanitizeProductVariants, createDefaultVariantDrafts } from '../../../utils/productVariants';
 import { Folder, FolderOpen, Dot, Plus, X, Images } from 'lucide-react';
 import CloudinaryImagePicker from '../CloudinaryImagePicker/CloudinaryImagePicker';
 import './ProductModal.css';
@@ -266,16 +266,17 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 setWarranty(product.warranty || '');
                 setReturnPolicy(product.returnPolicy || '');
                 const dbStock = product.stock ?? 0;
-                setVariants(
-                    (product.variants || []).map(v => ({
-                        name: v.name,
-                        optionsText: v.options.join(', '),
-                        stockByOption: dbStock === 0 && v.stockByOption
-                            ? Object.fromEntries(Object.keys(v.stockByOption).map(k => [k, 0]))
-                            : v.stockByOption,
-                        colorsByOption: v.colorsByOption,
-                    }))
-                );
+                const savedVariants = (product.variants || []).map(v => ({
+                    name: v.name,
+                    optionsText: v.options.join(', '),
+                    stockByOption: dbStock === 0 && v.stockByOption
+                        ? Object.fromEntries(Object.keys(v.stockByOption).map(k => [k, 0]))
+                        : v.stockByOption,
+                    colorsByOption: v.colorsByOption,
+                }));
+                // Solo se precarga si el producto nunca configuró variantes: si el admin
+                // ya eligió cuáles usar (p. ej. borró Color y dejó Talle), se respeta.
+                setVariants(savedVariants.length > 0 ? savedVariants : createDefaultVariantDrafts());
                 setSizeGuide(product.sizeGuide
                     ? {
                         type: product.sizeGuide.type ?? 'indumentaria',
@@ -311,7 +312,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         setFeaturesText('');
         setWarranty('');
         setReturnPolicy('');
-        setVariants([]);
+        setVariants(createDefaultVariantDrafts());
         setExpandedVariantOptions({});
         setSizeGuide({ type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] });
         setNewColInput('');

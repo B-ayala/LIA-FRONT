@@ -6,6 +6,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Changed
+- **Variantes Color y Talle precargadas en el formulario de productos**: al crear o
+  editar un producto que todavía no tiene variantes, la pestaña Variantes ya muestra
+  `Color` y `Talle` listas para configurar. Si el producto ya tiene variantes se
+  muestran exactamente las guardadas (no se duplican ni reaparecen las que el admin
+  eliminó); "+ Agregar variante" sigue disponible y las que quedan vacías no se guardan.
 - **MUI fuera del bundle crítico (−93 kB gzip en la carga inicial)**: el
   `ThemeProvider` y el `CssBaseline` de MUI salieron de `App.tsx`, donde
   envolvían toda la app y obligaban a descargar y parsear el chunk de MUI
