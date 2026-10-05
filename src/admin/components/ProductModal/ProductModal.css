@@ -1109,13 +1109,13 @@
     justify-content: space-between;
     gap: 0.4rem;
     padding: 0.45rem 0.5rem;
-    background: linear-gradient(135deg, rgba(189, 171, 205, 0.9) 0%, rgba(164, 143, 184, 0.94) 100%);
+    background: #111;
     color: #fff;
     border-radius: 10px;
     font-size: 0.78rem;
     font-weight: 500;
     font-family: 'Poppins', sans-serif;
-    box-shadow: 0 6px 14px rgba(154, 134, 172, 0.12);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
     min-width: 0;
 }
 
@@ -1152,9 +1152,8 @@
     padding: 0.2rem 0.25rem 0.2rem 0.35rem;
     min-height: 30px;
     border-radius: 9px;
-    background: rgba(255, 255, 255, 0.16);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
     min-width: 0;
 }
 
@@ -1195,8 +1194,8 @@
 }
 
 .option-tag__stock-input:focus {
-    border-color: rgba(154, 134, 172, 0.95);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
+    border-color: #fff;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
 }
 
 .stock-derived-card {
@@ -1328,24 +1327,15 @@
         border-radius: 16px;
     }
 
-    .option-tag {
-        grid-template-columns: 1fr;
-        align-items: stretch;
-        padding: 0.55rem;
-    }
-
-    .option-tag__content {
-        grid-template-columns: 1fr;
-        align-items: stretch;
-    }
-
-    .option-tag__stock-field {
-        justify-content: space-between;
-    }
-
     .option-tag__stock-input {
         width: 100%;
         max-width: 56px;
+        font-size: 16px;
+    }
+
+    .option-tag__remove {
+        width: 32px;
+        height: 32px;
     }
 
     .options-toggle-btn,

@@ -58,7 +58,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const catDropTriggerRef = useRef<HTMLButtonElement>(null);
     const [catDropPos, setCatDropPos] = useState<{ top: number; left: number; width: number; maxHeight: number; openUp: boolean } | null>(null);
     const [price, setPrice] = useState('');
-    const [stock, setStock] = useState('');
     const [condition, setCondition] = useState<'new' | 'used'>('new');
     const [status, setStatus] = useState<'active' | 'inactive'>('active');
     const [images, setImages] = useState<string[]>([]);
@@ -113,10 +112,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [outOfStockConfirmOpen, setOutOfStockConfirmOpen] = useState(false);
-    const managesStockFromVariants = useMemo(
-        () => variants.some((variant) => isSizeVariant(variant.name) && getNormalizedVariantOptions(variant.name, variant.optionsText.split(',')).length > 0),
-        [variants]
-    );
     const derivedVariantStock = useMemo(() => {
         const builtVariants = sanitizeProductVariants(
             variants.map((variant) => ({
@@ -251,7 +246,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 setName(product.name || '');
                 setCategory(savedCategory);
                 setPrice(product.price?.toString() || '');
-                setStock(product.stock?.toString() || '');
                 setCondition(product.condition || 'new');
                 setStatus(product.status || 'active');
                 setImages(
@@ -301,7 +295,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         setName('');
         setCategory('');
         setPrice('');
-        setStock('');
         setCondition('new');
         setStatus('active');
         setImages([]);
@@ -335,7 +328,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 colorsByOption: variant.colorsByOption,
             }))
         ) ?? [];
-        const totalStock = getProductStockFromVariants(builtVariants) ?? (parseInt(stock) || 0);
+        const totalStock = getProductStockFromVariants(builtVariants) ?? 0;
 
         return {
             name,
@@ -875,22 +868,12 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                                     />
                                     {fieldErrors.price && <span className="field-error-msg">{fieldErrors.price}</span>}
                                 </div>
-                                <div className={`form-group${fieldErrors.stock ? ' form-group--error' : ''}`}>
-                                    <label>{managesStockFromVariants ? 'Stock total' : 'Stock disponible'}</label>
-                                    {managesStockFromVariants ? (
-                                        <div className="stock-derived-card">
-                                            <strong>{derivedVariantStock}</strong>
-                                            <span>Se calcula automáticamente desde los talles configurados en Variantes.</span>
-                                        </div>
-                                    ) : (
-                                        <input
-                                            type="number"
-                                            placeholder="0"
-                                            value={stock}
-                                            onChange={e => { setStock(e.target.value); if (fieldErrors.stock) setFieldErrors(prev => { const n = {...prev}; delete n.stock; return n; }); }}
-                                        />
-                                    )}
-                                    {fieldErrors.stock && <span className="field-error-msg">{fieldErrors.stock}</span>}
+                                <div className="form-group">
+                                    <label>Stock total</label>
+                                    <div className="stock-derived-card">
+                                        <strong>{derivedVariantStock}</strong>
+                                        <span>Se calcula automáticamente desde los talles cargados en Variantes.</span>
+                                    </div>
                                 </div>
                                 <div className="form-group">
                                     <label>Condición</label>

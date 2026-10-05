@@ -6,6 +6,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Changed
+- Admin: chips de opciones/stock por talle en el modal de producto ahora son negros y se mantienen en una sola fila en mobile.
 - **Color y Talle son variantes permanentes en el admin** (`ProductModal.tsx`,
   `productVariants.ts`): siempre aparecen (también en productos guardados sin ellas),
   con nombre bloqueado y sin botón "Eliminar variante". Dejarlas vacías equivale a no
