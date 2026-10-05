@@ -16,18 +16,21 @@ interface CarouselProps {
   onReady?: () => void;
 }
 
+// Transición de empuje puro, sin fade. Dos razones, las dos sobre no dejar ver
+// el fondo del contenedor (que toma el color del tema del admin):
+// el offset es 100% del ancho del slide y no un valor fijo en px, para que el
+// que entra y el que sale queden pegados en vez de separados por una franja; y
+// no se anima la opacidad, porque un slide semitransparente deja pasar ese
+// mismo fondo durante el cruce.
 const slideVariants = {
   enter: (direction: number) => ({
-    x: direction > 0 ? 1000 : -1000,
-    opacity: 0
+    x: direction > 0 ? '100%' : '-100%'
   }),
   center: {
-    x: 0,
-    opacity: 1
+    x: 0
   },
   exit: (direction: number) => ({
-    x: direction < 0 ? 1000 : -1000,
-    opacity: 0
+    x: direction < 0 ? '100%' : '-100%'
   })
 };
 
@@ -270,8 +273,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
           animate="center"
           exit="exit"
           transition={{
-            x: { type: 'spring', stiffness: 300, damping: 30 },
-            opacity: { duration: 0.5 }
+            x: { type: 'spring', stiffness: 300, damping: 30 }
           }}
           className="carousel-slide"
         >

@@ -1113,6 +1113,56 @@ Esperado: la primera pestaña toma el color nuevo sin recargar.
 Resultado: no probado — requiere dos sesiones simultáneas
 ```
 
+### Volteo de imagen en ProductCard (mobile)
+
+```
+ID: TC-CARDFLIP-01
+Caso: Tap repetido sobre la misma card alterna la foto (mobile/touch)
+Tipo: happy
+Pre-condición: producto con 2+ imágenes y "imagen al hover" habilitada
+Pasos:
+  1. /products en un celular (o emulación táctil)
+  2. Tocar la imagen de una card → muestra la 2ª foto
+  3. Tocar de nuevo la misma imagen → vuelve a la 1ª
+  4. Tocar otra vez → 2ª foto
+Esperado: cada tap alterna entre las dos fotos.
+Resultado: ok — Playwright (iPhone 12, Chromium emulado) 2026-10-04
+
+ID: TC-CARDFLIP-02
+Caso: Tocar otra card revierte la anterior
+Tipo: happy
+Pasos:
+  1. Con una card volteada, tocar la imagen de otra card
+Esperado: la primera vuelve a su foto principal y la segunda se voltea.
+Resultado: ok — Playwright (iPhone 12, Chromium emulado) 2026-10-04
+
+ID: TC-CARDFLIP-03
+Caso: Card con una sola imagen o hover deshabilitado no reacciona al tap
+Tipo: edge
+Pasos:
+  1. Tocar la imagen de un producto con 1 sola foto
+Esperado: la imagen no cambia ni hace zoom.
+Resultado: no probado
+
+ID: TC-CARDFLIP-04
+Caso: Desktop mantiene el comportamiento por hover
+Tipo: edge
+Pasos:
+  1. 1440px con mouse: pasar sobre una card, salir; luego hacer click en la imagen y salir
+Esperado: hover muestra la 2ª foto, al salir vuelve.
+Resultado: ok — Playwright (1440px) 2026-10-04
+
+ID: TC-CARDFLIP-05
+Caso: Click en la foto de la card abre el detalle (solo desktop)
+Tipo: happy
+Pasos:
+  1. 1440px con mouse: pasar sobre la foto de una card (cursor de mano)
+  2. Click en la foto
+Esperado: navega a /product/:id, igual que "Leer más". En mobile el tap NO navega,
+          solo alterna la foto (TC-CARDFLIP-01).
+Resultado: ok — Playwright (1440px → /product/18; iPhone 12 sin navegación) 2026-10-04
+```
+
 ## Cross-browser / device
 
 | Combinación              | Estado     |

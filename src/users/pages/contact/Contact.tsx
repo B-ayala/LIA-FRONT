@@ -144,7 +144,7 @@ const Contact = () => {
         <div className="contact-options">
 
           <div className="contact-card">
-            <div className="contact-icon-wrapper">
+            <div className="contact-icon-wrapper contact-icon-wrapper--whatsapp">
               <FaWhatsapp className="contact-icon" />
             </div>
             <h3>WhatsApp</h3>
@@ -163,9 +163,9 @@ const Contact = () => {
           </div>
 
           <div className="contact-card">
-            <div className="contact-icon-wrapper">
-              <FaTiktok className="contact-icon" style={{ marginRight: '10px' }} />
-              <FaFacebook className="contact-icon" />
+            <div className="contact-icon-wrapper contact-icon-wrapper--social">
+              <FaTiktok className="contact-icon contact-icon--tiktok" style={{ marginRight: '10px' }} />
+              <FaFacebook className="contact-icon contact-icon--facebook" />
             </div>
             <h3>Redes Sociales</h3>
             <p>Únete a nuestra comunidad, síguenos y comparte tus looks.</p>

@@ -3,7 +3,10 @@
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background: var(--primary-dark, #b0adad);
+  /* Fondo neutro a propósito, NO el color del tema: durante la transición de
+     slides el contenedor queda visible un instante por el crossfade, y con un
+     primario saturado eso se lee como un flash de color ajeno a la foto. */
+  background: var(--dark-bg, #1a1a1a);
 }
 
 /* Layout "single": una imagen por slide, banner ancho tipo portada en vez de

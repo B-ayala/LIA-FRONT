@@ -5,7 +5,19 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Added
+- **Click en la foto de la card abre el detalle en desktop** (`ProductCard.tsx`,
+  `ProductCard.css`): antes solo "Leer más" navegaba al producto. En dispositivos
+  con hover, el click en la imagen lleva al mismo destino (con cursor de mano);
+  en mobile el tap sigue alternando la foto.
+
 ### Changed
+- **Sellos de la card de producto responsive y mobile first** (`ProductCard.css`):
+  la base es 320px y escala con `min-width` (481px y 1024px). El texto del sello
+  hace salto de línea en vez de cortarse con "…".
+- **Íconos de `/contact` con el color de cada marca** (`Contact.css`, `index.css`):
+  WhatsApp en verde, TikTok en negro y Facebook en azul (tokens `--brand-*`); correo y
+  ubicación en el fucsia `--primary-accent`. Antes eran lila pálido con poco contraste.
 - **Variantes Color y Talle precargadas en el formulario de productos**: al crear o
   editar un producto que todavía no tiene variantes, la pestaña Variantes ya muestra
   `Color` y `Talle` listas para configurar. Si el producto ya tiene variantes se
@@ -142,6 +154,20 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
   en vez de seguir mandando emails.
 
 ### Fixed
+- **Volteo de imagen de las cards en mobile** (`ProductCard.tsx`, `ProductCard.css`):
+  en touch el `:hover` quedaba "pegado" tras el tap, así que tocar de nuevo la
+  misma card no volvía a la foto principal (solo se revertía tocando otra card).
+  En dispositivos sin hover el volteo ahora lo controla un estado: cada tap sobre
+  la imagen alterna entre las dos fotos y tocar fuera de la card la revierte.
+  Desktop sigue con el hover de siempre.
+- **Franja rosada al cambiar de foto en el carrusel del Home**
+  (`Carousel.tsx`, `Carousel.css`): el slide que entraba y el que salía se
+  desplazaban 1000 px fijos, así que en pantallas más angostas quedaba entre
+  ambos una franja permanente del ancho faltante, y el crossfade de opacidad
+  dejaba ver el fondo del contenedor, que usaba `--primary-dark` (el color del
+  tema del Admin: en el tema "rose", `#A83464`). Ahora el desplazamiento es
+  100% del ancho del slide, la transición es de empuje puro sin fade, y el
+  fondo del carrusel pasó al neutro `--dark-bg`, que no lo pinta el tema.
 - **Color y tipografía publicados desde Admin no llegaban a otros dispositivos**
   (`SeasonThemeProvider.tsx`, `TypographyProvider.tsx`): ambos providers
   guardaban en `localStorage` un flag de "preferencia explícita" cada vez que

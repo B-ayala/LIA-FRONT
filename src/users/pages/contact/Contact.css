@@ -60,7 +60,8 @@
 .contact-icon-wrapper {
   width: 60px;
   height: 60px;
-  background-color: #F5F0FA;
+  --icon-color: var(--primary-accent);
+  background-color: color-mix(in srgb, var(--icon-color) 12%, white);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -69,17 +70,29 @@
   transition: background-color 0.3s ease;
 }
 
-.contact-card:hover .contact-icon-wrapper {
-  background-color: #B8A5C8;
+.contact-icon-wrapper--whatsapp {
+  --icon-color: var(--brand-whatsapp);
+}
+
+.contact-card:hover .contact-icon-wrapper:not(.contact-icon-wrapper--social) {
+  background-color: var(--icon-color);
 }
 
 .contact-icon {
   font-size: 1.5rem;
-  color: #B8A5C8;
+  color: var(--icon-color);
   transition: color 0.3s ease;
 }
 
-.contact-card:hover .contact-icon {
+.contact-icon--tiktok {
+  color: var(--brand-tiktok);
+}
+
+.contact-icon--facebook {
+  color: var(--brand-facebook);
+}
+
+.contact-card:hover .contact-icon-wrapper:not(.contact-icon-wrapper--social) .contact-icon {
   color: white;
 }
 
@@ -139,7 +152,7 @@
 }
 
 .inline-icon {
-  color: #B8A5C8;
+  color: var(--primary-accent);
 }
 
 /* Modal Form Styles */

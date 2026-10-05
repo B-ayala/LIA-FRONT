@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../../types/product';
 import type { ProductCardOption } from '../../../types/productCardOption';
@@ -6,6 +6,8 @@ import { getProductPricing } from '../../../utils/pricing';
 import { productImageSrc } from '../../../utils/cloudinary';
 import { getCardOptionIcon } from '../../../utils/cardOptionIcons';
 import './ProductCard.css';
+
+const HOVER_CAPABLE_QUERY = '(hover: hover)';
 
 interface ProductCardProps {
   product: Product;
@@ -15,6 +17,8 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOptions = [] }) => {
   const navigate = useNavigate();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isFlipped, setIsFlipped] = useState(false);
 
   const handleReadMore = () => {
     if (onReadMore) {
@@ -35,9 +39,32 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
   const primaryImage = rotationImages[0] || product.image;
   const secondaryImage = hoverImageEnabled && rotationImages.length > 1 ? rotationImages[1] : null;
 
+  // En touch el :hover queda "pegado" tras el tap y no se puede revertir tocando la misma card,
+  // así que el volteo mobile se maneja con estado: tap alterna, tap fuera de la card revierte.
+  useEffect(() => {
+    if (!isFlipped) return;
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      if (!cardRef.current?.contains(event.target as Node)) setIsFlipped(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDownOutside);
+    return () => document.removeEventListener('pointerdown', handlePointerDownOutside);
+  }, [isFlipped]);
+
+  // Desktop (con hover) abre el detalle; touch usa el tap para alternar la foto.
+  const handleImageClick = () => {
+    if (globalThis.matchMedia(HOVER_CAPABLE_QUERY).matches) {
+      handleReadMore();
+    } else if (secondaryImage) {
+      setIsFlipped(prev => !prev);
+    }
+  };
+
   return (
-    <div className={`product-card${isOutOfStock ? ' product-card--out-of-stock' : ''}`}>
-      <div className="product-card__image-container">
+    <div
+      ref={cardRef}
+      className={`product-card${isOutOfStock ? ' product-card--out-of-stock' : ''}${isFlipped ? ' product-card--flipped' : ''}`}
+    >
+      <div className="product-card__image-container" onClick={handleImageClick}>
         {isOutOfStock ? (
           <div className="product-card__stock-badge">Sin stock</div>
         ) : pricing.hasPromotion && pricing.discountPercentage && (
