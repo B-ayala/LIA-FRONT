@@ -1836,3 +1836,13 @@ Resultado: no probado
 | H-SALES-ALERT | 🟢 Bajo | ABIERTO | `Sales` informa errores de confirmar/cancelar con `alert()` del navegador en vez del sistema global de feedback | TC-SALES-14 |
 | H-SALES-FILTER | 🟢 Bajo | ABIERTO | El filtro de estado de Ventas no ofrece "Cancelado" (el tipo `payment_status` sí lo incluye) | TC-SALES-02 |
 | H-KEY-FINGERPRINT | 🟢 Info | Documentado | La huella de la Idempotency-Key del front incluye nombre y email del comprador y el total; la del backend no (solo productos, cantidades, variantes, envío y medio de pago). Un cambio de nombre genera key nueva pero el backend lo trataría como el mismo carrito: dos órdenes si el primer intento ya había commiteado | TC-CHK-04 |
+
+## Casos — Vista previa de producto del admin (2026-10-06)
+
+ID: TC-PREV-01 — Caso: guardar un producto existente redirige a la vista previa. Tipo: happy. Pasos: 1. /admin/products → Editar → Guardar producto. Esperado: URL `/admin/products/:id/preview`, tab "Vista Card" con la card real. Resultado: ok (Chrome 1440px).
+ID: TC-PREV-02 — Caso: Vista Detalle usa el detalle real (galería, color, talle, cantidad, descripción). Tipo: happy. Esperado: igual a `/product/:id`; "Comprar ahora"/"Agregar al carrito" validan pero no navegan ni tocan el carrito. Resultado: ok (render verificado; clicks de compra no probados).
+ID: TC-PREV-03 — Caso: "Editar producto" vuelve a Productos con el modal abierto del mismo producto y state limpio. Tipo: happy. Resultado: ok.
+ID: TC-PREV-04 — Caso: mobile 375px (header apilado, tabs, card a media columna). Tipo: a11y/responsive. Resultado: ok (detalle en 375px no probado).
+ID: TC-PREV-05 — Caso: crear producto nuevo redirige a su preview. Tipo: happy. Resultado: no probado (evité ensuciar datos).
+ID: TC-PREV-06 — Caso: producto inactivo muestra aviso "Inactivo"; id inexistente / red caída muestra error con "Reintentar". Tipo: failure. Resultado: no probado.
+ID: TC-PREV-07 — Caso: regresión del detalle público `/product/:id` (carga, skeleton, no disponible, splash espera la imagen). Tipo: edge. Resultado: no probado.

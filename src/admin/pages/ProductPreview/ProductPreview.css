@@ -1,0 +1,239 @@
+/* Mobile-first. La Card y el Detalle son los componentes reales de la tienda:
+   acá solo se arma el marco (header, tabs, escenario) sin tocar su diseño. */
+.product-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.product-preview__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.product-preview__breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+.product-preview__breadcrumb button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.product-preview__breadcrumb button:hover,
+.product-preview__breadcrumb button:focus-visible {
+    color: #0f172a;
+}
+
+.product-preview__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.product-preview__notes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.product-preview__note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.625rem 0.75rem;
+    border-radius: 8px;
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    color: #1e3a8a;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.product-preview__note svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.product-preview__note--warning {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+/* ---------- Tabs ---------- */
+.product-preview__tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.375rem;
+    padding: 0.25rem;
+    background: #e2e8f0;
+    border-radius: 12px;
+}
+
+.product-preview__tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.375rem 0.5rem;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: #475569;
+    font: inherit;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.product-preview__tab:hover {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.product-preview__tab:focus-visible {
+    outline: 2px solid #0f172a;
+    outline-offset: 2px;
+}
+
+.product-preview__tab--active,
+.product-preview__tab--active:hover {
+    background: #fff;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
+}
+
+.product-preview__tab-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.2;
+    text-align: left;
+}
+
+.product-preview__tab-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.product-preview__tab-hint {
+    display: none;
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+/* ---------- Escenario ---------- */
+.product-preview__stage {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.product-preview__stage--card {
+    padding: 1.25rem 0.75rem;
+}
+
+/* El Detalle ya trae su propio fondo y padding; min-height: 100vh era para la
+   página completa y acá estiraría el marco. */
+.product-preview__stage--detail .product-detail {
+    min-height: 0;
+}
+
+/* Un solo producto: ancho de card = una columna del catálogo. En mobile el
+   catálogo usa 2 columnas, así que la card ocupa la mitad del ancho. */
+.product-preview__card-slot {
+    display: flex;
+    justify-content: center;
+}
+
+.product-preview__card-slot .product-grid {
+    width: calc(50% - 8px);
+    min-width: 150px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0;
+}
+
+/* ---------- Estados (loading / error) ---------- */
+.product-preview__status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #475569;
+}
+
+.product-preview__status h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #0f172a;
+}
+
+.product-preview__status p {
+    margin: 0;
+    max-width: 420px;
+    font-size: 0.9rem;
+}
+
+.product-preview__status-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 320px;
+}
+
+@media (min-width: 768px) {
+    .product-preview__header {
+        flex-direction: row;
+        align-items: flex-end;
+        justify-content: space-between;
+    }
+
+    .product-preview__actions {
+        flex-direction: row;
+    }
+
+    .product-preview__actions .admin-btn-primary,
+    .product-preview__actions .admin-btn-secondary {
+        width: auto;
+    }
+
+    .product-preview__tabs {
+        display: inline-grid;
+        grid-template-columns: repeat(2, auto);
+        align-self: flex-start;
+    }
+
+    .product-preview__tab {
+        padding: 0.375rem 1.25rem;
+    }
+
+    .product-preview__tab-hint {
+        display: block;
+    }
+
+    .product-preview__stage--card {
+        padding: 2rem 1rem;
+    }
+
+    .product-preview__card-slot .product-grid {
+        width: 260px;
+        grid-template-columns: 260px;
+    }
+}

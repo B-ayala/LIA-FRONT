@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from '../../../components/common/Modal/Modal';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
+import { buildMissingDataMessage, getMissingProductFields } from './productSaveWarning';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
 import { getAuthToken } from '../../../utils/auth';
 import { extractErrorMessage } from '../../../utils/errorMessage';
@@ -23,7 +24,7 @@ interface ProductModalProps {
     isOpen: boolean;
     onClose: () => void;
     product: AdminProduct | null;
-    onSaved?: () => void;
+    onSaved?: (productId: string | null) => void;
 }
 
 
@@ -112,7 +113,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-    const [outOfStockConfirmOpen, setOutOfStockConfirmOpen] = useState(false);
+    const [missingDataMessage, setMissingDataMessage] = useState<string | null>(null);
     const derivedVariantStock = useMemo(() => {
         const builtVariants = sanitizeProductVariants(
             variants.map((variant) => ({
@@ -363,14 +364,18 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             const token = await getAuthToken();
             const payload = buildPayload();
 
+            let savedProductId: string | null = null;
             if (product?.id) {
                 const savedData = await updateProductApi(product.id, payload, token);
                 const finalStatus = savedData?.data?.status ?? payload.status;
                 updateProduct(product.id, { ...payload, status: finalStatus });
+                savedProductId = product.id;
             } else {
                 const savedData = await createProduct(payload, token);
+                // Sin id real del backend no hay a qué previsualizar: onSaved recibe null.
+                savedProductId = savedData?.data?.id ? String(savedData.data.id) : null;
                 const newProduct: AdminProduct = {
-                    id: savedData?.data?.id || Date.now().toString(),
+                    id: savedProductId ?? Date.now().toString(),
                     ...payload,
                     status: savedData?.data?.status ?? payload.status,
                 };
@@ -379,7 +384,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
 
             resetForm();
             onClose();
-            onSaved?.();
+            onSaved?.(savedProductId);
         } catch (err) {
             setError(extractErrorMessage(err, 'No se pudo guardar el producto'));
         } finally {
@@ -402,13 +407,17 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             return;
         }
 
-        // Un producto "Activo" sin stock se muestra igual en la tienda marcado
-        // "Sin stock" (no se puede comprar), pero requiere que el usuario lo
-        // confirme explícitamente en lugar de guardarlo en silencio.
+        // Foto, stock y color incompletos requieren confirmación explícita en
+        // lugar de guardarse en silencio (cubre también el caso "Activo" sin stock).
         const payload = buildPayload();
-        if (payload.status === 'active' && (payload.stock ?? 0) <= 0) {
+        const missing = getMissingProductFields({
+            imageUrls: payload.images,
+            stock: payload.stock ?? 0,
+            variants: payload.variants,
+        });
+        if (missing.length > 0) {
             setActiveTab('Datos Básicos');
-            setOutOfStockConfirmOpen(true);
+            setMissingDataMessage(buildMissingDataMessage(missing));
             return;
         }
 
@@ -1999,15 +2008,15 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         </Modal>
 
         <ConfirmationModal
-            isOpen={outOfStockConfirmOpen}
-            onClose={() => setOutOfStockConfirmOpen(false)}
-            title="Producto sin stock"
-            message='Este producto no tiene stock disponible, pero está configurado como "Activo". ¿Deseás mostrarlo igualmente en la tienda indicando que está Sin stock?'
+            isOpen={missingDataMessage !== null}
+            onClose={() => setMissingDataMessage(null)}
+            title="Faltan datos del producto"
+            message={missingDataMessage ?? ''}
             status="error"
-            actionButtonText="Mostrar igualmente"
-            cancelButtonText="Cancelar"
+            actionButtonText="Guardar igualmente"
+            cancelButtonText="Editar"
             onActionClick={() => {
-                setOutOfStockConfirmOpen(false);
+                setFieldErrors({});
                 void executeSave();
             }}
         />

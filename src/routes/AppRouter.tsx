@@ -50,6 +50,7 @@ const MuiThemeScope = lazy(() => import('../components/common/MuiTheme/MuiThemeS
 
 const HomeManager = lazy(() => import('../admin/pages/HomeManager/HomeManager'));
 const AdminProducts = lazy(() => import('../admin/pages/Products/Products'));
+const AdminProductPreview = lazy(() => import('../admin/pages/ProductPreview/ProductPreview'));
 const AdminUsers = lazy(() => import('../admin/pages/Users/Users'));
 const AboutEditor = lazy(() => import('../admin/pages/AboutEditor/AboutEditor'));
 const FooterEditor = lazy(() => import('../admin/pages/FooterEditor/FooterEditor'));
@@ -83,6 +84,7 @@ const AppRouter = () => {
               <Route index element={<HomeManager />} />
               <Route path="home" element={<HomeManager />} />
               <Route path="products" element={<AdminProducts />} />
+              <Route path="products/:id/preview" element={<AdminProductPreview />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="about" element={<AboutEditor />} />
               <Route path="site-config" element={<FooterEditor />} />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Search, BarChart2 } from 'lucide-react';
 import { MenuItem, TextField } from '@mui/material';
 import ProductTable from '../../components/ProductTable/ProductTable';
@@ -43,6 +43,7 @@ const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
 
 const Products = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { setProducts, products } = useAdminStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
@@ -72,6 +73,25 @@ const Products = () => {
         loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // "Editar producto" desde la vista previa vuelve acá pidiendo reabrir el modal.
+    const editProductIdFromPreview = (location.state as { editProductId?: string } | null)?.editProductId;
+    useEffect(() => {
+        if (loading || !editProductIdFromPreview) return;
+        const productToEdit = products.find((p) => p.id === editProductIdFromPreview);
+        if (productToEdit) {
+            setEditingProduct(productToEdit);
+            setIsModalOpen(true);
+        }
+        // Limpia el state para que un refresh o "atrás" no reabra el modal.
+        navigate(location.pathname, { replace: true, state: null });
+    }, [loading, editProductIdFromPreview, products, navigate, location.pathname]);
+
+    // Tras guardar, el admin ve cómo quedó el producto en la tienda antes de seguir.
+    const handleProductSaved = (productId: string | null) => {
+        void loadProducts();
+        if (productId) navigate(`/admin/products/${productId}/preview`);
+    };
 
     const handleOpenModal = (product?: AdminProduct) => {
         setEditingProduct(product || null);
@@ -178,7 +198,7 @@ const Products = () => {
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
                 product={editingProduct}
-                onSaved={loadProducts}
+                onSaved={handleProductSaved}
             />
         </div>
     );
