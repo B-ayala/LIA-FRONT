@@ -5,10 +5,23 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Changed
+- Admin Ventas y Despachos: paginación server-side (50 por página, `.range()` + `count exact`); filtros, búsqueda (debounce 300 ms, caracteres reservados saneados), orden y filtro de stock se resuelven en el servidor, los contadores usan consultas de conteo dedicadas y, ante un fallo, se muestra un error con "Reintentar" en lugar de una tabla vacía.
+- Checkout: se elimina la espera artificial de 1,5 s y ya no se bloquea por la revalidación de sesión si el usuario está hidratado.
+- Admin Ventas: las alertas de stock se cargan en paralelo con las ventas.
+- Búsqueda: se descartan respuestas fuera de orden, se sanean caracteres reservados del filtro y se elimina el fallback de `original_price`.
+- `apiFetch` avisa por consola si falta `VITE_API_URL_LOCAL` en producción.
+- `apiFetch`: un 503 `AUTH_UNAVAILABLE` no refresca ni desloguea; se reintenta una vez tras `Retry-After` (máx 2 s) y, si persiste, se muestra "El servicio está lento, reintentá en unos segundos".
+- Checkout: envía `Idempotency-Key` (una por intento de compra, reutilizada en reintentos) y deshabilita el botón mientras se envía también en transferencia.
+- Catálogo público: paginación server-side de 24 productos con botón "Ver más", filtro por categoría en el servidor y estado de error con reintento distinto del vacío.
+- Admin: Productos, Destacados y Galería comparten un caché con columnas explícitas (invalidado al crear/editar/borrar); Ventas y Despachos acotan columnas.
+- SQL `2026-10-06_ventas_restrict_update.sql`: `ventas` solo permite UPDATE de `dispatch_status` desde el cliente y se revoca todo a `anon` (pendiente de aplicar).
+
 ### Added
 - Admin: el modal de producto autocorrige mayúsculas/minúsculas mientras se escribe (títulos en nombre, categoría, variantes y especificaciones; oraciones en descripción, características, garantía, devolución y FAQ) y las vuelve a normalizar al guardar (`utils/textCase.ts`).
 
 ### Fixed
+- Cards de producto: el nombre reserva siempre 2 líneas, así precio, sellos y botón quedan alineados entre cards sin importar el largo del nombre.
 - Login de admin: el Footer (y el botón de WhatsApp) ya no parpadea entre el login y el redirect a `/admin` (`App.tsx`).
 
 ### Changed

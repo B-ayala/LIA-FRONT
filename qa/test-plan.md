@@ -1144,6 +1144,13 @@ Resultado: no probado
 | Productos: variantes estándar | P18,P19 | P20,P21,P22,P23 |  |  |  |
 | Productos: tutorial Variantes | P24,P25,P26,P28 | P27,P30 | P29 |  | P31 |
 | Compra restringida (admin) | RESTRICT-01,RESTRICT-04 | RESTRICT-02 | RESTRICT-03 | RESTRICT-03 | |
+| Catálogo público paginado | CAT-01,CAT-08 | CAT-02,CAT-05,CAT-06,CAT-07 | CAT-03,CAT-04 | CAT-09 | |
+| Búsqueda del navbar | | SRCH-01,SRCH-02,SRCH-04 | SRCH-03 | | |
+| Checkout idempotente | CHK-01 | CHK-02,CHK-03,CHK-04,CHK-05 | CHK-06 | | |
+| apiFetch 503 AUTH_UNAVAILABLE | | | API-01,API-02 | API-03 | |
+| Admin productos (caché) | | ADMPROD-01,ADMPROD-02,ADMPROD-03 | | | |
+| Ventas (server-side) | SALES-01,SALES-03,SALES-08,SALES-14 | SALES-02,SALES-04,SALES-05,SALES-06,SALES-07,SALES-09,SALES-11,SALES-13 | SALES-10,SALES-12 | | |
+| Despachos (server-side) | DESP-02,DESP-04 | DESP-03,DESP-06 | DESP-05 | | DESP-07 |
 
 ## Casos — Performance de carga mobile / MUI fuera del bundle crítico (2026-10-02)
 
@@ -1267,6 +1274,501 @@ Esperado: navega a /product/:id, igual que "Leer más". En mobile el tap NO nave
 Resultado: ok — Playwright (1440px → /product/18; iPhone 12 sin navegación) 2026-10-04
 ```
 
+## Casos — Catálogo paginado, búsqueda, checkout idempotente, reintento ante 503 y paginación server-side del admin (2026-10-05/06)
+
+> Estado de ejecución: **ningún caso de esta sección se ejecutó** (pasada solo de
+> documentación, leyendo el código del working tree del 2026-10-06; Sales y Dispatches
+> estaban siendo modificados por otro agente al momento de documentar, así que los casos
+> `TC-SALES-*` / `TC-DESP-02..` describen el código leído ese día). El pedido original
+> mencionaba verificaciones parciales con stubs: **no hay evidencia de ellas en el repo**
+> (solo existe `e2e/stress-loading.spec.ts`, que no cubre estos casos), por eso todo figura
+> como `no probado`. Quien los ejecute debe anotar fecha y método (stub / navegador real).
+> Pre-condiciones comunes: front en `http://localhost:5173`, backend en `localhost:3000`,
+> **más de 24 productos activos** para los casos de catálogo y **más de 50 ventas pagadas**
+> para paginación de Ventas/Despachos; usuario estándar y usuario admin. Para los casos de
+> checkout, el backend debe tener aplicados los scripts SQL del 2026-10-06 (ver
+> `BACK/lia-store/docs/flows/flow-despliegue-produccion.md`).
+
+### Catálogo público paginado (`/products`)
+
+```
+ID: TC-CAT-01
+Caso: El catálogo carga 24 productos y ofrece "Ver más"
+Tipo: happy
+Pasos:
+  1. Abrir /products como anónimo
+  2. Contar las tarjetas
+  3. Click en "Ver más"
+Esperado: primera carga = 24 tarjetas ordenadas por fecha desc (desempate por id); aparece el
+  botón "Ver más" solo si hay otra página; tras el click se agregan hasta 24 más sin
+  borrar las anteriores y el botón muestra "Cargando..." deshabilitado mientras carga
+Resultado: no probado
+
+ID: TC-CAT-02
+Caso: "Ver más" hasta agotar el catálogo, sin duplicados
+Tipo: edge
+Pasos:
+  1. Repetir "Ver más" hasta que el botón desaparezca
+  2. Contar tarjetas y comparar con el total de productos activos; buscar ids repetidos
+Esperado: el botón desaparece cuando `hasMore` es falso; total = productos activos; ningún
+  producto repetido (la lista se deduplica por id)
+Resultado: no probado
+
+ID: TC-CAT-03
+Caso: Error en la primera carga muestra mensaje y "Reintentar"
+Tipo: failure
+Pasos:
+  1. Con DevTools, bloquear las requests a Supabase (offline) y abrir /products
+  2. Restaurar la red y click en "Reintentar"
+Esperado: se ve "No pudimos cargar los productos. Revisá tu conexión y reintentá." con botón
+  "Reintentar" (role="alert"); NO queda en skeleton infinito; al reintentar carga el catálogo
+Resultado: no probado
+
+ID: TC-CAT-04
+Caso: Error al pedir "Ver más" conserva lo ya cargado
+Tipo: failure
+Pasos:
+  1. Cargar la primera página y cortar la red
+  2. Click en "Ver más"
+  3. Restaurar la red y click en "Reintentar"
+Esperado: las 24 tarjetas siguen visibles; aparece el mensaje de error y el botón pasa a
+  "Reintentar"; al reintentar se agrega la página siguiente
+Resultado: no probado
+
+ID: TC-CAT-05
+Caso: Cambiar de categoría con una carga en vuelo descarta la respuesta vieja
+Tipo: edge
+Pasos:
+  1. Con throttling "Slow 3G", abrir /products?category=A y enseguida cambiar a ?category=B
+  2. Esperar a que terminen ambas requests
+Esperado: solo se ven productos de B (la respuesta de A se descarta por `requestId`); el
+  estado de loading corresponde a la última selección
+Resultado: no probado
+
+ID: TC-CAT-06
+Caso: Categoría sin productos muestra empty state
+Tipo: edge
+Pasos:
+  1. Abrir /products?category=<categoría sin productos>
+Esperado: "No hay productos en esta categoría." (sin botón "Ver más"); no se confunde con error
+Resultado: no probado
+
+ID: TC-CAT-07
+Caso: Filtro por categoría incluye subcategorías y tolera el casing
+Tipo: edge
+Pre-condición: categoría con hijos y un producto cargado con la categoría en otro casing
+Pasos:
+  1. Abrir /products?category=<padre>
+  2. Abrir ?subcategory=<hijo> y ?subsubcategory=<nieto>
+  3. Probar un nombre de categoría con coma, paréntesis, comillas o `%`
+Esperado: el padre incluye productos de sus descendientes; el filtro es case-insensitive
+  (`ilike` sin comodines); los caracteres reservados de PostgREST se reemplazan por espacio y
+  no rompen la consulta ni devuelven 400
+Resultado: no probado
+
+ID: TC-CAT-08
+Caso: Estado de carga del catálogo (skeletons)
+Tipo: happy
+Pasos:
+  1. Throttling "Slow 3G", abrir /products
+Esperado: se ven los skeletons de las tarjetas (8) hasta que llega la primera página; "Ver
+  más" no aparece mientras carga la primera página
+Resultado: no probado
+
+ID: TC-CAT-09
+Caso: Un producto inactivo no aparece en el catálogo público
+Tipo: security
+Pasos:
+  1. Desactivar un producto desde el admin
+  2. Abrir /products como anónimo y paginar todo
+Esperado: el producto inactivo no aparece (filtro `status = 'active'` + RLS `2026-09-15`)
+Resultado: no probado
+```
+
+### Búsqueda del navbar
+
+```
+ID: TC-SRCH-01
+Caso: Respuestas fuera de orden no pisan la búsqueda más reciente
+Tipo: edge
+Pasos:
+  1. Con throttling, escribir "ab" (esperar el debounce de 300 ms) y enseguida "abc"
+  2. Hacer que la respuesta de "ab" llegue después que la de "abc" (ej. con un breakpoint de red)
+Esperado: el desplegable muestra siempre los resultados de la última consulta (`requestId`); el
+  spinner se apaga solo cuando termina la última
+Resultado: no probado
+
+ID: TC-SRCH-02
+Caso: Caracteres reservados en el término de búsqueda
+Tipo: edge
+Pasos:
+  1. Buscar `a,b`, `(x)`, `50%`, `"a"` y `*`
+  2. Buscar solo `,,,`
+Esperado: no hay error 400 ni resultados absurdos; los caracteres `, ( ) % _ * "` se reemplazan
+  por espacio; un término que queda vacío no dispara consulta (lista vacía)
+Resultado: no probado
+
+ID: TC-SRCH-03
+Caso: Falla de red durante la búsqueda no deja el spinner colgado
+Tipo: failure
+Pasos:
+  1. Cortar la red y escribir un término
+Esperado: el spinner termina, la lista de resultados queda vacía y no se rompe la UI (el error
+  va a consola)
+Resultado: no probado
+
+ID: TC-SRCH-04
+Caso: Borrar el texto con una búsqueda en vuelo
+Tipo: edge
+Pasos:
+  1. Escribir un término y, antes de que responda, borrar todo el campo
+Esperado: el desplegable se cierra y la respuesta tardía no lo reabre
+Resultado: no probado
+```
+
+### Checkout: sin espera artificial e idempotencia
+
+```
+ID: TC-CHK-01
+Caso: El checkout se muestra sin la pantalla "Preparando tu compra..." artificial
+Tipo: happy
+Pre-condición: usuario logueado con producto en el carrito
+Pasos:
+  1. Ir a /checkout
+Esperado: el formulario aparece de inmediato (ya no hay espera fija de 1.5 s); con sesión
+  hidratada desde storage no se bloquea por `authInitialized`; sin usuario ni sesión
+  inicializada se ve el loader de "Recuperando tu sesión..." hasta resolver
+Resultado: no probado
+
+ID: TC-CHK-02
+Caso: Doble click en "Enviar comprobante por WhatsApp" (transferencia)
+Tipo: edge
+Pasos:
+  1. Completar un checkout por transferencia
+  2. Hacer doble click rápido en el botón principal
+Esperado: se crea UNA sola orden (stock -1 solo una vez); el botón queda deshabilitado con
+  el texto "Enviando pedido..." mientras la request está en vuelo; se abre WhatsApp una vez
+Resultado: no probado
+
+ID: TC-CHK-03
+Caso: Doble click en "Continuar al pago" / "Ir a Mercado Pago"
+Tipo: edge
+Pasos:
+  1. Completar un checkout con Mercado Pago, abrir el aviso de 15 minutos
+  2. Doble click rápido en "Ir a Mercado Pago"
+Esperado: una sola preferencia / un solo juego de órdenes; el botón del aviso queda
+  deshabilitado mientras envía; el botón principal muestra "Redirigiendo a Mercado Pago..."
+Resultado: no probado
+
+ID: TC-CHK-04
+Caso: Un reintento del mismo carrito reutiliza la Idempotency-Key; si el carrito cambia, se genera otra
+Tipo: edge
+Pasos:
+  1. Con DevTools -> Network, enviar el checkout y forzar un error de red/timeout
+  2. Reintentar sin tocar nada y comparar el header `Idempotency-Key` de ambas requests
+  3. Cambiar la cantidad (o el envío, nombre o email) y reenviar
+Esperado: paso 2 -> la misma key; paso 3 -> una key nueva (la huella incluye tipo de pago,
+  items, envío, costo, total, nombre y email del comprador); la key cumple 8-128 caracteres
+  `[A-Za-z0-9_-]` (UUID)
+Resultado: no probado
+
+ID: TC-CHK-05
+Caso: La key se descarta tras un envío exitoso
+Tipo: edge
+Pasos:
+  1. Completar una compra por transferencia con éxito
+  2. Volver, armar el mismo carrito de nuevo y enviar
+Esperado: la segunda compra usa una key distinta y crea órdenes nuevas (no devuelve las de la primera)
+Resultado: no probado
+
+ID: TC-CHK-06
+Caso: Error 422 / 409 del backend se muestra en lenguaje humano
+Tipo: failure
+Pasos:
+  1. Provocar `IDEMPOTENCY_KEY_REUSED` (misma key, carrito distinto) o un 409 de stock
+Esperado: se ve el mensaje del backend ("... Volvé al carrito e iniciá una nueva compra." / "No
+  hay stock suficiente de ...") en el cartel de error del checkout, sin códigos crudos; el
+  botón se rehabilita
+Resultado: no probado
+```
+
+### `apiFetch`: 503 `AUTH_UNAVAILABLE`
+
+```
+ID: TC-API-01
+Caso: Un 503 AUTH_UNAVAILABLE reintenta una vez y NO cierra la sesión
+Tipo: failure
+Pasos:
+  1. Con la sesión iniciada, interceptar (DevTools / proxy) la primera respuesta de una request
+     protegida y devolver `503 { code: 'AUTH_UNAVAILABLE' }` con `Retry-After: 1`
+  2. Dejar pasar la segunda
+Esperado: `apiFetch` espera `Retry-After` (máx. 2 s; 1 s por defecto si falta) y reintenta una
+  sola vez; la segunda respuesta se entrega normal; la sesión sigue activa (no se emite
+  `auth:logout`, `tokenStorage` no se limpia ni se llama a `refreshSession`)
+Resultado: no probado
+
+ID: TC-API-02
+Caso: Si el 503 persiste, el usuario ve un mensaje humano
+Tipo: failure
+Pasos:
+  1. Hacer que las dos respuestas sean 503 AUTH_UNAVAILABLE durante un checkout
+Esperado: el cartel muestra "El servicio está lento, reintentá en unos segundos."; sigue
+  logueado; al reintentar manualmente (misma key si no cambió el carrito) funciona
+Resultado: no probado
+
+ID: TC-API-03
+Caso: Un 401 real sigue refrescando la sesión; si el refresh falla, cierra sesión
+Tipo: security
+Pasos:
+  1. Invalidar el access token y hacer una request protegida
+  2. Repetir con el refresh token también inválido
+Esperado: paso 1 -> refresca vía Supabase y reintenta una vez; paso 2 -> se emite
+  `auth:logout` y se limpia la sesión; un 503 que no sea AUTH_UNAVAILABLE no se reintenta
+Resultado: no probado
+```
+
+### Admin: lista de productos con caché
+
+```
+ID: TC-ADMPROD-01
+Caso: Navegar entre Productos, Galería y Destacados no repite la lectura (caché de 30 s)
+Tipo: edge
+Pasos:
+  1. Admin -> Productos (carga con `force: true`), luego abrir Destacados y la galería dentro de 30 s
+  2. Mirar Network
+Esperado: no hay una segunda lectura de `productos` dentro del TTL en los consumidores sin `force`;
+  al volver a la pantalla Productos siempre recarga (force)
+Resultado: no probado
+
+ID: TC-ADMPROD-02
+Caso: Crear, editar, borrar o destacar un producto invalida la caché
+Tipo: edge
+Pasos:
+  1. Editar el precio de un producto y guardar
+  2. Ir enseguida a Destacados / Galería
+  3. Marcar un producto como destacado y volver a Productos
+Esperado: nunca se ven datos previos a la acción; el `featured` nuevo se refleja
+Resultado: no probado
+
+ID: TC-ADMPROD-03
+Caso: La galería (ProductGallery) lista solo productos activos
+Tipo: edge
+Pasos:
+  1. Con un producto inactivo, abrir la galería de productos del admin
+Esperado: el inactivo no aparece en la galería (se filtra `status === 'active'`), pero sí en la tabla de Productos
+Resultado: no probado
+```
+
+### Ventas (`/admin/sales`) — paginación, filtros y orden en servidor
+
+```
+ID: TC-SALES-01
+Caso: Paginación de 50 filas con total correcto
+Tipo: happy
+Pasos:
+  1. Abrir /admin/sales con más de 50 ventas
+  2. Ir a la página 2 y a la última
+Esperado: 50 filas por página; el paginador (MUI) aparece solo si hay más de una página; el
+  total de páginas sale del `count` exacto del servidor; la última página trae el resto
+Resultado: no probado
+
+ID: TC-SALES-02
+Caso: Filtro por estado de pago, incluyendo "Pendiente" y "Expirado" efectivos
+Tipo: edge
+Pre-condición: una venta MP 'pendiente' de hace > 15 min (aún sin barrer) y una de transferencia 'pendiente' reciente
+Pasos:
+  1. Filtrar "Pendiente"
+  2. Filtrar "Expirado"
+Esperado: "Pendiente" excluye la MP vencida (se ve como expirada) y conserva la transferencia
+  reciente; "Expirado" incluye las 'expirado' reales y las pendientes vencidas (MP > 15 min,
+  transferencia > 5 h); la lista coincide con el badge que muestra cada fila
+Resultado: no probado
+Notas: el selector no ofrece "Cancelado" (las órdenes canceladas se ven en la lista sin filtro).
+
+ID: TC-SALES-03
+Caso: Filtro por método de pago
+Tipo: happy
+Pasos:
+  1. Elegir "Mercado Pago", luego "Transferencia", luego "Todos los métodos"
+Esperado: la lista y el total de páginas reflejan el filtro; vuelve a la página 1 al cambiar
+Resultado: no probado
+
+ID: TC-SALES-04
+Caso: Filtro por stock ("Stock bajo (≤5)" / "Sin stock")
+Tipo: edge
+Pasos:
+  1. Elegir "Sin stock" y luego "Stock bajo (≤5)"
+  2. Repetir cuando ningún producto cumple la condición
+Esperado: solo ventas de productos con esas condiciones (se resuelven los ids en `productos`
+  y se filtra con `.in()`, tope 500 ids); si ningún producto cumple, empty state sin llamar a ventas
+Resultado: no probado
+
+ID: TC-SALES-05
+Caso: Búsqueda con debounce y saneo de caracteres reservados
+Tipo: edge
+Pasos:
+  1. Escribir un producto/comprador/email y mirar Network
+  2. Buscar `juan_perez@x.com` (con guion bajo) y luego `a,b(c)%*"`
+Esperado: una sola consulta ~300 ms después de dejar de tipear; busca en producto, comprador y
+  email (ilike); `_` se conserva (permite emails), `, ( ) % * "` se reemplazan por espacio sin error 400
+Resultado: no probado
+
+ID: TC-SALES-06
+Caso: Ordenar por columna sin duplicar ni omitir filas entre páginas
+Tipo: edge
+Pre-condición: varias ventas con el mismo valor en la columna (ej. mismo método de pago)
+Pasos:
+  1. Ordenar por "Método pago" asc y recorrer las páginas
+  2. Click de nuevo para desc; probar Comprador, Fecha, Cant., Total, Envío y Estado
+Esperado: el orden es estable (desempate por id); ninguna venta aparece dos veces ni falta
+  entre páginas; los nulos van al final
+Resultado: no probado
+
+ID: TC-SALES-07
+Caso: Cambiar filtros, búsqueda u orden vuelve a la página 1
+Tipo: edge
+Pasos:
+  1. Ir a la página 3 y cambiar cualquier filtro/orden/búsqueda
+Esperado: vuelve a la página 1 sin disparar antes una consulta con la página vieja
+Resultado: no probado
+
+ID: TC-SALES-08
+Caso: Estado de carga
+Tipo: happy
+Pasos:
+  1. Throttling "Slow 3G", abrir /admin/sales
+Esperado: se ve el loader con "Cargando ventas..." en la tabla; los contadores muestran "—"
+  hasta resolver
+Resultado: no probado
+
+ID: TC-SALES-09
+Caso: Estado vacío con y sin filtros
+Tipo: edge
+Pasos:
+  1. Filtrar de modo que no haya resultados
+  2. En una base sin ventas, abrir la pantalla
+Esperado: con filtros -> "No hay ventas que coincidan con los filtros" + sugerencia de limpiar;
+  sin filtros -> "Todavía no hay ventas registradas"
+Resultado: no probado
+
+ID: TC-SALES-10
+Caso: Error de carga con "Reintentar"
+Tipo: failure
+Pasos:
+  1. Cortar la red y abrir /admin/sales (o hacer clic en "Actualizar")
+  2. Restaurar y click en "Reintentar"
+Esperado: se ve "No pudimos cargar las ventas" (role="alert") con botón "Reintentar"; al
+  reintentar recarga tabla y contadores
+Resultado: no probado
+
+ID: TC-SALES-11
+Caso: Contadores globales independientes de filtros y de la página
+Tipo: edge
+Pasos:
+  1. Aplicar filtros y paginar; mirar "Total ventas", "Pendientes de pago", "Pagadas", "Con producto sin stock"
+  2. Hacer fallar solo la consulta de contadores
+Esperado: los contadores no cambian al filtrar/paginar (son `count` exacto de toda la tabla;
+  "Pendientes" usa el estado efectivo); si fallan quedan en "—" y la tabla sigue visible; las
+  alertas de stock (productos activos con stock <= 5) se ocultan si fallan
+Resultado: no probado
+Notas: reemplaza la inconsistencia reportada en "Hallazgos abiertos" (stats que no cuadraban
+  con la lista) — verificar si queda resuelta.
+
+ID: TC-SALES-12
+Caso: Página fuera de rango tras borrarse filas (416 / PGRST103)
+Tipo: failure
+Pasos:
+  1. Estar en la última página y reducir las filas (ej. cancelar/filtrar de modo que la página deje de existir)
+  2. Refrescar
+Esperado: ante el error `PGRST103` con página > 1 vuelve automáticamente a la página 1, sin mostrar error
+Resultado: no probado
+
+ID: TC-SALES-13
+Caso: Respuestas fuera de orden al cambiar filtros rápido
+Tipo: edge
+Pasos:
+  1. Con throttling, cambiar dos veces el filtro de estado seguidas y forzar que la respuesta del primero llegue última
+Esperado: la tabla refleja el último filtro (descarta respuestas viejas por `requestId`)
+Resultado: no probado
+
+ID: TC-SALES-14
+Caso: Confirmar / cancelar una transferencia refresca tabla y contadores
+Tipo: happy
+Pasos:
+  1. En una venta de transferencia 'pendiente' elegir "Pagado" y confirmar el diálogo
+  2. Repetir con "Cancelado" en otra
+Esperado: tras el OK del backend (PATCH confirm-transfer / cancel-transfer) se recarga la
+  página actual y los contadores; si el backend responde error, se muestra su mensaje
+Resultado: no probado
+```
+
+### Despachos (`/admin/dispatches`) — paginación y filtros en servidor
+
+```
+ID: TC-DESP-02
+Caso: Paginación de 50 pedidos pagados con total correcto
+Tipo: happy
+Pasos:
+  1. Abrir /admin/dispatches con más de 50 ventas pagadas
+  2. Ir a la página 2
+Esperado: 50 filas por página, solo ventas `payment_status = 'pagado'`, orden por fecha desc
+  (desempate por id) y paginador visible solo si hay más de una página (antes se traían hasta
+  1000 y se paginaba en el cliente)
+Resultado: no probado
+
+ID: TC-DESP-03
+Caso: Filtros por envío y por estado; "Pendiente" incluye dispatch_status NULL
+Tipo: edge
+Pre-condición: pedidos con `dispatch_status` NULL en la base
+Pasos:
+  1. Filtrar "Pendiente"
+  2. Combinar con "Retiro en local", "Envío por moto" y "Correo Argentino"
+  3. Probar "Despachado", "Listo para retiro" y "Entregado"
+Esperado: "Pendiente" trae los 'pendiente' y los NULL (mostrados como Pendiente); los filtros
+  se combinan; cambiar cualquiera vuelve a la página 1
+Resultado: no probado
+
+ID: TC-DESP-04
+Caso: Cambiar el estado de despacho persiste y refresca
+Tipo: happy
+Pre-condición: script `2026-10-06_ventas_restrict_update.sql` aplicado
+Pasos:
+  1. Como admin, cambiar un pedido a "En preparación" y otro a "Despachado" (o "Listo para retiro" si es retiro en local)
+Esperado: el cambio se guarda (única columna que el cliente puede actualizar), la tabla y los
+  contadores se recargan, y `dispatched_at` queda seteado al pasar a despachado
+Resultado: no probado
+Notas: si el UPDATE falla (ej. permisos), el código actual no muestra ningún mensaje
+  (`if (!error) refreshAll()`): el select vuelve al valor anterior sin aviso. Ver hallazgo H-DESP-SILENT.
+
+ID: TC-DESP-05
+Caso: Estados loading / empty / error de Despachos
+Tipo: failure
+Pasos:
+  1. Throttling y abrir la pantalla (loader "Cargando despachos...")
+  2. Filtrar sin resultados / base sin pedidos pagados
+  3. Cortar la red y recargar; luego "Reintentar"
+Esperado: loader -> lista; empty con filtros ("No hay pedidos que coincidan con los filtros") y
+  sin filtros ("Todavía no hay pedidos pagados"); error "No pudimos cargar los despachos" con "Reintentar"
+Resultado: no probado
+
+ID: TC-DESP-06
+Caso: Contadores de Despachos independientes de filtros
+Tipo: edge
+Pasos:
+  1. Aplicar filtros y paginar; mirar "Total pedidos", "Pendientes", "En preparación", "Despachados / Listos"
+Esperado: son conteos globales (`count` exacto sobre ventas pagadas; "Pendientes" incluye NULL;
+  "Despachados / Listos" suma `despachado` y `listo_para_retiro`); si fallan quedan en "—"
+Resultado: no probado
+
+ID: TC-DESP-07
+Caso: Despachos en mobile 375 px con paginación
+Tipo: a11y
+Pasos:
+  1. Abrir /admin/dispatches a 375 px con más de 50 pedidos
+Esperado: tarjetas (no tabla), select de estado usable, paginador sin desborde horizontal
+Resultado: no probado
+```
+
 ## Cross-browser / device
 
 | Combinación              | Estado     |
@@ -1325,3 +1827,12 @@ Resultado: ok — Playwright (1440px → /product/18; iPhone 12 sin navegación)
 |--------------|------------|--------|-------------|------|
 | HALL-007     | 🟡 Medio   | ABIERTO | `/contact`: Cards "Redes Sociales" y "Correo Electrónico" no tienen CTAs funcionales — iconos TikTok/Facebook sin href, card Correo sin mailto | TC-174 (BACK) |
 | HALL-008     | 🟡 Medio   | Documentado | `AdminRedirect` bloquea al admin del acceso a /checkout, /about, /contact via URL directa — impide QA de flujo compra con cuenta admin | TC-173/174 (BACK) |
+
+### Hallazgos de la pasada de documentación (2026-10-06, por lectura de código; sin reproducir)
+
+| ID | Severidad | Estado | Descripción | Caso |
+|----|-----------|--------|-------------|------|
+| H-DESP-SILENT | 🟡 Medio | ABIERTO | `Dispatches.handleChangeDispatchStatus` ignora el error del UPDATE (`if (!error) refreshAll()`): si falla (permisos tras `2026-10-06_ventas_restrict_update.sql`, red, RLS) el admin no recibe ningún aviso | TC-DESP-04 |
+| H-SALES-ALERT | 🟢 Bajo | ABIERTO | `Sales` informa errores de confirmar/cancelar con `alert()` del navegador en vez del sistema global de feedback | TC-SALES-14 |
+| H-SALES-FILTER | 🟢 Bajo | ABIERTO | El filtro de estado de Ventas no ofrece "Cancelado" (el tipo `payment_status` sí lo incluye) | TC-SALES-02 |
+| H-KEY-FINGERPRINT | 🟢 Info | Documentado | La huella de la Idempotency-Key del front incluye nombre y email del comprador y el total; la del backend no (solo productos, cantidades, variantes, envío y medio de pago). Un cambio de nombre genera key nueva pero el backend lo trataría como el mismo carrito: dos órdenes si el primer intento ya había commiteado | TC-CHK-04 |
