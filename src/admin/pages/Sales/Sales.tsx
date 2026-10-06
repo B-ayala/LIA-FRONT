@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Search, RefreshCw, ShoppingBag, User, Mail, ArrowUpDown } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Search, RefreshCw, ShoppingBag, User, Mail, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import { Box, InputAdornment, MenuItem, Pagination, TextField } from '@mui/material';
 import { supabase } from '../../../config/supabaseClient';
 import { formatDate, formatPriceInt } from '../../../utils/formatters';
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, SHIPPING_METHOD_LABEL, filterSelectSlotProps } from '../../../utils/labels';
-import { usePagination } from '../../../hooks/usePagination';
+import { RANGE_NOT_SATISFIABLE_CODE, getPageRange, getTotalPages, sanitizeSearchTerm } from '../../../utils/serverPagination';
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { apiFetch, authHeaders, API_BASE_URL } from '../../../utils/apiFetch';
 import { getAuthToken } from '../../../utils/auth';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
@@ -35,9 +36,33 @@ interface Sale {
     payment_status: 'pendiente' | 'pagado' | 'fallido' | 'expirado' | 'cancelado';
     shipping_method: string | null;
     created_at: string;
-    // joined from productos
-    current_stock?: number;
 }
+
+type SortKey = 'buyer_name' | 'product_name' | 'created_at' | 'quantity' | 'total_price' | 'payment_method' | 'shipping_method' | 'payment_status';
+interface SortConfig { key: SortKey; direction: 'asc' | 'desc' }
+
+interface SalesFilters {
+    search: string;
+    paymentStatus: string;
+    paymentMethod: string;
+    stock: string;
+    sort: SortConfig | null;
+}
+
+interface SalesSummary {
+    total: number;
+    pending: number;
+    paid: number;
+    outOfStock: number;
+}
+
+// Filtros, orden, búsqueda y paginación corren en el servidor (.range + count exact).
+const SALES_COLUMNS = 'id, buyer_name, buyer_email, product_id, product_name, product_image, quantity, unit_price, total_price, units_config, payment_method, payment_status, shipping_method, created_at';
+const SEARCH_DEBOUNCE_MS = 300;
+const LOW_STOCK_THRESHOLD = 5;
+// Tope de ids a pasar en .in() para no exceder el largo de URL de PostgREST.
+const STOCK_IDS_LIMIT = 500;
+const DEFAULT_SORT: SortConfig = { key: 'created_at', direction: 'desc' };
 
 const MP_EXPIRY_MS = 15 * 60 * 1000;
 const TRANSFER_EXPIRY_MS = 5 * 60 * 60 * 1000;
@@ -51,11 +76,103 @@ const getEffectiveStatus = (sale: Sale): Sale['payment_status'] => {
     return sale.payment_status;
 };
 
+interface FilterableQuery<Q> {
+    eq: (column: string, value: string) => Q;
+    or: (filters: string) => Q;
+}
+
+// Traduce el estado "efectivo" (pendiente vencido = expirado) a condiciones de servidor,
+// espejando getEffectiveStatus.
+const applyPaymentStatusFilter = <Q extends FilterableQuery<Q>>(query: Q, status: string): Q => {
+    const now = Date.now();
+    const mpCutoff = new Date(now - MP_EXPIRY_MS).toISOString();
+    const transferCutoff = new Date(now - TRANSFER_EXPIRY_MS).toISOString();
+
+    if (status === 'pendiente') {
+        return query.eq('payment_status', 'pendiente').or(
+            `payment_method.not.in.(mp,transfer),and(payment_method.eq.mp,created_at.gte.${mpCutoff}),and(payment_method.eq.transfer,created_at.gte.${transferCutoff})`,
+        );
+    }
+    if (status === 'expirado') {
+        return query.or(
+            `payment_status.eq.expirado,and(payment_status.eq.pendiente,payment_method.eq.mp,created_at.lt.${mpCutoff}),and(payment_status.eq.pendiente,payment_method.eq.transfer,created_at.lt.${transferCutoff})`,
+        );
+    }
+    return query.eq('payment_status', status);
+};
+
+// El stock vive en `productos`: se resuelven primero los ids y luego se filtra ventas con .in().
+const fetchProductIdsByStock = async (kind: 'out_of_stock' | 'low_stock'): Promise<number[]> => {
+    const base = supabase.from('productos').select('id').limit(STOCK_IDS_LIMIT);
+    const { data, error } = kind === 'out_of_stock'
+        ? await base.lte('stock', 0)
+        : await base.gt('stock', 0).lte('stock', LOW_STOCK_THRESHOLD);
+    if (error) throw error;
+    return (data ?? []).map((p) => p.id);
+};
+
+const baseCountQuery = () => supabase.from('ventas').select('id', { count: 'exact', head: true });
+
+const countSales = async (build: (q: ReturnType<typeof baseCountQuery>) => ReturnType<typeof baseCountQuery>): Promise<number> => {
+    const { count, error } = await build(baseCountQuery());
+    if (error) throw error;
+    return count ?? 0;
+};
+
+const fetchSalesSummary = async (): Promise<SalesSummary> => {
+    const outOfStockIds = await fetchProductIdsByStock('out_of_stock');
+    const [total, pending, paid, outOfStock] = await Promise.all([
+        countSales((q) => q),
+        countSales((q) => applyPaymentStatusFilter(q, 'pendiente')),
+        countSales((q) => q.eq('payment_status', 'pagado')),
+        outOfStockIds.length > 0 ? countSales((q) => q.in('product_id', outOfStockIds)) : Promise.resolve(0),
+    ]);
+    return { total, pending, paid, outOfStock };
+};
+
+interface SalesPageResult {
+    rows: Sale[];
+    totalCount: number;
+}
+
+const fetchSalesPage = async (filters: SalesFilters, page: number): Promise<SalesPageResult> => {
+    let stockIds: number[] | null = null;
+    if (filters.stock === 'out_of_stock' || filters.stock === 'low_stock') {
+        stockIds = await fetchProductIdsByStock(filters.stock);
+        if (stockIds.length === 0) return { rows: [], totalCount: 0 };
+    }
+
+    let query = supabase.from('ventas').select(SALES_COLUMNS, { count: 'exact' });
+
+    if (filters.paymentStatus) query = applyPaymentStatusFilter(query, filters.paymentStatus);
+    if (filters.paymentMethod) query = query.eq('payment_method', filters.paymentMethod);
+    if (stockIds) query = query.in('product_id', stockIds);
+    if (filters.search) {
+        const term = `%${filters.search}%`;
+        query = query.or(`product_name.ilike.${term},buyer_name.ilike.${term},buyer_email.ilike.${term}`);
+    }
+
+    const sort = filters.sort ?? DEFAULT_SORT;
+    // id como desempate: con valores repetidos, range() podría duplicar u omitir filas entre páginas.
+    query = query
+        .order(sort.key, { ascending: sort.direction === 'asc', nullsFirst: false })
+        .order('id', { ascending: true });
+
+    const { from, to } = getPageRange(page);
+    const { data, error, count } = await query.range(from, to);
+    if (error) throw error;
+
+    return { rows: (data ?? []) as Sale[], totalCount: count ?? 0 };
+};
+
 const Sales = () => {
     const [sales, setSales] = useState<Sale[]>([]);
+    const [totalCount, setTotalCount] = useState(0);
+    const [summary, setSummary] = useState<SalesSummary | null>(null);
     const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [loadError, setLoadError] = useState(false);
+    const [searchInput, setSearchInput] = useState('');
     const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
     const [filterStock, setFilterStock] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
@@ -63,66 +180,80 @@ const Sales = () => {
     const [confirming, setConfirming] = useState(false);
     const [cancellingSale, setCancellingSale] = useState<Sale | null>(null);
     const [cancelling, setCancelling] = useState(false);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof Sale, direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [pageState, setPageState] = useState({ key: '', page: 1 });
+    const requestIdRef = useRef(0);
+    const summaryRequestIdRef = useRef(0);
 
-    const loadSales = async () => {
+    const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
+    const searchTerm = sanitizeSearchTerm(debouncedSearch);
+    const hasActiveFilters = Boolean(searchTerm || filterPaymentStatus || filterPaymentMethod || filterStock);
+
+    // La página se asocia a la combinación de filtros: al cambiar cualquiera vuelve a 1
+    // sin disparar un fetch intermedio con la página vieja.
+    const filterKey = JSON.stringify([searchTerm, filterPaymentStatus, filterPaymentMethod, filterStock, sortConfig]);
+    const currentPage = pageState.key === filterKey ? pageState.page : 1;
+    const setCurrentPage = (page: number) => setPageState({ key: filterKey, page });
+    const totalPages = getTotalPages(totalCount);
+
+    const loadSales = useCallback(async () => {
+        const requestId = ++requestIdRef.current;
         setLoading(true);
+        setLoadError(false);
+        const filters: SalesFilters = {
+            search: searchTerm,
+            paymentStatus: filterPaymentStatus,
+            paymentMethod: filterPaymentMethod,
+            stock: filterStock,
+            sort: sortConfig,
+        };
         try {
-            const { data: ventasData, error } = await supabase
-                .from('ventas')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            // Fetch current stock for all unique product_ids
-            const productIds = [...new Set((ventasData ?? []).map((r) => r.product_id).filter(Boolean))];
-            const stockMap: Record<number, number> = {};
-            if (productIds.length > 0) {
-                const { data: productosData } = await supabase
-                    .from('productos')
-                    .select('id, stock')
-                    .in('id', productIds);
-                (productosData ?? []).forEach((p) => { stockMap[p.id] = p.stock; });
+            const result = await fetchSalesPage(filters, currentPage);
+            if (requestId !== requestIdRef.current) return;
+            setSales(result.rows);
+            setTotalCount(result.totalCount);
+        } catch (err) {
+            if (requestId !== requestIdRef.current) return;
+            if ((err as { code?: string }).code === RANGE_NOT_SATISFIABLE_CODE && currentPage > 1) {
+                setPageState({ key: filterKey, page: 1 });
+                return;
             }
+            setLoadError(true);
+        } finally {
+            if (requestId === requestIdRef.current) setLoading(false);
+        }
+    }, [searchTerm, filterPaymentStatus, filterPaymentMethod, filterStock, sortConfig, currentPage, filterKey]);
 
-            const mapped: Sale[] = (ventasData ?? []).map((row) => ({
-                id: row.id,
-                buyer_name: row.buyer_name ?? null,
-                buyer_email: row.buyer_email ?? null,
-                product_id: row.product_id,
-                product_name: row.product_name,
-                product_image: row.product_image,
-                quantity: row.quantity,
-                unit_price: row.unit_price,
-                total_price: row.total_price,
-                units_config: row.units_config,
-                payment_method: row.payment_method,
-                payment_status: row.payment_status,
-                shipping_method: row.shipping_method,
-                created_at: row.created_at,
-                current_stock: row.product_id != null ? stockMap[row.product_id] : undefined,
-            }));
-            setSales(mapped);
-
-            // Stock alerts: products with stock <= 5
-            const { data: alertsData } = await supabase
+    // Contadores y alertas no dependen de filtros ni página; si fallan quedan en "—" / ocultas
+    // sin tapar la tabla.
+    const loadSummary = useCallback(async () => {
+        const requestId = ++summaryRequestIdRef.current;
+        const [summaryResult, alertsResult] = await Promise.allSettled([
+            fetchSalesSummary(),
+            supabase
                 .from('productos')
                 .select('id, name, image_url, stock, category')
                 .eq('status', 'active')
-                .lte('stock', 5)
-                .order('stock', { ascending: true });
-            setStockAlerts(alertsData ?? []);
-        } catch (err) {
-            console.error('Error cargando ventas:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
+                .lte('stock', LOW_STOCK_THRESHOLD)
+                .order('stock', { ascending: true }),
+        ]);
+        if (requestId !== summaryRequestIdRef.current) return;
+        setSummary(summaryResult.status === 'fulfilled' ? summaryResult.value : null);
+        setStockAlerts(alertsResult.status === 'fulfilled' ? (alertsResult.value.data ?? []) : []);
+    }, []);
 
     useEffect(() => {
         loadSales();
-    }, []);
+    }, [loadSales]);
+
+    useEffect(() => {
+        loadSummary();
+    }, [loadSummary]);
+
+    const refreshAll = () => {
+        loadSales();
+        loadSummary();
+    };
 
     const handleTransferStatusChange = (sale: Sale, newStatus: string) => {
         if (sale.payment_method !== 'transfer' || getEffectiveStatus(sale) !== 'pendiente') return;
@@ -144,10 +275,8 @@ const Sales = () => {
                 alert(body.message ?? 'Error al cancelar la orden');
                 return;
             }
-            setSales((prev) =>
-                prev.map((s) => s.id === cancellingSale.id ? { ...s, payment_status: 'cancelado' } : s)
-            );
             setCancellingSale(null);
+            refreshAll();
         } catch {
             alert('Error de red al cancelar la orden');
         } finally {
@@ -169,10 +298,8 @@ const Sales = () => {
                 alert(body.message ?? 'Error al confirmar el pago');
                 return;
             }
-            setSales((prev) =>
-                prev.map((s) => s.id === confirmingSale.id ? { ...s, payment_status: 'pagado' } : s)
-            );
             setConfirmingSale(null);
+            refreshAll();
         } catch {
             alert('Error de red al confirmar el pago');
         } finally {
@@ -180,54 +307,12 @@ const Sales = () => {
         }
     };
 
-    // Filters
-    let filtered = sales;
-
-    if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        filtered = filtered.filter((s) =>
-            s.product_name.toLowerCase().includes(term) ||
-            (s.buyer_name ?? '').toLowerCase().includes(term) ||
-            (s.buyer_email ?? '').toLowerCase().includes(term)
-        );
-    }
-    if (filterPaymentStatus) {
-        filtered = filtered.filter((s) => getEffectiveStatus(s) === filterPaymentStatus);
-    }
-    if (filterPaymentMethod) {
-        filtered = filtered.filter((s) => s.payment_method === filterPaymentMethod);
-    }
-    if (filterStock === 'out_of_stock') {
-        filtered = filtered.filter((s) => s.current_stock === 0);
-    } else if (filterStock === 'low_stock') {
-        filtered = filtered.filter((s) => s.current_stock !== undefined && s.current_stock > 0 && s.current_stock <= 5);
-    }
-
-    if (sortConfig !== null) {
-        const { key, direction } = sortConfig;
-        filtered = [...filtered].sort((a, b) => {
-            const aVal = a[key];
-            const bVal = b[key];
-            // != null cubre undefined y null (buyer_name/buyer_email/shipping_method).
-            if (aVal != null && bVal != null) {
-                if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-                if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-            }
-            return 0;
-        });
-    }
-
-    const requestSort = (key: keyof Sale) => {
-        let direction: 'asc' | 'desc' = 'asc';
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-            direction = 'desc';
-        }
+    const requestSort = (key: SortKey) => {
+        const direction = sortConfig?.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
         setSortConfig({ key, direction });
     };
 
-    const { currentPage, setCurrentPage, totalPages, paginated } = usePagination(filtered, {
-        resetDeps: [searchTerm, filterPaymentStatus, filterPaymentMethod, filterStock],
-    });
+    const formatSummaryValue = (value: number | undefined) => value ?? '—';
 
     return (
         <div className="admin-sales-page">
@@ -266,7 +351,7 @@ const Sales = () => {
                     <h1 className="admin-page-title">Ventas</h1>
                     <p className="admin-page-subtitle">Historial de productos vendidos y estado de pagos.</p>
                 </div>
-                <button className="admin-btn-secondary admin-flex-center gap-2" onClick={loadSales}>
+                <button className="admin-btn-secondary admin-flex-center gap-2" onClick={refreshAll}>
                     <RefreshCw size={16} /> Actualizar
                 </button>
             </div>
@@ -276,8 +361,8 @@ const Sales = () => {
                 <div className="search-input-wrapper">
                     <TextField
                         placeholder="Buscar por producto, comprador o email..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
                         fullWidth
                         size="small"
                         slotProps={{
@@ -336,19 +421,19 @@ const Sales = () => {
             {/* Summary badges */}
             <div className="sales-summary">
                 <div className="summary-badge total">
-                    <span className="summary-value">{sales.length}</span>
+                    <span className="summary-value">{formatSummaryValue(summary?.total)}</span>
                     <span className="summary-label">Total ventas</span>
                 </div>
                 <div className="summary-badge pending">
-                    <span className="summary-value">{sales.filter(s => getEffectiveStatus(s) === 'pendiente').length}</span>
+                    <span className="summary-value">{formatSummaryValue(summary?.pending)}</span>
                     <span className="summary-label">Pendientes de pago</span>
                 </div>
                 <div className="summary-badge paid">
-                    <span className="summary-value">{sales.filter(s => s.payment_status === 'pagado').length}</span>
+                    <span className="summary-value">{formatSummaryValue(summary?.paid)}</span>
                     <span className="summary-label">Pagadas</span>
                 </div>
                 <div className="summary-badge no-stock">
-                    <span className="summary-value">{sales.filter(s => s.current_stock === 0).length}</span>
+                    <span className="summary-value">{formatSummaryValue(summary?.outOfStock)}</span>
                     <span className="summary-label">Con producto sin stock</span>
                 </div>
             </div>
@@ -383,16 +468,25 @@ const Sales = () => {
                         <LiaLoader size="md" />
                         <p className="sales-loading" style={{ margin: 0 }}>Cargando ventas...</p>
                     </div>
-                ) : filtered.length === 0 ? (
+                ) : loadError ? (
+                    <div className="sales-empty-state" role="alert">
+                        <AlertTriangle size={48} className="sales-empty-icon" />
+                        <p className="sales-empty-title">No pudimos cargar las ventas</p>
+                        <p className="sales-empty-subtitle">Revisá tu conexión e intentá de nuevo.</p>
+                        <button className="admin-btn-secondary admin-flex-center gap-2" onClick={refreshAll}>
+                            <RefreshCw size={16} /> Reintentar
+                        </button>
+                    </div>
+                ) : sales.length === 0 ? (
                     <div className="sales-empty-state">
                         <ShoppingBag size={48} className="sales-empty-icon" />
                         <p className="sales-empty-title">
-                            {searchTerm || filterPaymentStatus || filterPaymentMethod || filterStock
+                            {hasActiveFilters
                                 ? 'No hay ventas que coincidan con los filtros'
                                 : 'Todavía no hay ventas registradas'}
                         </p>
                         <p className="sales-empty-subtitle">
-                            {searchTerm || filterPaymentStatus || filterPaymentMethod || filterStock
+                            {hasActiveFilters
                                 ? 'Probá con otros criterios de búsqueda o limpiá los filtros.'
                                 : 'Las ventas aparecerán aquí en cuanto los clientes completen una compra.'}
                         </p>
@@ -401,7 +495,7 @@ const Sales = () => {
                     <>
                         {/* Mobile card list */}
                         <div className="sales-card-list">
-                            {paginated.map((sale) => (
+                            {sales.map((sale) => (
                                 <div className="sale-card" key={sale.id}>
                                     {/* Buyer info section */}
                                     <div className="sale-card-buyer">
@@ -496,7 +590,7 @@ const Sales = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {paginated.map((sale) => (
+                                {sales.map((sale) => (
                                     <tr key={sale.id}>
                                         <td>
                                             <div className="table-buyer-cell">

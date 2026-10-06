@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, Trash2, Star, Eye } from 'lucide-react';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
-import { toggleProductFeatured, fetchProducts } from '../../../services/productService';
+import { toggleProductFeatured, fetchAdminProducts } from '../../../services/productService';
 import { cleanText, normalizeCategory } from '../../../utils/formatters';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './FeaturedProductsManager.css';
@@ -39,7 +39,7 @@ const FeaturedProductsManager = () => {
     useEffect(() => {
         if (products.length === 0) {
             setLoading(true);
-            fetchProducts()
+            fetchAdminProducts()
                 .then((data) => setProducts(data.map((p: Record<string, unknown>) => mapProductRow(p))))
                 .catch((err) => console.error('Error cargando productos:', err))
                 .finally(() => setLoading(false));

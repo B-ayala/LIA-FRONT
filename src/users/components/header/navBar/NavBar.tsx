@@ -128,6 +128,7 @@ const NavBar = () => {
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchRequestIdRef = useRef(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobilePasswordModalOpen, setIsMobilePasswordModalOpen] = useState(false);
@@ -223,6 +224,7 @@ const NavBar = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (!value.trim()) {
+      searchRequestIdRef.current++;
       setSearchResults([]);
       setShowResults(false);
       setIsSearching(false);
@@ -232,10 +234,18 @@ const NavBar = () => {
     setIsSearching(true);
     setShowResults(true);
 
+    const requestId = ++searchRequestIdRef.current;
     debounceRef.current = setTimeout(async () => {
-      const results = await searchProducts(value.trim());
-      setSearchResults(results);
-      setIsSearching(false);
+      try {
+        const results = await searchProducts(value.trim());
+        if (requestId !== searchRequestIdRef.current) return;
+        setSearchResults(results);
+      } catch (err) {
+        console.error('Search failed:', err);
+        if (requestId === searchRequestIdRef.current) setSearchResults([]);
+      } finally {
+        if (requestId === searchRequestIdRef.current) setIsSearching(false);
+      }
     }, 300);
   };
 

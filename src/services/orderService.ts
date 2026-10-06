@@ -65,6 +65,12 @@ const validateOrderPayload = (payload: CreateOrderPayload): string | null => {
   return null;
 };
 
+// El backend deduplica reintentos del mismo intento de compra por esta key (8-128 chars [A-Za-z0-9_-]).
+const jsonHeaders = (idempotencyKey?: string): Record<string, string> => ({
+  'Content-Type': 'application/json',
+  ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+});
+
 const normalizeOrderErrorMessage = (message?: string): string => {
   if (!message) {
     return 'No se pudo conectar con el sistema de pagos. Intenta de nuevo o elegi transferencia.';
@@ -86,7 +92,7 @@ const normalizeOrderErrorMessage = (message?: string): string => {
  * El backend usa credenciales de service role, evitando el bloqueo por RLS de Supabase.
  * Devuelve los ids de las líneas creadas (para el nudge post-WhatsApp).
  */
-export const createOrder = async (payload: CreateOrderPayload): Promise<string[]> => {
+export const createOrder = async (payload: CreateOrderPayload, idempotencyKey?: string): Promise<string[]> => {
   const validationError = validateOrderPayload(payload);
   if (validationError) {
     throw new Error(validationError);
@@ -94,7 +100,7 @@ export const createOrder = async (payload: CreateOrderPayload): Promise<string[]
 
   const res = await apiFetch(`${API_BASE_URL}/orders/transfer`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(idempotencyKey),
     body: JSON.stringify({
       buyerName: payload.buyerName,
       buyerEmail: payload.buyerEmail,
@@ -143,7 +149,8 @@ export interface MpPreferenceResult {
 
 /** Llama al backend para crear una preferencia de Mercado Pago y registrar la venta. */
 export const createMpPreference = async (
-  payload: Omit<CreateOrderPayload, 'paymentMethod'>
+  payload: Omit<CreateOrderPayload, 'paymentMethod'>,
+  idempotencyKey?: string
 ): Promise<MpPreferenceResult> => {
   const validationError = validateOrderPayload({ ...payload, paymentMethod: 'mp' });
   if (validationError) {
@@ -152,7 +159,7 @@ export const createMpPreference = async (
 
   const res = await apiFetch(`${API_BASE_URL}/orders/mp-preference`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(idempotencyKey),
     body: JSON.stringify({
       buyerName: payload.buyerName,
       buyerEmail: payload.buyerEmail,

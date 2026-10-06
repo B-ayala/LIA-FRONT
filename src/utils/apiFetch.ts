@@ -9,6 +9,9 @@
  *    reintenta una sola vez. Si el refresh falla, limpia sesión y emite `auth:logout`.
  *  - Cola de refresh: si llegan N requests con token expirado en paralelo,
  *    todas esperan al mismo refresh en lugar de dispararlo N veces.
+ *  - Un 503 `AUTH_UNAVAILABLE` (Supabase/BD lentos) NO es un token inválido: no se
+ *    refresca ni se desloguea. Se reintenta 1 vez tras `Retry-After` (máx 2s) y, si
+ *    persiste, se devuelve el 503 con un mensaje humano en `message`.
  *  - Mantiene el header `ngrok-skip-browser-warning` para túneles de ngrok.
  */
 
@@ -18,10 +21,21 @@ import { tokenStorage } from './tokenStorage';
 const LOCALHOST_API = 'http://localhost:3000/api';
 const configuredBase: string = import.meta.env.VITE_API_URL_LOCAL ?? LOCALHOST_API;
 
+// Si falta la variable en un deploy, el front apuntaría a localhost del navegador del usuario sin avisar.
+if (import.meta.env.PROD && !import.meta.env.VITE_API_URL_LOCAL) {
+  console.error('VITE_API_URL_LOCAL no está definida: las llamadas al backend irán a localhost.');
+}
+
 /** URL base del backend propio. Única fuente de verdad para services y componentes. */
 export const API_BASE_URL = configuredBase;
 
 export const AUTH_LOGOUT_EVENT = 'auth:logout';
+
+export const AUTH_UNAVAILABLE_CODE = 'AUTH_UNAVAILABLE';
+export const AUTH_UNAVAILABLE_MESSAGE = 'El servicio está lento, reintentá en unos segundos.';
+const MAX_RETRY_AFTER_MS = 2000;
+const DEFAULT_RETRY_AFTER_MS = 1000;
+const HTTP_SERVICE_UNAVAILABLE = 503;
 
 export const authHeaders = (token: string): Record<string, string> => ({
   'Content-Type': 'application/json',
@@ -82,6 +96,41 @@ const refreshAccessToken = (): Promise<string | null> => {
   return refreshInflight;
 };
 
+// ─── 503 AUTH_UNAVAILABLE ───
+
+const isAuthUnavailable = async (response: Response): Promise<boolean> => {
+  if (response.status !== HTTP_SERVICE_UNAVAILABLE) return false;
+  const body = await response.clone().json().catch(() => null) as { code?: string } | null;
+  return body?.code === AUTH_UNAVAILABLE_CODE;
+};
+
+const parseRetryAfterMs = (response: Response): number => {
+  const seconds = Number(response.headers.get('Retry-After'));
+  if (!Number.isFinite(seconds) || seconds <= 0) return DEFAULT_RETRY_AFTER_MS;
+  return Math.min(seconds * 1000, MAX_RETRY_AFTER_MS);
+};
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+// Mismo 503, pero con mensaje humano: los callers ya muestran `message` de errores !ok.
+const withHumanMessage = (original: Response): Response => {
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  const retryAfter = original.headers.get('Retry-After');
+  if (retryAfter) headers.set('Retry-After', retryAfter);
+  return new Response(
+    JSON.stringify({ code: AUTH_UNAVAILABLE_CODE, message: AUTH_UNAVAILABLE_MESSAGE }),
+    { status: HTTP_SERVICE_UNAVAILABLE, headers },
+  );
+};
+
+// Reintenta 1 vez tras Retry-After. Nunca toca la sesión: el 503 no dice nada del token.
+const retryIfUnavailable = async (response: Response, retry: () => Promise<Response>): Promise<Response> => {
+  if (!(await isAuthUnavailable(response))) return response;
+  await wait(parseRetryAfterMs(response));
+  const second = await retry();
+  return (await isAuthUnavailable(second)) ? withHumanMessage(second) : second;
+};
+
 // ─── apiFetch principal ───
 
 interface ApiFetchOptions extends RequestInit {
@@ -137,12 +186,12 @@ export const apiFetch = async (input: RequestInfo | URL, init?: ApiFetchOptions)
   // 401 = token ausente/inválido/expirado → intentamos refrescar; 403 (sin permisos)
   // no se toca, lo maneja quien llama.
   if (init?.skipAuth || !accessToken || response.status !== 401) {
-    return response;
+    return retryIfUnavailable(response, () => doFetch(accessToken));
   }
 
   // Token rechazado: refrescar vía Supabase (con cola) y reintentar 1 vez.
   const newToken = await refreshAccessToken();
   if (!newToken) return response;
 
-  return doFetch(newToken);
+  return retryIfUnavailable(await doFetch(newToken), () => doFetch(newToken));
 };

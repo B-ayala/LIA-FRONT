@@ -1,13 +1,16 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './Products.css';
 import ProductGrid from '../../components/ProductGrid/ProductGrid';
 import SEO from '../../../components/common/SEO/SEO';
-import { fetchCatalogProducts, mapDbRowToProduct, fetchCategoriesTree, type Category } from '../../../services/productService';
+import { fetchCatalogProductsPage, mapDbRowToProduct, fetchCategoriesTree, type Category } from '../../../services/productService';
 import { cleanText } from '../../../utils/formatters';
 import type { Product } from '../../../types/product';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import { withTimeout } from '../../../utils/withTimeout';
+
+const ALL_CATEGORIES = 'Todos';
+const LOAD_ERROR_MESSAGE = 'No pudimos cargar los productos. Revisá tu conexión y reintentá.';
 
 function getAllDescendantNames(categories: Category[], rootName: string): Set<string> {
   const root = categories.find(c => c.name.toLowerCase() === rootName.toLowerCase());
@@ -28,37 +31,81 @@ function getAllDescendantNames(categories: Category[], rootName: string): Set<st
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [error, setError] = useState<'initial' | 'more' | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  // Descarta respuestas de una categoría anterior si el usuario cambió de filtro en vuelo.
+  const requestIdRef = useRef(0);
+  const productsCountRef = useRef(0);
 
   useInitialLoadTask('route', loading);
 
-  const activeCategory = searchParams.get('category') || 'Todos';
+  const activeCategory = searchParams.get('category') || ALL_CATEGORIES;
   const activeSubcategory = searchParams.get('subcategory') || '';
   const activeSubSub = searchParams.get('subsubcategory') || '';
+  const filterBy = cleanText(activeSubSub || activeSubcategory || activeCategory);
+
+  // El árbol de categorías es el que resuelve "categoría + descendientes" a nombres para
+  // el filtro server-side, así que se necesita antes de pedir la primera página.
+  const fetchPage = useCallback(async (offset: number) => {
+    const categoryNames = filterBy === ALL_CATEGORIES
+      ? undefined
+      : [...getAllDescendantNames((await withTimeout(fetchCategoriesTree())) ?? [], filterBy)];
+    const page = await withTimeout(fetchCatalogProductsPage({ offset, categoryNames }));
+    if (!page) throw new Error('timeout');
+    return { items: page.rows.map(mapDbRowToProduct), hasMore: page.hasMore };
+  }, [filterBy]);
+
+  const loadFirstPage = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    setLoadingMore(false);
+    setError(null);
+    setProducts([]);
+    productsCountRef.current = 0;
+    try {
+      const page = await fetchPage(0);
+      if (requestId !== requestIdRef.current) return;
+      setProducts(page.items);
+      productsCountRef.current = page.items.length;
+      setHasMore(page.hasMore);
+    } catch {
+      if (requestId !== requestIdRef.current) return;
+      setHasMore(false);
+      setError('initial');
+    } finally {
+      if (requestId === requestIdRef.current) setLoading(false);
+    }
+  }, [fetchPage]);
+
+  const loadMore = async () => {
+    if (loadingMore) return;
+    const requestId = ++requestIdRef.current;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const page = await fetchPage(productsCountRef.current);
+      if (requestId !== requestIdRef.current) return;
+      setProducts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const next = [...prev, ...page.items.filter((p) => !seen.has(p.id))];
+        productsCountRef.current = next.length;
+        return next;
+      });
+      setHasMore(page.hasMore);
+    } catch {
+      if (requestId !== requestIdRef.current) return;
+      setError('more');
+    } finally {
+      if (requestId === requestIdRef.current) setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
-    // withTimeout evita que un fetch colgado (red inestable, request sin
-    // respuesta) deje el catálogo en skeleton para siempre.
-    Promise.all([
-      withTimeout(fetchCatalogProducts().then((rows) => rows.map(mapDbRowToProduct))),
-      withTimeout(fetchCategoriesTree()),
-    ])
-      .then(([prods, cats]) => {
-        setProducts(prods ?? []);
-        setCategories(cats ?? []);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
-  const filteredProducts = useMemo(() => {
-    const filterBy = cleanText(activeSubSub || activeSubcategory || activeCategory);
-    if (filterBy === 'Todos') return products;
-    const validNames = getAllDescendantNames(categories, filterBy);
-    return products.filter((p) => validNames.has(p.category?.toLowerCase() ?? ''));
-  }, [products, categories, activeCategory, activeSubcategory, activeSubSub]);
+    void loadFirstPage();
+  }, [loadFirstPage]);
 
   const breadcrumbItems = useMemo(() => {
     const items: { label: string; onClick?: () => void }[] = [
@@ -124,10 +171,34 @@ const Products = () => {
         </nav>
 
 
-        {!loading && filteredProducts.length === 0 ? (
+        {error === 'initial' ? (
+          <div className="products-state" role="alert">
+            <p className="products-state__text">{LOAD_ERROR_MESSAGE}</p>
+            <button type="button" className="products-more-btn" onClick={() => void loadFirstPage()}>
+              Reintentar
+            </button>
+          </div>
+        ) : !loading && products.length === 0 ? (
           <p className="products-empty">No hay productos en esta categoría.</p>
         ) : (
-          <ProductGrid products={filteredProducts} loading={loading} skeletonCount={8} />
+          <>
+            <ProductGrid products={products} loading={loading} skeletonCount={8} />
+            {!loading && (hasMore || error === 'more') && (
+              <div className="products-state">
+                {error === 'more' && (
+                  <p className="products-state__text" role="alert">{LOAD_ERROR_MESSAGE}</p>
+                )}
+                <button
+                  type="button"
+                  className="products-more-btn"
+                  onClick={() => void loadMore()}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? 'Cargando...' : error === 'more' ? 'Reintentar' : 'Ver más'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

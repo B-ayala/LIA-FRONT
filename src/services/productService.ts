@@ -290,13 +290,22 @@ export const toggleProductFeatured = async (id: string, featured: boolean) => {
     console.error('Toggle featured error:', error);
     throw error;
   }
+  adminProductsCache.invalidate();
 };
+
+// ── Admin: lista de productos ────────────────────────────────────────────────
+
+// Columnas explícitas (en vez de select('*')): las vistas del admin comparten el mismo
+// fetch y el modal de edición usa todos los campos editables del producto, así que la
+// lista es casi completa. Quedan afuera las de uso interno (public_id, timestamps).
+const ADMIN_LIST_COLUMNS =
+  'id, name, price, original_price, stock, category, image_url, images, description, discount, condition, free_shipping, hover_image_enabled, variants, specifications, features, faqs, warranty, return_policy, size_guide, status, featured';
 
 // Fetch products from Supabase. Pass activeOnly=false for admin (includes inactive).
 export const fetchProducts = async (activeOnly = true) => {
   let query = supabase
     .from('productos')
-    .select('*')
+    .select(ADMIN_LIST_COLUMNS)
     .order('created_at', { ascending: false });
 
   if (activeOnly) {
@@ -313,30 +322,80 @@ export const fetchProducts = async (activeOnly = true) => {
   return data || [];
 };
 
-// Fetch para el catálogo público (/products). select() acotado a lo que
-// ProductGrid/ProductCard renderizan + `category` (filtro por categoría del
-// catálogo) — a diferencia de fetchProducts/fetchAllProducts (admin), acá no
-// hacen falta description/specifications/features/faqs/warranty/return_policy/
-// size_guide, que solo se usan en el detalle de producto. No reemplaza a
-// fetchProducts: los consumidores admin (FeaturedProductsManager,
-// ProductGallery, admin/Products) siguen necesitando el row completo.
-export const fetchCatalogProducts = async () => {
-  const { data, error } = await supabase
+// Caché compartido entre Products, ProductGallery y FeaturedProductsManager del admin:
+// al navegar entre pestañas del panel no se repite la misma lectura. TTL corto y las
+// mutaciones (create/update/delete/featured) invalidan, así el admin nunca ve datos viejos
+// tras guardar. Los consumidores que quieran forzar frescura usan { force: true }.
+const ADMIN_PRODUCTS_CACHE_TTL_MS = 30 * 1000;
+
+const adminProductsCache = createCachedFetcher(() => fetchProducts(false), ADMIN_PRODUCTS_CACHE_TTL_MS);
+
+export const fetchAdminProducts = (options?: { force?: boolean }) => {
+  if (options?.force) adminProductsCache.invalidate();
+  return adminProductsCache.load();
+};
+
+// ── Catálogo público paginado ────────────────────────────────────────────────
+
+export const CATALOG_PAGE_SIZE = 24;
+
+export interface CatalogPage {
+  rows: Record<string, unknown>[];
+  hasMore: boolean;
+}
+
+// Caracteres con significado en la sintaxis de filtros de PostgREST (.or) y comodines de LIKE.
+const CATEGORY_FILTER_RESERVED_CHARS = /[,()%*"\\]/g;
+
+// ilike sin comodines = igualdad case-insensitive: el filtro del catálogo siempre
+// comparó en minúsculas (ver Products.tsx), así tolera categorías cargadas con otro casing.
+const buildCategoryFilter = (names: string[]): string =>
+  names
+    .map((name) => name.replace(CATEGORY_FILTER_RESERVED_CHARS, ' ').trim())
+    .filter(Boolean)
+    .map((name) => `category.ilike."${name}"`)
+    .join(',');
+
+interface CatalogPageOptions {
+  offset?: number;
+  limit?: number;
+  /** Nombres de categoría (la elegida + descendientes). Vacío/undefined = todas. */
+  categoryNames?: string[];
+}
+
+// Fetch para el catálogo público (/products), paginado en el server. select()
+// acotado a lo que ProductGrid/ProductCard renderizan + `category`. Pide limit+1 filas
+// para saber si hay otra página sin un count aparte. El orden incluye `id` como
+// desempate: con created_at repetidos, range() podía duplicar u omitir filas entre páginas.
+export const fetchCatalogProductsPage = async (options: CatalogPageOptions = {}): Promise<CatalogPage> => {
+  const { offset = 0, limit = CATALOG_PAGE_SIZE, categoryNames } = options;
+
+  let query = supabase
     .from('productos')
     .select('id, name, price, original_price, image_url, images, category, discount, stock, hover_image_enabled, variants')
     .eq('status', 'active')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(offset, offset + limit);
+
+  const categoryFilter = categoryNames ? buildCategoryFilter(categoryNames) : '';
+  if (categoryFilter) {
+    query = query.or(categoryFilter);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Fetch catalog products error:', error);
     throw error;
   }
 
-  return data || [];
+  const rows = (data ?? []) as Record<string, unknown>[];
+  return { rows: rows.slice(0, limit), hasMore: rows.length > limit };
 };
 
-/** @deprecated Use fetchProducts(false) instead */
-export const fetchAllProducts = () => fetchProducts(false);
+/** @deprecated Use fetchAdminProducts() instead */
+export const fetchAllProducts = () => fetchAdminProducts();
 
 // Search products by name, category or description
 export interface ProductSearchResult {
@@ -360,30 +419,20 @@ interface ProductSearchRow {
   category: string;
 }
 
+// Caracteres con significado en la sintaxis de filtros de PostgREST (.or) y comodines de LIKE.
+const SEARCH_RESERVED_CHARS = /[,()%_*"]/g;
+
 export const searchProducts = async (query: string): Promise<ProductSearchResult[]> => {
-  if (!query.trim()) return [];
+  const q = query.replace(SEARCH_RESERVED_CHARS, ' ').trim();
+  if (!q) return [];
 
-  const q = query.trim();
-  let data;
-  let error;
-
-  ({ data, error } = await supabase
+  const { data, error } = await supabase
     .from('productos')
     .select('id, name, price, original_price, discount, image_url, images, category')
     .eq('status', 'active')
     .or(`name.ilike.%${q}%,category.ilike.%${q}%,description.ilike.%${q}%`)
     .limit(8)
-    .order('name', { ascending: true }));
-
-  if (error && error.message?.includes('original_price')) {
-    ({ data, error } = await supabase
-      .from('productos')
-      .select('id, name, price, discount, image_url, images, category')
-      .eq('status', 'active')
-      .or(`name.ilike.%${q}%,category.ilike.%${q}%,description.ilike.%${q}%`)
-      .limit(8)
-      .order('name', { ascending: true }));
-  }
+    .order('name', { ascending: true });
 
   if (error) {
     console.error('Search products error:', error);
@@ -472,6 +521,7 @@ export const createProduct = async (
     throw new Error(error.message || 'Failed to create product');
   }
 
+  adminProductsCache.invalidate();
   return response.json();
 };
 
@@ -492,6 +542,7 @@ export const updateProduct = async (
     throw new Error(error.message || 'Failed to update product');
   }
 
+  adminProductsCache.invalidate();
   return response.json();
 };
 
@@ -507,6 +558,7 @@ export const deleteProduct = async (id: string, token: string) => {
     throw new Error(error.message || 'Failed to delete product');
   }
 
+  adminProductsCache.invalidate();
   return response.json();
 };
 

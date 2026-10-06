@@ -6,7 +6,7 @@ import ProductTable from '../../components/ProductTable/ProductTable';
 import ProductModal from '../../components/ProductModal/ProductModal';
 import ProductCardOptionsManager from '../../components/ProductCardOptionsManager/ProductCardOptionsManager';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
-import { fetchAllProducts } from '../../../services/productService';
+import { fetchAdminProducts } from '../../../services/productService';
 import { getProductStockFromVariants } from '../../../utils/productVariants';
 import { filterSelectSlotProps } from '../../../utils/labels';
 import { cleanText, normalizeCategory } from '../../../utils/formatters';
@@ -59,7 +59,7 @@ const Products = () => {
 
     const loadProducts = async () => {
         try {
-            const data = await fetchAllProducts();
+            const data = await fetchAdminProducts({ force: true });
             setProducts(data.map((p: Record<string, unknown>) => mapProductRow(p)));
         } catch (err) {
             console.error('Error cargando productos:', err);

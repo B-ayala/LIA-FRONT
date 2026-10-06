@@ -11,7 +11,6 @@ import type { NudgeResponse } from '../../../services/orderService';
 import AuthModal from '../../components/auth/AuthModal';
 import PurchaseNudgeModal from '../../components/PurchaseNudgeModal/PurchaseNudgeModal';
 import SEO from '../../../components/common/SEO/SEO';
-import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './Checkout.css';
 
@@ -245,7 +244,6 @@ const isAMBA = (provincia: string, municipio?: string): boolean => {
 
 
 const Checkout = () => {
-  const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [mpError, setMpError] = useState('');
@@ -255,6 +253,7 @@ const Checkout = () => {
   const [nudgeError, setNudgeError] = useState<string | null>(null);
   const nudgeOrderIdsRef = useRef<string[]>([]);
   const nudgeCleanupRef = useRef<(() => void) | null>(null);
+  const idempotencyRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const currentUser = useAuthStore((s) => s.currentUser);
   const authInitialized = useAuthStore((s) => s.authInitialized);
   const [buyerName, setBuyerName] = useState('');
@@ -296,7 +295,6 @@ const Checkout = () => {
         };
       });
 
-  useInitialLoadTask('route', loading);
 
   const confirmEnabled = (addrDireccion.trim() !== '' || addrNoNumber) && !!addrProvince && !!addrCity && !postalOutOfArea && !postalRestrictedZone;
 
@@ -319,11 +317,6 @@ const Checkout = () => {
   }, [addrCity]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
     if (currentUser) {
       setBuyerName(currentUser.name);
       setBuyerEmail(currentUser.email);
@@ -335,21 +328,13 @@ const Checkout = () => {
   useEffect(() => () => nudgeCleanupRef.current?.(), []);
 
   useEffect(() => {
-    if (!loading && checkoutItems.length === 0) {
+    if (checkoutItems.length === 0) {
       navigate('/products');
     }
-  }, [checkoutItems.length, loading, navigate]);
+  }, [checkoutItems.length, navigate]);
 
-  if (loading) {
-    return (
-      <div className="checkout-loading-screen">
-        <LiaLoader size="lg" />
-        <p className="checkout-loading-text">Preparando tu compra...</p>
-      </div>
-    );
-  }
-
-  if (!authInitialized) {
+  // Con usuario hidratado desde storage no bloqueamos: el backend autoriza igual en cada llamada.
+  if (!authInitialized && !currentUser) {
     return (
       <div className="checkout-loading-screen">
         <LiaLoader size="lg" />
@@ -646,7 +631,18 @@ const Checkout = () => {
     }
   };
 
+  // Una key por intento de compra: los reintentos (timeout, 503, doble click) con el mismo
+  // carrito la reutilizan; si cambia el contenido se genera otra. Se descarta tras el éxito.
+  const getIdempotencyKey = (kind: 'transfer' | 'mp'): string => {
+    const fingerprint = JSON.stringify([kind, orderItemsPayload, selectedShipping, shippingCost, grandTotal, buyerName.trim(), buyerEmail.trim()]);
+    if (idempotencyRef.current?.fingerprint !== fingerprint) {
+      idempotencyRef.current = { fingerprint, key: crypto.randomUUID() };
+    }
+    return idempotencyRef.current.key;
+  };
+
   const handlePaymentSubmit = async () => {
+    if (submitting) return;
     setMpError('');
 
     if (!hasValidPrice) {
@@ -661,6 +657,7 @@ const Checkout = () => {
     }
 
     if (selectedPayment === 'transfer') {
+      setSubmitting(true);
       try {
         const orderIds = await createOrder({
           buyerName: buyerName.trim(),
@@ -670,7 +667,8 @@ const Checkout = () => {
           shippingMethod: selectedShipping,
           shippingCost,
           totalPrice: grandTotal,
-        });
+        }, getIdempotencyKey('transfer'));
+        idempotencyRef.current = null;
         const phoneNumber = '5491133631325';
         const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(buildWhatsAppMessage())}`;
         window.open(whatsappUrl, '_blank');
@@ -684,11 +682,14 @@ const Checkout = () => {
         }
       } catch (err) {
         setMpError(extractErrorMessage(err, 'No se pudo iniciar la compra. Intenta nuevamente.'));
+      } finally {
+        setSubmitting(false);
       }
     }
   };
 
   const handleConfirmMpRedirect = async () => {
+    if (submitting) return;
     if (!hasValidPrice) {
       setMpError(INVALID_PRODUCT_PRICE_MESSAGE);
       setMpReady(false);
@@ -705,7 +706,8 @@ const Checkout = () => {
         shippingMethod: selectedShipping,
         shippingCost,
         totalPrice: grandTotal,
-      });
+      }, getIdempotencyKey('mp'));
+      idempotencyRef.current = null;
       sessionStorage.setItem('mp_last_order', JSON.stringify({
         items: checkoutItems.map((checkoutItem) => ({
           productName: checkoutItem.product.name,
@@ -1046,7 +1048,7 @@ const Checkout = () => {
               disabled={!canProceed || submitting}
             >
               {submitting
-                ? 'Redirigiendo a Mercado Pago...'
+                ? (selectedPayment === 'transfer' ? 'Enviando pedido...' : 'Redirigiendo a Mercado Pago...')
                 : selectedPayment === 'transfer'
                   ? 'Enviar comprobante por WhatsApp'
                   : 'Continuar al pago'}
@@ -1069,6 +1071,7 @@ const Checkout = () => {
             <button
               className="checkout-btn-primary"
               onClick={handleConfirmMpRedirect}
+              disabled={submitting}
             >
               Ir a Mercado Pago
             </button>

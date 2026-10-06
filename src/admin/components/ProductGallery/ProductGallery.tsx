@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchProducts, deleteProduct } from '../../../services/productService';
+import { fetchAdminProducts, deleteProduct } from '../../../services/productService';
 import { getAuthToken } from '../../../utils/auth';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './ProductGallery.css';
@@ -34,8 +34,8 @@ const ProductGallery = ({ onProductSelect, refreshTrigger }: ProductGalleryProps
     setLoading(true);
     setError('');
     try {
-      const data = await fetchProducts();
-      setProducts(data);
+      const data = await fetchAdminProducts();
+      setProducts((data as unknown as Product[]).filter((row) => row.status === 'active'));
     } catch (err) {
       console.error('Load products error:', err);
       setError(err instanceof Error ? err.message : 'No se pudieron cargar los productos');
