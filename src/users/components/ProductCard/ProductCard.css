@@ -106,6 +106,8 @@
   color: var(--text-dark);
   margin: 0;
   line-height: 1.4;
+  /* Reserva siempre 2 líneas para que precio, sellos y botón queden alineados entre cards. */
+  min-height: 2.8em;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
