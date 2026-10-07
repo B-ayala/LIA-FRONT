@@ -485,6 +485,7 @@ const buildProductBody = (product: Partial<AdminProduct>) => ({
   // Se limpia al guardar para no persistir espacios sobrantes (corta el problema de raíz).
   name: product.name === undefined ? undefined : cleanText(product.name),
   price: product.price,
+  originalPrice: product.originalPrice,
   stock: product.stock,
   category: product.category === undefined ? undefined : normalizeCategory(product.category),
   imageUrl: product.imageUrl,
@@ -525,6 +526,13 @@ export const createProduct = async (
   return response.json();
 };
 
+// Para borrar un campo opcional el backend necesita null explícito, pero solo si el
+// caller lo incluyó: un update parcial no debe blanquear lo que no mencionó.
+const nullWhenPresent = <T extends object>(source: T, keys: (keyof T)[]) =>
+  Object.fromEntries(
+    keys.filter((key) => key in source).map((key) => [key, source[key] ?? null]),
+  );
+
 // Update product via backend API
 export const updateProduct = async (
   id: string,
@@ -535,11 +543,10 @@ export const updateProduct = async (
     method: 'PUT',
     headers: authHeaders(token),
     // JSON.stringify descarta los undefined y el backend solo actualiza lo que llega:
-    // para poder QUITAR descuento o guía de talles se envía null explícito.
+    // para poder QUITAR descuento, precio original o guía de talles se envía null explícito.
     body: JSON.stringify({
       ...buildProductBody(product),
-      discount: product.discount ?? null,
-      sizeGuide: product.sizeGuide ?? null,
+      ...nullWhenPresent(product, ['discount', 'originalPrice', 'sizeGuide']),
     }),
   });
 

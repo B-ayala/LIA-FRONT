@@ -9,6 +9,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Admin Productos: "Guardar producto" pasa a "Ver vista previa" (`/admin/products/preview`): muestra el borrador 1:1 como la tienda (Vista Card con `ProductGrid`/`ProductCard` y Vista Detalle con `ProductDetailView`) y el producto se guarda recién con "Confirmar"; "Editar producto" vuelve al modal con el borrador.
 
 ### Changed
+- Admin Productos: el precio original (tachado) ahora se guarda; el precio que escribe el admin es el precio final exacto que ve y paga el cliente (antes se perdía el original y la tienda aplicaba el % sobre el precio final).
 - `ProductDetail` se divide en carga de datos + `ProductDetailView` (presentacional, reutilizado por la vista previa del admin); sin cambios visibles en la tienda.
 - Admin Productos (crear/editar): si falta foto, stock o color, al guardar se muestra el popup de confirmación existente ("Guardar igualmente" / "Editar") indicando qué falta; reemplaza el aviso previo de "sin stock".
 - Admin Ventas y Despachos: paginación server-side (50 por página, `.range()` + `count exact`); filtros, búsqueda (debounce 300 ms, caracteres reservados saneados), orden y filtro de stock se resuelven en el servidor, los contadores usan consultas de conteo dedicadas y, ante un fallo, se muestra un error con "Reintentar" en lugar de una tabla vacía.

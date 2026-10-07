@@ -1514,12 +1514,20 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                         onChange={e => {
                                             setDiscountTouched(Boolean(e.target.value));
                                             setDiscount(e.target.value);
+                                            // 0 es el "quitar promoción" explícito: sin esto el precio original
+                                            // seguiría ganando en la tienda (tachado + % OFF).
+                                            if (e.target.value !== '' && Number(e.target.value) === 0) {
+                                                setOriginalPrice('');
+                                            }
                                             if (!e.target.value) {
                                                 setOriginalPrice('');
                                                 syncPromotionFromPrice(price, true);
                                             }
                                         }}
                                     />
+                                    <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>
+                                        Poné 0 para quitar la promoción.
+                                    </p>
                                     {price && (
                                         pricingPreview.hasPromotion ? (
                                             <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>

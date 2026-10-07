@@ -27,8 +27,7 @@ const draftToProduct = (draft: ProductDraft, productId: string | null) =>
     id: productId ?? PREVIEW_PRODUCT_ID,
     name: draft.name,
     price: draft.price,
-    // Sin original_price a propósito: el backend solo persiste price + discount, así que
-    // la tienda calculará el precio con esos dos y la vista previa debe mostrar lo mismo.
+    original_price: draft.originalPrice,
     image_url: draft.imageUrl,
     images: draft.images,
     description: draft.description,

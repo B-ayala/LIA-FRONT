@@ -1849,4 +1849,9 @@ ID: TC-PREV-07 — Caso: Confirmar con 500 muestra error (role=alert), no navega
 ID: TC-PREV-08 — Caso: `/admin/products/preview` en frío redirige a Productos; reload en la preview conserva el borrador. Tipo: edge. Resultado: ok.
 ID: TC-PREV-09 — Caso: regresión del detalle público `/product/:id` (carga, variantes, carrito, id inexistente). Tipo: edge. Resultado: ok (cantidad máx. >1 no probada: el stock por talle es 1).
 ID: TC-PREV-10 — Caso: mobile 375px sin botón flotante del asistente en la preview y sin scroll horizontal. Tipo: responsive. Resultado: ok.
-ID: TC-PREV-11 — Caso: editar un producto con descuento, vaciar el campo, vista previa → Confirmar: el descuento se borra en la base (se envía null). Tipo: edge. Resultado: no probado.
+ID: TC-PREV-11 — Caso: poner descuento 0 quita la promo (original_price y discount quedan null; la tienda sin tachado). Tipo: edge. Resultado: ok.
+ID: TC-PRICE-01 — Caso: bajar precio 1000→800: se guarda price 800, original_price 1000, discount 20; tienda muestra 1.000 tachado / 800,00 exacto. Tipo: happy. Resultado: ok.
+ID: TC-PRICE-02 — Caso: redondeo (10000→7999, 20.01%): final exacto $7.999,00 en tienda y carrito. Tipo: edge. Resultado: ok.
+ID: TC-PRICE-03 — Caso: producto legado id 16 (solo discount 90) sin tocar precio mantiene $59.000 tachado / $5.900. Tipo: edge. Resultado: ok.
+ID: TC-PRICE-04 — Caso: re-promo sobre producto guardado (800→700) usa 800 como original (12.5%). Tipo: happy. Resultado: ok.
+ID: TC-PRICE-05 — Caso: checkout real (MP/transferencia) cobra el final mostrado. Tipo: happy. Resultado: no probado (solo lectura de código: resolveUnitPrice = pricing.ts).
