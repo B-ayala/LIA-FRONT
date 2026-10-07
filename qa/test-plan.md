@@ -1855,3 +1855,9 @@ ID: TC-PRICE-02 — Caso: redondeo (10000→7999, 20.01%): final exacto $7.999,0
 ID: TC-PRICE-03 — Caso: producto legado id 16 (solo discount 90) sin tocar precio mantiene $59.000 tachado / $5.900. Tipo: edge. Resultado: ok.
 ID: TC-PRICE-04 — Caso: re-promo sobre producto guardado (800→700) usa 800 como original (12.5%). Tipo: happy. Resultado: ok.
 ID: TC-PRICE-05 — Caso: checkout real (MP/transferencia) cobra el final mostrado. Tipo: happy. Resultado: no probado (solo lectura de código: resolveUnitPrice = pricing.ts).
+
+ID: TC-STOCK-01 — Caso: sidebar muestra "Stock" y abre `/admin/stock` con skeleton/loader, luego tabla (desktop) o tarjetas (<768px). Tipo: happy. Resultado: no probado.
+ID: TC-STOCK-02 — Caso: filtros combinados (nombre, nivel En stock/Bajo/Sin stock, categoría, estado) y orden por columna; cambiar un filtro vuelve a página 1. Tipo: happy. Resultado: no probado.
+ID: TC-STOCK-03 — Caso: producto con talles muestra la suma de `stockByOption` (igual que Productos), no la columna `stock`. Tipo: edge. Resultado: no probado.
+ID: TC-STOCK-04 — Caso: sin resultados (empty con filtros / sin productos) y error de red con "Reintentar". Tipo: failure. Resultado: no probado.
+ID: TC-STOCK-05 — Caso: Ventas ya no muestra "Alertas de stock"; contadores y filtro de stock de Ventas siguen funcionando. Tipo: regresión. Resultado: no probado.

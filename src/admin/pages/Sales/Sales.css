@@ -44,64 +44,6 @@
 
 /* Buyer info — mobile card */
 
-/* Stock alerts */
-.stock-alerts-card {
-    padding: 1rem 0.75rem;
-}
-
-.stock-alerts-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #374151;
-    margin: 0 0 0.75rem;
-}
-
-.stock-alerts-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.stock-alert-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 8px;
-    border-left: 4px solid;
-}
-
-.stock-alert-row.out { background: #fff5f5; border-color: #ef4444; }
-.stock-alert-row.low { background: #fffbeb; border-color: #f59e0b; }
-
-.stock-alert-img {
-    width: 36px;
-    height: 36px;
-    object-fit: cover;
-    border-radius: 6px;
-    flex-shrink: 0;
-}
-
-.stock-alert-img-placeholder {
-    width: 36px;
-    height: 36px;
-    border-radius: 6px;
-    background: #e2e8f0;
-    flex-shrink: 0;
-}
-
-.stock-alert-name {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #1e293b;
-    flex: 1;
-}
-
-.stock-alert-category {
-    font-size: 0.75rem;
-    color: #94a3b8;
-}
-
 /* Tablet (640px+) */
 @media (min-width: 640px) {
     .admin-sales-page { gap: 1rem; }

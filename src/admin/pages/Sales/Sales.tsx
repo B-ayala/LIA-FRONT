@@ -13,14 +13,6 @@ import './Sales.css';
 
 const API_URL = API_BASE_URL;
 
-interface StockAlert {
-    id: number;
-    name: string;
-    image_url: string | null;
-    stock: number;
-    category: string | null;
-}
-
 interface Sale {
     id: string;
     buyer_name: string | null;
@@ -169,7 +161,6 @@ const Sales = () => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [summary, setSummary] = useState<SalesSummary | null>(null);
-    const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
     const [searchInput, setSearchInput] = useState('');
@@ -224,22 +215,17 @@ const Sales = () => {
         }
     }, [searchTerm, filterPaymentStatus, filterPaymentMethod, filterStock, sortConfig, currentPage, filterKey]);
 
-    // Contadores y alertas no dependen de filtros ni página; si fallan quedan en "—" / ocultas
-    // sin tapar la tabla.
+    // Los contadores no dependen de filtros ni página; si fallan quedan en "—" sin tapar la tabla.
     const loadSummary = useCallback(async () => {
         const requestId = ++summaryRequestIdRef.current;
-        const [summaryResult, alertsResult] = await Promise.allSettled([
-            fetchSalesSummary(),
-            supabase
-                .from('productos')
-                .select('id, name, image_url, stock, category')
-                .eq('status', 'active')
-                .lte('stock', LOW_STOCK_THRESHOLD)
-                .order('stock', { ascending: true }),
-        ]);
+        let result: SalesSummary | null = null;
+        try {
+            result = await fetchSalesSummary();
+        } catch {
+            result = null;
+        }
         if (requestId !== summaryRequestIdRef.current) return;
-        setSummary(summaryResult.status === 'fulfilled' ? summaryResult.value : null);
-        setStockAlerts(alertsResult.status === 'fulfilled' ? (alertsResult.value.data ?? []) : []);
+        setSummary(result);
     }, []);
 
     useEffect(() => {
@@ -437,29 +423,6 @@ const Sales = () => {
                     <span className="summary-label">Con producto sin stock</span>
                 </div>
             </div>
-
-            {/* Stock alerts */}
-            {stockAlerts.length > 0 && (
-                <div className="admin-card stock-alerts-card">
-                    <h2 className="stock-alerts-title">Alertas de stock</h2>
-                    <div className="stock-alerts-list">
-                        {stockAlerts.map((p) => (
-                            <div key={p.id} className={`stock-alert-row ${p.stock === 0 ? 'out' : 'low'}`}>
-                                {p.image_url ? (
-                                    <img src={p.image_url} alt={p.name} className="stock-alert-img" />
-                                ) : (
-                                    <div className="stock-alert-img-placeholder" />
-                                )}
-                                <span className="stock-alert-name">{p.name}</span>
-                                {p.category && <span className="stock-alert-category">{p.category}</span>}
-                                <span className={`stock-badge ${p.stock === 0 ? 'out' : 'low'}`}>
-                                    {p.stock === 0 ? 'Sin stock' : `Stock: ${p.stock}`}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* Table */}
             <div className="admin-card table-card">

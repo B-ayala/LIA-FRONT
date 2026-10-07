@@ -6,7 +6,7 @@ interface ProductBadgesProps {
 }
 
 export const StockBadge = ({ stock }: { stock: number }) => (
-  <span className={`stock-badge ${stock === 0 ? 'out' : stock <= 5 ? 'low' : 'ok'}`}>
+  <span className={`stock-badge ${stock <= 0 ? 'out' : stock <= 5 ? 'low' : 'ok'}`}>
     {stock}
   </span>
 );

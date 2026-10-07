@@ -58,6 +58,7 @@ const CloudinaryManager = lazy(() => import('../admin/pages/CloudinaryManager/Cl
 const ThemesManager = lazy(() => import('../admin/pages/ThemesManager/ThemesManager'));
 const AdminSales = lazy(() => import('../admin/pages/Sales/Sales'));
 const AdminDispatches = lazy(() => import('../admin/pages/Dispatches/Dispatches'));
+const AdminStock = lazy(() => import('../admin/pages/Stock/Stock'));
 
 // Fallback estable: min-height evita colapso del layout mientras se descarga
 // el chunk de la página. Solo se ve en conexiones lentas — la navegación
@@ -92,6 +93,7 @@ const AppRouter = () => {
               <Route path="themes" element={<ThemesManager />} />
               <Route path="sales" element={<AdminSales />} />
               <Route path="dispatches" element={<AdminDispatches />} />
+              <Route path="stock" element={<AdminStock />} />
             </Route>
           </Route>
 

@@ -1,0 +1,113 @@
+.admin-stock-page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.stock-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.stock-toolbar .search-input-wrapper { width: 100%; }
+.stock-toolbar .filter-select { min-width: 150px; }
+
+.admin-stock-page .summary-badge.total { border-left: 4px solid #6366f1; }
+.admin-stock-page .summary-badge.ok    { border-left: 4px solid #22c55e; }
+.admin-stock-page .summary-badge.low   { border-left: 4px solid #f59e0b; }
+.admin-stock-page .summary-badge.out   { border-left: 4px solid #ef4444; }
+
+.stock-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 3rem 1rem;
+    color: #666;
+}
+
+.stock-loading p { margin: 0; }
+
+/* Mobile cards */
+.stock-card-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stock-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.stock-card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.stock-card-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    overflow-wrap: anywhere;
+}
+
+.stock-card-category {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.stock-card-badges {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.stock-product-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.stock-table { display: none; }
+
+@media (min-width: 640px) {
+    .admin-stock-page { gap: 1rem; }
+
+    .stock-toolbar {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 0.75rem 1.5rem;
+        gap: 0.75rem;
+    }
+
+    .stock-toolbar .search-input-wrapper {
+        width: auto;
+        flex: 1;
+        min-width: 180px;
+        max-width: 28rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .stock-card-list { display: none; }
+    .stock-table { display: table; }
+}
+
+@media (min-width: 1024px) {
+    .admin-stock-page { gap: 1.5rem; }
+}
