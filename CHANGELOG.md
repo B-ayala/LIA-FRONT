@@ -6,7 +6,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Added
-- Admin Productos: al crear o editar un producto se redirige a `/admin/products/:id/preview`, una vista previa 1:1 de la tienda (Vista Card con `ProductGrid`/`ProductCard` y Vista Detalle con el nuevo `ProductDetailView`), con acciones "Editar producto" y "Listo".
+- Admin Productos: "Guardar producto" pasa a "Ver vista previa" (`/admin/products/preview`): muestra el borrador 1:1 como la tienda (Vista Card con `ProductGrid`/`ProductCard` y Vista Detalle con `ProductDetailView`) y el producto se guarda recién con "Confirmar"; "Editar producto" vuelve al modal con el borrador.
 
 ### Changed
 - `ProductDetail` se divide en carga de datos + `ProductDetailView` (presentacional, reutilizado por la vista previa del admin); sin cambios visibles en la tienda.

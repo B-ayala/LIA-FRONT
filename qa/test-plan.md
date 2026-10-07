@@ -1839,10 +1839,14 @@ Resultado: no probado
 
 ## Casos — Vista previa de producto del admin (2026-10-06)
 
-ID: TC-PREV-01 — Caso: guardar un producto existente redirige a la vista previa. Tipo: happy. Pasos: 1. /admin/products → Editar → Guardar producto. Esperado: URL `/admin/products/:id/preview`, tab "Vista Card" con la card real. Resultado: ok (Chrome 1440px).
-ID: TC-PREV-02 — Caso: Vista Detalle usa el detalle real (galería, color, talle, cantidad, descripción). Tipo: happy. Esperado: igual a `/product/:id`; "Comprar ahora"/"Agregar al carrito" validan pero no navegan ni tocan el carrito. Resultado: ok (render verificado; clicks de compra no probados).
-ID: TC-PREV-03 — Caso: "Editar producto" vuelve a Productos con el modal abierto del mismo producto y state limpio. Tipo: happy. Resultado: ok.
-ID: TC-PREV-04 — Caso: mobile 375px (header apilado, tabs, card a media columna). Tipo: a11y/responsive. Resultado: ok (detalle en 375px no probado).
-ID: TC-PREV-05 — Caso: crear producto nuevo redirige a su preview. Tipo: happy. Resultado: no probado (evité ensuciar datos).
-ID: TC-PREV-06 — Caso: producto inactivo muestra aviso "Inactivo"; id inexistente / red caída muestra error con "Reintentar". Tipo: failure. Resultado: no probado.
-ID: TC-PREV-07 — Caso: regresión del detalle público `/product/:id` (carga, skeleton, no disponible, splash espera la imagen). Tipo: edge. Resultado: no probado.
+ID: TC-PREV-01 — Caso: "Ver vista previa" no persiste nada. Tipo: happy. Pasos: Editar producto → cambiar precio → Ver vista previa (→ "Continuar igualmente" si faltan datos). Esperado: URL `/admin/products/preview` con el precio nuevo; al cancelar y recargar la lista el precio sigue igual. Resultado: ok (Chrome 1440px).
+ID: TC-PREV-02 — Caso: "Editar producto" reabre el modal con el borrador (precio modificado) y limpia el state. Tipo: happy. Resultado: ok.
+ID: TC-PREV-03 — Caso: "Confirmar" guarda y vuelve a la lista (datos originales). Tipo: happy. Resultado: ok.
+ID: TC-PREV-04 — Caso: Vista Detalle usa el detalle real; compra no navega ni toca el carrito. Tipo: happy. Resultado: ok (render); clicks de compra no probados.
+ID: TC-PREV-05 — Caso: responsive 320/375/768/1024/1440 sin scroll horizontal. Tipo: a11y/responsive. Resultado: ok (medido, solo Chrome).
+ID: TC-PREV-06 — Caso: crear producto nuevo → preview → Confirmar lo crea. Tipo: happy. Resultado: ok (producto de prueba creado y eliminado).
+ID: TC-PREV-07 — Caso: Confirmar con 500 muestra error (role=alert), no navega y permite reintentar; doble click = 1 request. Tipo: failure/concurrencia. Resultado: ok.
+ID: TC-PREV-08 — Caso: `/admin/products/preview` en frío redirige a Productos; reload en la preview conserva el borrador. Tipo: edge. Resultado: ok.
+ID: TC-PREV-09 — Caso: regresión del detalle público `/product/:id` (carga, variantes, carrito, id inexistente). Tipo: edge. Resultado: ok (cantidad máx. >1 no probada: el stock por talle es 1).
+ID: TC-PREV-10 — Caso: mobile 375px sin botón flotante del asistente en la preview y sin scroll horizontal. Tipo: responsive. Resultado: ok.
+ID: TC-PREV-11 — Caso: editar un producto con descuento, vaciar el campo, vista previa → Confirmar: el descuento se borra en la base (se envía null). Tipo: edge. Resultado: no probado.

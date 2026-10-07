@@ -126,7 +126,8 @@ src/
 │   └── pages/
 │       ├── home/Home.tsx
 │       ├── products/Products.tsx
-│       ├── producDetail/ProductDetail.tsx   # (sic) detalle + cálculo de envío
+│       ├── producDetail/ProductDetail.tsx   # (sic) carga del producto + estados no disponible/skeleton
+│       ├── producDetail/ProductDetailView.tsx  # detalle presentacional (lo reutiliza la vista previa admin)
 │       ├── checkout/Checkout.tsx + CheckoutResult.tsx
 │       ├── about/About.tsx
 │       ├── contact/Contact.tsx
@@ -139,7 +140,7 @@ src/
     ├── styles/adminShared.css  # estilos compartidos del admin
     ├── components/             # CarouselManager, CloudinaryImagePicker, CloudinaryStorageUsage,
     │                           #   FeaturedProductsManager, ProductGallery, ProductModal, ProductTable
-    └── pages/                  # Dashboard, Products, Users, Sales, Dispatches, AboutEditor,
+    └── pages/                  # Dashboard, Products, ProductPreview, Users, Sales, Dispatches, AboutEditor,
                                 #   FooterEditor, HomeManager, CloudinaryManager, ThemesManager
 ```
 
@@ -251,8 +252,10 @@ La sesión la maneja **Supabase Auth**; el backend Express no expone endpoints `
 
 ### 6.2 Catálogo
 - `Home` / `Products` leen de Supabase (`fetchFeaturedProducts`, `fetchProducts`).
-- `ProductDetail` lee el producto (`fetchProductById`) y, si no es envío gratis, consulta
-  `GET /shipping?postalCode=…` para costo/plazo de envío.
+- `ProductDetail` lee el producto (`fetchProductById`) y delega el render en `ProductDetailView`.
+- Admin: en `ProductModal` "Ver vista previa" no guarda; navega a `/admin/products/preview` con el
+  borrador (router state), que muestra `ProductGrid` + `ProductDetailView` (`preview`) y persiste
+  (`createProduct`/`updateProduct`) recién en "Confirmar".
 - `NavBar` usa `fetchCategories` / `searchProducts` (búsqueda con `ilike` sobre `productos`).
 
 ### 6.3 Carrito y checkout

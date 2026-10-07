@@ -50,5 +50,5 @@ export const buildMissingDataMessage = (missing: MissingProductField[]): string 
   const detail = onlyStockAndColor && missing.length === 1
     ? describeConfigured(missing)
     : `Falta agregar ${joinSpanish(missing.map((field) => MISSING_LABEL[field]))}. `;
-  return `${detail}¿Querés guardar el producto igualmente?`;
+  return `${detail}¿Querés continuar igualmente con la vista previa?`;
 };

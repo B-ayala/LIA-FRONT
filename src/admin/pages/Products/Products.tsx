@@ -4,6 +4,7 @@ import { Plus, Search, BarChart2 } from 'lucide-react';
 import { MenuItem, TextField } from '@mui/material';
 import ProductTable from '../../components/ProductTable/ProductTable';
 import ProductModal from '../../components/ProductModal/ProductModal';
+import type { ProductDraft, ProductPreviewState } from '../../components/ProductModal/productDraft';
 import ProductCardOptionsManager from '../../components/ProductCardOptionsManager/ProductCardOptionsManager';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
 import { fetchAdminProducts } from '../../../services/productService';
@@ -51,6 +52,7 @@ const Products = () => {
     const [filterStock, setFilterStock] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+    const [draft, setDraft] = useState<ProductDraft | null>(null);
     const [loading, setLoading] = useState(true);
 
     const categories = useMemo(() => {
@@ -74,33 +76,41 @@ const Products = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // "Editar producto" desde la vista previa vuelve acá pidiendo reabrir el modal.
-    const editProductIdFromPreview = (location.state as { editProductId?: string } | null)?.editProductId;
+    // "Editar producto" desde la vista previa vuelve acá con el borrador para reabrir
+    // el modal exactamente como se había dejado (producto existente o nuevo).
+    const returnedPreview = (location.state as { editPreview?: ProductPreviewState } | null)?.editPreview;
     useEffect(() => {
-        if (loading || !editProductIdFromPreview) return;
-        const productToEdit = products.find((p) => p.id === editProductIdFromPreview);
-        if (productToEdit) {
-            setEditingProduct(productToEdit);
+        if (loading || !returnedPreview) return;
+        const original = returnedPreview.productId
+            ? products.find((p) => p.id === returnedPreview.productId) ?? null
+            : null;
+        // Si el producto ya no existe no se reabre: seguir como "nuevo" lo duplicaría al confirmar.
+        const wasDeleted = returnedPreview.productId !== null && original === null;
+        if (!wasDeleted) {
+            setEditingProduct(original);
+            setDraft(returnedPreview.draft);
             setIsModalOpen(true);
         }
         // Limpia el state para que un refresh o "atrás" no reabra el modal.
         navigate(location.pathname, { replace: true, state: null });
-    }, [loading, editProductIdFromPreview, products, navigate, location.pathname]);
+    }, [loading, returnedPreview, products, navigate, location.pathname]);
 
-    // Tras guardar, el admin ve cómo quedó el producto en la tienda antes de seguir.
-    const handleProductSaved = (productId: string | null) => {
-        void loadProducts();
-        if (productId) navigate(`/admin/products/${productId}/preview`);
+    // El formulario no guarda: se previsualiza y se persiste recién al confirmar.
+    const handlePreview = (nextDraft: ProductDraft) => {
+        const state: ProductPreviewState = { draft: nextDraft, productId: editingProduct?.id ?? null };
+        navigate('/admin/products/preview', { state });
     };
 
     const handleOpenModal = (product?: AdminProduct) => {
         setEditingProduct(product || null);
+        setDraft(null);
         setIsModalOpen(true);
     };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingProduct(null);
+        setDraft(null);
     };
 
     return (
@@ -198,7 +208,8 @@ const Products = () => {
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
                 product={editingProduct}
-                onSaved={handleProductSaved}
+                draft={draft}
+                onPreview={handlePreview}
             />
         </div>
     );

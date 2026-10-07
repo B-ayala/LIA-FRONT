@@ -1,100 +1,106 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Check, EyeOff, Info, LayoutGrid, Monitor, PackageX, Pencil } from 'lucide-react';
-import { fetchProductById, mapDbRowToProduct } from '../../../services/productService';
-import type { Product } from '../../../types/product';
+import { useMemo, useState, type KeyboardEvent } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Check, EyeOff, Info, LayoutGrid, Loader2, Monitor, Pencil, TriangleAlert } from 'lucide-react';
+import { createProduct, mapDbRowToProduct, updateProduct } from '../../../services/productService';
 import ProductGrid from '../../../users/components/ProductGrid/ProductGrid';
 import ProductDetailView from '../../../users/pages/producDetail/ProductDetailView';
-import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import type { ProductDraft, ProductPreviewState } from '../../components/ProductModal/productDraft';
+import { getAuthToken } from '../../../utils/auth';
+import { extractErrorMessage } from '../../../utils/errorMessage';
 import { useTypography } from '../../../utils/TypographyProvider';
-import { withTimeout } from '../../../utils/withTimeout';
 import '../../../users/pages/producDetail/ProductDetail.css';
 import './ProductPreview.css';
 
 type PreviewView = 'card' | 'detail';
-type LoadState = 'loading' | 'error' | 'ready';
+
+const PREVIEW_PRODUCT_ID = 'preview';
 
 const VIEWS: { id: PreviewView; label: string; hint: string; Icon: typeof LayoutGrid }[] = [
   { id: 'card', label: 'Vista Card', hint: 'Cómo aparece en los listados', Icon: LayoutGrid },
   { id: 'detail', label: 'Vista Detalle', hint: 'Cómo aparece al ingresar al producto', Icon: Monitor },
 ];
 
+// Mismo mapeo que la tienda (mapDbRowToProduct) para que el borrador se sanee y
+// se calcule igual que un producto ya guardado.
+const draftToProduct = (draft: ProductDraft, productId: string | null) =>
+  mapDbRowToProduct({
+    id: productId ?? PREVIEW_PRODUCT_ID,
+    name: draft.name,
+    price: draft.price,
+    // Sin original_price a propósito: el backend solo persiste price + discount, así que
+    // la tienda calculará el precio con esos dos y la vista previa debe mostrar lo mismo.
+    image_url: draft.imageUrl,
+    images: draft.images,
+    description: draft.description,
+    category: draft.category,
+    discount: draft.discount,
+    stock: draft.stock,
+    condition: draft.condition,
+    free_shipping: draft.freeShipping,
+    hover_image_enabled: draft.hoverImageEnabled,
+    variants: draft.variants,
+    specifications: draft.specifications,
+    features: draft.features,
+    faqs: draft.faqs,
+    warranty: draft.warranty,
+    return_policy: draft.returnPolicy,
+    size_guide: draft.sizeGuide,
+  });
+
 const ProductPreview = () => {
-  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { userLayoutStyle } = useTypography();
+  const previewState = location.state as ProductPreviewState | null;
   const [view, setView] = useState<PreviewView>('card');
-  const [product, setProduct] = useState<Product | null>(null);
-  const [isActive, setIsActive] = useState(true);
-  const [loadState, setLoadState] = useState<LoadState>('loading');
-  const [attempt, setAttempt] = useState(0);
+  const [confirming, setConfirming] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
+  const product = useMemo(
+    () => (previewState ? draftToProduct(previewState.draft, previewState.productId) : null),
+    [previewState],
+  );
 
-    // Se lee de la base (no del store) para mostrar exactamente lo que quedó
-    // guardado; activeOnly=false porque el admin puede previsualizar inactivos.
-    withTimeout(fetchProductById(id!, false))
-      .then((row) => {
-        if (cancelled) return;
-        if (!row) {
-          setProduct(null);
-          setLoadState('error');
-          return;
-        }
-        setProduct(mapDbRowToProduct(row));
-        setIsActive(row.status !== 'inactive');
-        setLoadState('ready');
-      })
-      .catch(() => {
-        if (!cancelled) setLoadState('error');
-      });
+  // Sin borrador (acceso directo a la URL) no hay nada que previsualizar.
+  if (!previewState || !product) return <Navigate to="/admin/products" replace />;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [id, attempt]);
+  const { draft, productId } = previewState;
 
-  const retry = () => {
-    setLoadState('loading');
-    setAttempt((n) => n + 1);
+  const goToEdit = () => navigate('/admin/products', { state: { editPreview: previewState } });
+
+  // Patrón WAI-ARIA de tabs: flechas mueven la selección y el foco.
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const next: PreviewView = view === 'card' ? 'detail' : 'card';
+    setView(next);
+    document.getElementById(`preview-tab-${next}`)?.focus();
   };
-  const goToProducts = () => navigate('/admin/products');
-  const goToEdit = () => navigate('/admin/products', { state: { editProductId: id } });
 
-  if (loadState === 'loading') {
-    return (
-      <div className="product-preview__status" role="status" aria-busy="true">
-        <LiaLoader size="md" />
-        <p>Cargando vista previa…</p>
-      </div>
-    );
-  }
-
-  if (loadState === 'error' || !product) {
-    return (
-      <div className="product-preview__status" role="alert">
-        <PackageX size={44} aria-hidden="true" />
-        <h2>No pudimos cargar la vista previa</h2>
-        <p>El producto no existe o hubo un problema de conexión. Tu producto ya está guardado.</p>
-        <div className="product-preview__status-actions">
-          <button type="button" className="admin-btn-secondary" onClick={retry}>
-            Reintentar
-          </button>
-          <button type="button" className="admin-btn-primary" onClick={goToProducts}>
-            Volver a productos
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const handleConfirm = async () => {
+    if (confirming) return;
+    setConfirming(true);
+    setSaveError('');
+    try {
+      const token = await getAuthToken();
+      if (productId) {
+        await updateProduct(productId, draft, token);
+      } else {
+        await createProduct(draft, token);
+      }
+      navigate('/admin/products', { replace: true });
+    } catch (err) {
+      setSaveError(extractErrorMessage(err, 'No se pudo guardar el producto'));
+      setConfirming(false);
+    }
+  };
 
   return (
     <div className="product-preview">
       <header className="product-preview__header">
         <div className="product-preview__heading">
           <nav className="product-preview__breadcrumb" aria-label="Ruta de navegación">
-            <button type="button" onClick={goToProducts}>Productos</button>
+            <span>Productos</span>
             <span aria-hidden="true">/</span>
             <span aria-current="page">Vista previa</span>
           </nav>
@@ -102,11 +108,13 @@ const ProductPreview = () => {
           <p className="admin-page-subtitle">{product.name}</p>
         </div>
         <div className="product-preview__actions">
-          <button type="button" className="admin-btn-secondary admin-flex-center gap-2" onClick={goToEdit}>
+          <button type="button" className="admin-btn-secondary admin-flex-center gap-2" onClick={goToEdit} disabled={confirming}>
             <Pencil size={16} aria-hidden="true" /> Editar producto
           </button>
-          <button type="button" className="admin-btn-primary admin-flex-center gap-2" onClick={goToProducts}>
-            <Check size={16} aria-hidden="true" /> Listo
+          <button type="button" className="admin-btn-primary admin-flex-center gap-2" onClick={handleConfirm} disabled={confirming}>
+            {confirming
+              ? <><Loader2 size={16} className="product-preview__spinner" aria-hidden="true" /> Guardando…</>
+              : <><Check size={16} aria-hidden="true" /> Confirmar</>}
           </button>
         </div>
       </header>
@@ -114,12 +122,18 @@ const ProductPreview = () => {
       <div className="product-preview__notes">
         <p className="product-preview__note">
           <Info size={16} aria-hidden="true" />
-          Así lo verán tus clientes en la tienda. Es una vista previa: los botones de compra no realizan acciones.
+          Así lo verán tus clientes en la tienda. Todavía no se guardó: los cambios se aplican recién al confirmar.
         </p>
-        {!isActive && (
+        {saveError && (
+          <p className="product-preview__note product-preview__note--error" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            {saveError.replace(/\.$/, '')}. Podés reintentar con Confirmar o volver a editar.
+          </p>
+        )}
+        {draft.status === 'inactive' && (
           <p className="product-preview__note product-preview__note--warning" role="status">
             <EyeOff size={16} aria-hidden="true" />
-            Este producto está <strong>Inactivo</strong>: todavía no se muestra en la tienda.
+            Este producto quedará <strong>Inactivo</strong>: no se mostrará en la tienda.
           </p>
         )}
       </div>
@@ -134,7 +148,9 @@ const ProductPreview = () => {
             aria-selected={view === viewId}
             aria-controls="preview-panel"
             className={`product-preview__tab${view === viewId ? ' product-preview__tab--active' : ''}`}
+            tabIndex={view === viewId ? 0 : -1}
             onClick={() => setView(viewId)}
+            onKeyDown={handleTabKeyDown}
           >
             <Icon size={18} aria-hidden="true" />
             <span className="product-preview__tab-text">

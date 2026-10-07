@@ -21,21 +21,6 @@
     margin-bottom: 0.25rem;
 }
 
-.product-preview__breadcrumb button {
-    background: none;
-    border: none;
-    padding: 0;
-    font: inherit;
-    color: inherit;
-    cursor: pointer;
-    text-decoration: underline;
-}
-
-.product-preview__breadcrumb button:hover,
-.product-preview__breadcrumb button:focus-visible {
-    color: #0f172a;
-}
-
 .product-preview__actions {
     display: flex;
     flex-direction: column;
@@ -65,6 +50,25 @@
 .product-preview__note svg {
     flex-shrink: 0;
     margin-top: 1px;
+}
+
+.product-preview__note--error {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.product-preview__spinner {
+    animation: product-preview-spin 0.8s linear infinite;
+}
+
+@keyframes product-preview-spin {
+    to { transform: rotate(360deg); }
+}
+
+.product-preview__actions button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .product-preview__note--warning {
@@ -165,37 +169,6 @@
     min-width: 150px;
     grid-template-columns: minmax(0, 1fr);
     padding: 0;
-}
-
-/* ---------- Estados (loading / error) ---------- */
-.product-preview__status {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 3rem 1rem;
-    text-align: center;
-    color: #475569;
-}
-
-.product-preview__status h2 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: #0f172a;
-}
-
-.product-preview__status p {
-    margin: 0;
-    max-width: 420px;
-    font-size: 0.9rem;
-}
-
-.product-preview__status-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-    max-width: 320px;
 }
 
 @media (min-width: 768px) {

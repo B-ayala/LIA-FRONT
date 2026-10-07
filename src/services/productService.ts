@@ -534,7 +534,13 @@ export const updateProduct = async (
   const response = await apiFetch(`${API_URL}/products/${id}`, {
     method: 'PUT',
     headers: authHeaders(token),
-    body: JSON.stringify(buildProductBody(product)),
+    // JSON.stringify descarta los undefined y el backend solo actualiza lo que llega:
+    // para poder QUITAR descuento o guía de talles se envía null explícito.
+    body: JSON.stringify({
+      ...buildProductBody(product),
+      discount: product.discount ?? null,
+      sizeGuide: product.sizeGuide ?? null,
+    }),
   });
 
   if (!response.ok) {

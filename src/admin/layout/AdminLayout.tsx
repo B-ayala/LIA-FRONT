@@ -6,6 +6,8 @@ import AssistantWidget from '../components/Assistant/AssistantWidget';
 import '../styles/adminShared.css';
 import './AdminLayout.css';
 
+const PRODUCT_PREVIEW_PATH = '/admin/products/preview';
+
 const AdminLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
@@ -55,7 +57,8 @@ const AdminLayout = () => {
                     </main>
                 </div>
             </div>
-            <AssistantWidget />
+            {/* En la vista previa de producto el botón flotante taparía los botones de compra (mobile). */}
+            {location.pathname.replace(/\/$/, '') !== PRODUCT_PREVIEW_PATH && <AssistantWidget />}
         </div>
     );
 };

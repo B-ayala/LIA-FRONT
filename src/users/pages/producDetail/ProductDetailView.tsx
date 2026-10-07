@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../../types/product';
 import SEO from '../../../components/common/SEO/SEO';
@@ -37,7 +37,7 @@ interface ProductDetailViewProps {
 const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps) => {
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [quantity, setQuantity] = useState(1);
+  const [requestedQuantity, setQuantity] = useState(1);
   const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: string }>(
     () => sanitizeSelectedVariants(product, {}),
   );
@@ -79,7 +79,8 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
   };
 
   const stock = product.stock ?? 0;
-  const currentCartItem = cartItems.find((item) => item.product.id === product.id);
+  // En la vista previa el carrito real del admin no debe condicionar lo que se muestra.
+  const currentCartItem = preview ? undefined : cartItems.find((item) => item.product.id === product.id);
   const selectionStockLimit = getSelectionStockLimit(product, selectedVariants);
   const remainingCartCapacity = getAvailableQuantityForSelection(
     product,
@@ -87,16 +88,10 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
     currentCartItem?.unitVariants ?? [],
   );
   const quantityStockLimit = Number.isFinite(selectionStockLimit) ? selectionStockLimit : stock;
+  // Derivada (no un effect): si el stock del talle/color elegido baja, la cantidad
+  // pedida se recorta sola sin un render extra.
+  const quantity = quantityStockLimit <= 0 ? 1 : Math.min(requestedQuantity, quantityStockLimit);
   const canAddSelectedQuantityToCart = remainingCartCapacity > 0 && quantity <= remainingCartCapacity;
-
-  useEffect(() => {
-    if (quantityStockLimit <= 0) {
-      setQuantity(1);
-      return;
-    }
-
-    setQuantity((prev) => Math.min(prev, quantityStockLimit));
-  }, [quantityStockLimit]);
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;

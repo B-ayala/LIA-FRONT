@@ -3,10 +3,9 @@ import { createPortal } from 'react-dom';
 import Modal from '../../../components/common/Modal/Modal';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
 import { buildMissingDataMessage, getMissingProductFields } from './productSaveWarning';
-import { useAdminStore, type AdminProduct } from '../../store/adminStore';
-import { getAuthToken } from '../../../utils/auth';
+import type { AdminProduct } from '../../store/adminStore';
+import type { ProductDraft } from './productDraft';
 import { extractErrorMessage } from '../../../utils/errorMessage';
-import { createProduct, updateProduct as updateProductApi } from '../../../services/productService';
 import type { Specification, FAQ, SizeGuide, SizeGuideType } from '../../../types/product';
 import { toTitleCase, toSentenceCase } from '../../../utils/textCase';
 import { COLOR_MAP, parseColorOption } from '../../../utils/constants';
@@ -24,7 +23,10 @@ interface ProductModalProps {
     isOpen: boolean;
     onClose: () => void;
     product: AdminProduct | null;
-    onSaved?: (productId: string | null) => void;
+    /** Borrador a restaurar (al volver de la vista previa); tiene prioridad sobre `product` para llenar el formulario. */
+    draft?: ProductDraft | null;
+    /** El formulario no persiste: entrega el borrador para previsualizarlo y confirmarlo allá. */
+    onPreview: (draft: ProductDraft) => void;
 }
 
 
@@ -36,8 +38,7 @@ const DEFAULT_SIZE_COLUMNS: Record<SizeGuideType, string[]> = {
     calzado: ['35', '36', '37', '38', '39', '40', '41', '42'],
 };
 
-const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) => {
-    const { addProduct, updateProduct } = useAdminStore();
+const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: ProductModalProps) => {
 
     const [activeTab, setActiveTab] = useState(tabs[0]);
     const tutorial = useVariantsTutorial(activeTab === 'Variantes', isOpen);
@@ -110,8 +111,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
     // FAQ
     const [faqs, setFaqs] = useState<FAQ[]>([]);
 
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [missingDataMessage, setMissingDataMessage] = useState<string | null>(null);
     const derivedVariantStock = useMemo(() => {
@@ -234,7 +233,8 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
 
     useEffect(() => {
         if (isOpen) {
-            const savedCategory = product?.category || '';
+            const formSource = draft ?? product;
+            const savedCategory = formSource?.category || '';
             setExpandedVariantOptions({});
             fetchCategoriesTree().then(cats => {
                 setDbCategories(cats);
@@ -244,28 +244,28 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 setCategory(matched ? matched.name : savedCategory);
             });
             setActiveTab(tabs[0]);
-            if (product) {
-                setName(product.name || '');
+            if (formSource) {
+                setName(formSource.name || '');
                 setCategory(savedCategory);
-                setPrice(product.price?.toString() || '');
-                setCondition(product.condition || 'new');
-                setStatus(product.status || 'active');
+                setPrice(formSource.price?.toString() || '');
+                setCondition(formSource.condition || 'new');
+                setStatus(formSource.status || 'active');
                 setImages(
-                    product.images && product.images.length > 0
-                        ? [...product.images]
-                        : product.imageUrl ? [product.imageUrl] : []
+                    formSource.images && formSource.images.length > 0
+                        ? [...formSource.images]
+                        : formSource.imageUrl ? [formSource.imageUrl] : []
                 );
-                setOriginalPrice(product.originalPrice?.toString() || '');
-                setDiscount(product.discount?.toString() || '');
+                setOriginalPrice(formSource.originalPrice?.toString() || '');
+                setDiscount(formSource.discount?.toString() || '');
                 setDiscountTouched(false);
-                setFreeShipping(product.freeShipping || false);
-                setHoverImageEnabled(product.hoverImageEnabled ?? true);
-                setDescription(product.description || '');
-                setFeaturesText((product.features || []).join('\n'));
-                setWarranty(product.warranty || '');
-                setReturnPolicy(product.returnPolicy || '');
-                const dbStock = product.stock ?? 0;
-                const savedVariants = (product.variants || []).map(v => ({
+                setFreeShipping(formSource.freeShipping || false);
+                setHoverImageEnabled(formSource.hoverImageEnabled ?? true);
+                setDescription(formSource.description || '');
+                setFeaturesText((formSource.features || []).join('\n'));
+                setWarranty(formSource.warranty || '');
+                setReturnPolicy(formSource.returnPolicy || '');
+                const dbStock = formSource.stock ?? 0;
+                const savedVariants = (formSource.variants || []).map(v => ({
                     name: v.name,
                     optionsText: v.options.join(', '),
                     stockByOption: dbStock === 0 && v.stockByOption
@@ -275,23 +275,22 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 }));
                 // Color y Talle son permanentes: se muestran siempre; vacías = no se usan (se descartan al guardar).
                 setVariants(withPermanentVariantDrafts(savedVariants));
-                setSizeGuide(product.sizeGuide
+                setSizeGuide(formSource.sizeGuide
                     ? {
-                        type: product.sizeGuide.type ?? 'indumentaria',
-                        columns: product.sizeGuide.columns
-                            ?? [...DEFAULT_SIZE_COLUMNS[product.sizeGuide.type ?? 'indumentaria']],
-                        rows: product.sizeGuide.rows,
+                        type: formSource.sizeGuide.type ?? 'indumentaria',
+                        columns: formSource.sizeGuide.columns
+                            ?? [...DEFAULT_SIZE_COLUMNS[formSource.sizeGuide.type ?? 'indumentaria']],
+                        rows: formSource.sizeGuide.rows,
                     }
                     : { type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] }
                 );
-                setSpecifications(product.specifications ? [...product.specifications] : []);
-                setFaqs(product.faqs ? [...product.faqs] : []);
+                setSpecifications(formSource.specifications ? [...formSource.specifications] : []);
+                setFaqs(formSource.faqs ? [...formSource.faqs] : []);
             } else {
                 resetForm();
             }
-            setError('');
         }
-    }, [isOpen, product]);
+    }, [isOpen, product, draft]);
 
     const resetForm = () => {
         setName('');
@@ -356,43 +355,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         };
     };
 
-    const executeSave = async () => {
-        setSaving(true);
-        setError('');
-
-        try {
-            const token = await getAuthToken();
-            const payload = buildPayload();
-
-            let savedProductId: string | null = null;
-            if (product?.id) {
-                const savedData = await updateProductApi(product.id, payload, token);
-                const finalStatus = savedData?.data?.status ?? payload.status;
-                updateProduct(product.id, { ...payload, status: finalStatus });
-                savedProductId = product.id;
-            } else {
-                const savedData = await createProduct(payload, token);
-                // Sin id real del backend no hay a qué previsualizar: onSaved recibe null.
-                savedProductId = savedData?.data?.id ? String(savedData.data.id) : null;
-                const newProduct: AdminProduct = {
-                    id: savedProductId ?? Date.now().toString(),
-                    ...payload,
-                    status: savedData?.data?.status ?? payload.status,
-                };
-                addProduct(newProduct);
-            }
-
-            resetForm();
-            onClose();
-            onSaved?.(savedProductId);
-        } catch (err) {
-            setError(extractErrorMessage(err, 'No se pudo guardar el producto'));
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleSave = async () => {
+    const handlePreview = () => {
         // Validación de borde en el cliente (el backend revalida nombre y precio).
         if (!name.trim()) {
             setFieldErrors({ name: 'El nombre es requerido' });
@@ -407,8 +370,8 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             return;
         }
 
-        // Foto, stock y color incompletos requieren confirmación explícita en
-        // lugar de guardarse en silencio (cubre también el caso "Activo" sin stock).
+        // Foto, stock y color incompletos requieren confirmación explícita antes de
+        // seguir (cubre también el caso "Activo" sin stock).
         const payload = buildPayload();
         const missing = getMissingProductFields({
             imageUrls: payload.images,
@@ -422,7 +385,7 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
         }
 
         setFieldErrors({});
-        await executeSave();
+        onPreview(payload);
     };
 
     const addImage = () => setImages(prev => [...prev, '']);
@@ -720,11 +683,6 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
                 </div>
 
                 <div className="product-modal-content">
-                    {error && (
-                        <div style={{ color: 'red', marginBottom: '1rem', padding: '0.5rem', background: '#fff0f0', borderRadius: '0.25rem' }}>
-                            {error}
-                        </div>
-                    )}
                     {/* ── DATOS BÁSICOS ── */}
                     {activeTab === 'Datos Básicos' && (
                         <div className="tab-pane">
@@ -1993,15 +1951,14 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             )}
 
             <div className="product-modal-footer">
-                <button className="admin-btn-secondary" onClick={onClose} disabled={saving}>
+                <button className="admin-btn-secondary" onClick={onClose}>
                     Cancelar
                 </button>
                 <button
                     className="admin-btn-primary"
-                    onClick={handleSave}
-                    disabled={saving}
+                    onClick={handlePreview}
                 >
-                    {saving ? 'Guardando...' : 'Guardar producto'}
+                    Ver vista previa
                 </button>
             </div>
 
@@ -2013,11 +1970,12 @@ const ProductModal = ({ isOpen, onClose, product, onSaved }: ProductModalProps) 
             title="Faltan datos del producto"
             message={missingDataMessage ?? ''}
             status="error"
-            actionButtonText="Guardar igualmente"
+            actionButtonText="Continuar igualmente"
             cancelButtonText="Editar"
             onActionClick={() => {
+                setMissingDataMessage(null);
                 setFieldErrors({});
-                void executeSave();
+                onPreview(buildPayload());
             }}
         />
 

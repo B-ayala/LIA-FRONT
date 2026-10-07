@@ -84,7 +84,7 @@ const AppRouter = () => {
               <Route index element={<HomeManager />} />
               <Route path="home" element={<HomeManager />} />
               <Route path="products" element={<AdminProducts />} />
-              <Route path="products/:id/preview" element={<AdminProductPreview />} />
+              <Route path="products/preview" element={<AdminProductPreview />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="about" element={<AboutEditor />} />
               <Route path="site-config" element={<FooterEditor />} />
