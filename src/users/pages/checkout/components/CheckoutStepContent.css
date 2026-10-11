@@ -1,0 +1,142 @@
+/* Estilos compartidos por los pasos Entrega y Pago. */
+.checkout-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.checkout-step__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  text-align: center;
+}
+
+.checkout-step__title:focus {
+  outline: none;
+}
+
+.checkout-step__title:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+}
+
+.checkout-step__subtitle {
+  margin-top: var(--space-3);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.checkout-step__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.checkout-step__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.checkout-step__reason {
+  font-size: 0.875rem;
+  color: var(--color-ink-muted);
+  text-align: center;
+}
+
+.checkout-step__error {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-danger-bg);
+  font-size: 0.875rem;
+  color: var(--color-danger);
+}
+
+/* Resumen de lo elegido en Entrega, con acceso para volver a editarlo. */
+.checkout-step__review {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-muted);
+}
+
+.checkout-step__review-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.checkout-step__review-list dt {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.checkout-step__review-list dd {
+  margin: 0;
+  color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.checkout-step__link {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.checkout-step__link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.checkout-step__link:disabled {
+  color: var(--color-ink-subtle);
+  cursor: not-allowed;
+}
+
+.checkout-step__badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-on-ink);
+}
+
+.checkout-step__alias {
+  align-self: flex-start;
+  margin: var(--space-1) 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--color-border-input);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+@media (min-width: 768px) {
+  .checkout-step__title {
+    font-size: 1.75rem;
+  }
+}

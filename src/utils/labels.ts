@@ -5,7 +5,6 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
 
 export const SHIPPING_METHOD_LABEL: Record<string, string> = {
   correo: 'Correo Argentino',
-  moto: 'Envío por moto',
   local: 'Retiro en local',
 };
 

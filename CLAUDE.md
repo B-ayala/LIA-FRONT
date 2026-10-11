@@ -26,28 +26,28 @@ explica cómo está construido hoy (estructura, arquitectura, flujos, configurac
 
 ## 🧠 Skills senior compartidos (carga automática)
 
-Los siguientes skills viven en `../../skill/` (carpeta compartida entre frontend y backend)
+Los siguientes skills viven en `../skill/` (carpeta compartida entre frontend y backend)
 y se importan automáticamente. Aplican como contrato de calidad para todo lo que se genere
 en este repo.
 
-@../../skill/00-role.md
-@../../skill/02-frontend.md
-@../../skill/03-testing-qa.md
-@../../skill/04-security.md
-@../../skill/05-ux.md
-@../../skill/06-restrictions.md
-@../../skill/07-senior-rules.md
-@../../skill/08-delivery-format.md
-@../../skill/09-protocols.md
-@../../skill/10-documentation.md
-@../../skill/11-bug-hunter.md
-@../../skill/12-judge-architect.md
+@../skill/00-role.md
+@../skill/02-frontend.md
+@../skill/03-testing-qa.md
+@../skill/04-security.md
+@../skill/05-ux.md
+@../skill/06-restrictions.md
+@../skill/07-senior-rules.md
+@../skill/08-delivery-format.md
+@../skill/09-protocols.md
+@../skill/10-documentation.md
+@../skill/11-bug-hunter.md
+@../skill/12-judge-architect.md
 
-> Selección frontend según `../../skill/README.md` (00 + 02 + 03 + 05 + 06 + 07 + 08 + 09 + 10),
+> Selección frontend según `../skill/README.md` (00 + 02 + 03 + 05 + 06 + 07 + 08 + 09 + 10),
 > más bug-hunter (11) y judge-architect (12). Se omite `01-backend.md` (vive en el repo backend).
 >
-> **Nota de portabilidad:** las rutas `@../../skill/*` resuelven a
-> `…/orden damiana/skill`. Si clonás este repo fuera de esa estructura de carpetas,
+> **Nota de portabilidad:** las rutas `@../skill/*` resuelven a
+> `…/orden LIA/skill`. Si clonás este repo fuera de esa estructura de carpetas,
 > ajustá las rutas o copiá la carpeta `skill/` al nuevo emplazamiento.
 
 ---

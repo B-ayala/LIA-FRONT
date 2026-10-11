@@ -25,7 +25,6 @@ interface LastOrder {
 }
 
 const APPROVED_DESC: Record<string, string> = {
-    moto: '¡Gracias por tu compra! Tu pedido y pago fueron registrados correctamente. Si seleccionaste envío a domicilio en moto, coordiná la entrega con nuestro asesor de motos.',
     local: '¡Gracias por tu compra! Tu pedido y pago fueron registrados correctamente. Podés retirarlo en nuestro local de lunes a viernes (días hábiles), de 10:00 a 18:00.',
 };
 const DEFAULT_APPROVED_DESC = '¡Gracias por tu compra! Tu pedido y pago fueron registrados correctamente.';

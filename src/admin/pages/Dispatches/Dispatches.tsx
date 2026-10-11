@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, Package, Truck, Store, User, Mail, SendHorizonal, ArrowUpDown, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Package, Store, User, Mail, SendHorizonal, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import { Box, MenuItem, Pagination, TextField } from '@mui/material';
 import { supabase } from '../../../config/supabaseClient';
 import { formatDate, formatPriceInt } from '../../../utils/formatters';
@@ -52,7 +52,6 @@ interface Dispatch {
 
 function ShippingIcon({ method }: { method: string | null }) {
     if (method === 'correo') return <Package size={14} className="shipping-icon correo" />;
-    if (method === 'moto') return <Truck size={14} className="shipping-icon moto" />;
     if (method === 'local') return <Store size={14} className="shipping-icon local" />;
     return <SendHorizonal size={14} className="shipping-icon" />;
 }
@@ -245,7 +244,6 @@ const Dispatches = () => {
                     >
                         <MenuItem value="">Todos los envíos</MenuItem>
                         <MenuItem value="correo">Correo Argentino</MenuItem>
-                        <MenuItem value="moto">Envío por moto</MenuItem>
                         <MenuItem value="local">Retiro en local</MenuItem>
                     </TextField>
                     <TextField

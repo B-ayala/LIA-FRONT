@@ -186,7 +186,7 @@
 
 .cart-drawer__item-total-units {
   font-size: 0.77rem;
-  color: #6b7280;
+  color: var(--color-ink-muted);
 }
 
 .cart-drawer__variants {
@@ -194,7 +194,7 @@
   flex-wrap: wrap;
   gap: 0.3rem;
   font-size: 0.8rem;
-  color: #4b5563;
+  color: var(--color-ink-muted);
   min-width: 0;
 }
 

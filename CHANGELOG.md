@@ -24,11 +24,25 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Catálogo público: paginación server-side de 24 productos con botón "Ver más", filtro por categoría en el servidor y estado de error con reintento distinto del vacío.
 - Admin: Productos, Destacados y Galería comparten un caché con columnas explícitas (invalidado al crear/editar/borrar); Ventas y Despachos acotan columnas.
 - SQL `2026-10-06_ventas_restrict_update.sql`: `ventas` solo permite UPDATE de `dispatch_status` desde el cliente y se revoca todo a `anon` (pendiente de aplicar).
+- Checkout: la forma de entrega por defecto pasa a ser "Retiro en local" (antes "Envío por moto").
+- Checkout rediseñado: stepper Carrito → Entrega → Pago con dos vistas reales sincronizadas con `?paso=pago` (el botón atrás del navegador vuelve a Entrega sin perder datos), foco al título del paso y anuncio `aria-live`.
+- Checkout: layout de 2 columnas en desktop con resumen sticky (miniatura, variantes, subtotal, envío y total) y resumen colapsable con el total visible en mobile.
+- Checkout: formas de entrega y pago como radiogroup accesible; Correo Argentino muestra el motivo por el que está deshabilitado y "Continuar para el pago" explica por qué no se puede avanzar.
+- Checkout: el e-mail de contacto se muestra en solo lectura con la aclaración de que es el de la cuenta (es la clave de propiedad de la compra); si el perfil no tiene nombre se pide "Nombre y apellido" en lugar de bloquear sin aviso.
+- Checkout: el aviso de 15 minutos de Mercado Pago pasa a ser un `role="dialog"` que cierra con Escape y devuelve el foco.
+- Paleta: nuevos tokens no tematizables en `index.css` (`--color-ink` azul petróleo #0b2a3a, `--color-ink-muted`, `--color-border-*`, `--color-surface*`, estados y `--space-*`); `--text-dark`/`--text-light` pasan a apuntar a ellos y los textos con hex fijo del sitio público migran a tokens. Los colores de los temas del admin no cambian.
+- `CheckoutResult`: estilos migrados a tokens (sin cambios de lógica).
+
+### Removed
+- Checkout: opción "Envío por moto" (AMBA, base $4.000 + $800/km) con su modal de domicilio, búsqueda de localidad por código postal (mapas CABA/GBA y API GeoRef), validación de zonas AMBA/restringidas y el total "+ envío a coordinar".
+- `CheckoutResult`: mensaje de pago aprobado específico de moto.
+- Admin Despachos: filtro e ícono "Envío por moto"; `SHIPPING_METHOD_LABEL` ya no traduce `moto` (ventas históricas muestran el valor crudo).
 
 ### Added
 - Admin: el modal de producto autocorrige mayúsculas/minúsculas mientras se escribe (títulos en nombre, categoría, variantes y especificaciones; oraciones en descripción, características, garantía, devolución y FAQ) y las vuelve a normalizar al guardar (`utils/textCase.ts`).
 
 ### Fixed
+- Checkout: entrar en frío o recargar `/checkout` dejaba colgada la pantalla de carga inicial (la ruta no marcaba la tarea `route` como lista desde que se quitó la espera artificial).
 - Cards de producto: el nombre reserva siempre 2 líneas, así precio, sellos y botón quedan alineados entre cards sin importar el largo del nombre.
 - Login de admin: el Footer (y el botón de WhatsApp) ya no parpadea entre el login y el redirect a `/admin` (`App.tsx`).
 

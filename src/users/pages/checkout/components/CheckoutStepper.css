@@ -1,0 +1,79 @@
+.checkout-stepper {
+  width: 100%;
+  padding: var(--space-4) 0 var(--space-5);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.checkout-stepper__list {
+  display: flex;
+  justify-content: center;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.checkout-stepper__item {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Línea fina que une cada círculo con el anterior. */
+.checkout-stepper__item + .checkout-stepper__item::before {
+  content: '';
+  position: absolute;
+  top: 19px;
+  right: calc(50% + 24px);
+  left: calc(-50% + 24px);
+  height: 1px;
+  background: var(--color-border-input);
+}
+
+.checkout-stepper__circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border-input);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-ink-subtle);
+}
+
+.checkout-stepper__item--done .checkout-stepper__circle {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+}
+
+.checkout-stepper__item--current .checkout-stepper__circle {
+  border: 2px solid var(--color-ink);
+  color: var(--color-ink);
+}
+
+.checkout-stepper__label {
+  font-size: 0.8125rem;
+  color: var(--color-ink-subtle);
+  text-align: center;
+}
+
+.checkout-stepper__item--done .checkout-stepper__label,
+.checkout-stepper__item--current .checkout-stepper__label {
+  color: var(--color-ink);
+}
+
+.checkout-stepper__item--current .checkout-stepper__label {
+  font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .checkout-stepper__label {
+    font-size: 0.875rem;
+  }
+}

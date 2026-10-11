@@ -50,7 +50,6 @@
 
 .shipping-icon { flex-shrink: 0; }
 .shipping-icon.correo { color: #6366f1; }
-.shipping-icon.moto   { color: #f97316; }
 .shipping-icon.local  { color: #22c55e; }
 
 /* Payment status badge (clickable) */

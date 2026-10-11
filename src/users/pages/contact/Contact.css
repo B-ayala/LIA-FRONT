@@ -13,13 +13,13 @@
 
 .contact-header h1 {
   font-size: 3rem;
-  color: #333;
+  color: var(--color-ink);
   margin-bottom: 1rem;
   font-family: 'Georgia', serif;
 }
 
 .contact-header p {
-  color: #666;
+  color: var(--color-ink-muted);
   font-size: 1.1rem;
   max-width: 600px;
   margin: 0 auto;
@@ -98,12 +98,12 @@
 
 .contact-card h3 {
   font-size: 1.25rem;
-  color: #333;
+  color: var(--color-ink);
   margin-bottom: 1rem;
 }
 
 .contact-card p {
-  color: #666;
+  color: var(--color-ink-muted);
   font-size: 0.95rem;
   margin-bottom: 1.5rem;
   flex-grow: 1;
@@ -158,7 +158,7 @@
 /* Modal Form Styles */
 .form-intro {
   margin-bottom: 1.5rem !important;
-  color: #555;
+  color: var(--color-ink-muted);
   font-size: 0.95rem;
 }
 

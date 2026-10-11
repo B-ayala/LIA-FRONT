@@ -1,0 +1,186 @@
+/* Mobile first: colapsable con el total visible en el encabezado. */
+.order-summary {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.order-summary__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.order-summary__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-xl);
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-link);
+  text-align: left;
+}
+
+.order-summary__toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.order-summary__chevron {
+  flex-shrink: 0;
+  transition: transform var(--transition-fast) var(--transition-ease);
+}
+
+.order-summary--expanded .order-summary__chevron {
+  transform: rotate(180deg);
+}
+
+.order-summary__toggle-total {
+  margin-left: auto;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.order-summary__body {
+  display: none;
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.order-summary--expanded .order-summary__body {
+  display: block;
+}
+
+.order-summary__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--color-border-soft);
+  list-style: none;
+}
+
+.order-summary__item {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.order-summary__thumb {
+  width: 64px;
+  height: 64px;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+  object-fit: contain;
+}
+
+.order-summary__item-info {
+  min-width: 0;
+}
+
+.order-summary__item-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.order-summary__item-qty {
+  font-weight: 400;
+  color: var(--color-ink-subtle);
+  white-space: nowrap;
+}
+
+.order-summary__item-price {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.order-summary__totals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.order-summary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 0.9375rem;
+  color: var(--color-ink-muted);
+}
+
+.order-summary__row dd {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.order-summary__free {
+  font-weight: 600;
+  color: var(--color-success-ink);
+}
+
+.order-summary__row--total {
+  align-items: baseline;
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-soft);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+.order-summary__row--total dd {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Desktop: siempre abierta (el sticky lo aplica la columna en Checkout.css). */
+@media (min-width: 992px) {
+  .order-summary {
+    padding: var(--space-6);
+    border-radius: var(--radius-2xl);
+  }
+
+  .order-summary__title {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    margin-bottom: var(--space-2);
+    font-size: 1.25rem;
+    color: var(--color-ink);
+  }
+
+  .order-summary__toggle {
+    display: none;
+  }
+
+  .order-summary__body {
+    display: block;
+    padding: 0;
+  }
+}

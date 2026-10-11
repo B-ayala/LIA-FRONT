@@ -128,7 +128,14 @@ src/
 │       ├── products/Products.tsx
 │       ├── producDetail/ProductDetail.tsx   # (sic) carga del producto + estados no disponible/skeleton
 │       ├── producDetail/ProductDetailView.tsx  # detalle presentacional (lo reutiliza la vista previa admin)
-│       ├── checkout/Checkout.tsx + CheckoutResult.tsx
+│       ├── checkout/Checkout.tsx      # container: gates de sesión + layout (stepper, pasos, resumen)
+│       │   ├── CheckoutResult.tsx      # vuelta de Mercado Pago
+│       │   ├── checkoutUtils.ts        # costos de envío, totales, payload de ítems, mensaje de WhatsApp
+│       │   ├── hooks/                  # useCheckoutFlow, useCheckoutStep (?paso=pago), useCheckoutPayment,
+│       │   │                           #   useTransferNudge, useCheckoutItems
+│       │   └── components/             # CheckoutStepper, CheckoutStepContent, DeliveryStep, PaymentStep,
+│       │                               #   OrderSummaryCard, OptionList, PillInput, PrimaryPillButton,
+│       │                               #   VariantTags, MpRedirectNotice
 │       ├── about/About.tsx
 │       ├── contact/Contact.tsx
 │       └── auth/EmailConfirmation.tsx + ResetPassword.tsx
@@ -146,7 +153,22 @@ src/
 
 > Convención: cada componente vive en su carpeta con su `.tsx` y su `.css` colindante.
 > Los estilos propios de un componente se aíslan en ese `.css`; los colores/tokens globales
-> se reutilizan desde `utils/constants.ts` y el tema MUI (no hardcodear hex en componentes).
+> se reutilizan desde `index.css`, `utils/constants.ts` y el tema MUI (no hardcodear hex en componentes).
+>
+> **Paleta (`index.css` `:root`).** Hay dos familias de tokens:
+> - **Tematizables por el admin** (Temas → `site_content.season_theme`, aplicados por
+>   `SeasonThemeProvider` vía `data-season` + `seasons.css` o variables inline del tema personalizado):
+>   `--primary-*`, `--bg-light`, `--brand-green`, `--button-dark*`, `--season-*`, `--shadow-primary*`,
+>   `--shadow-2xl`. **No se pisan** desde componentes: el tema publicado manda.
+> - **No tematizables (ink)**: azul petróleo `--color-ink` (#0b2a3a, 14.9:1 sobre blanco) para texto,
+>   títulos y CTA no tematizados; `--color-ink-hover`, `--color-ink-muted` (6.8:1), `--color-ink-subtle`
+>   (5.0:1), `--color-link` (7.4:1), `--color-focus`, `--color-border-soft` (separadores),
+>   `--color-border-input` (3.3:1, borde de inputs), superficies (`--color-surface*`), estados
+>   (`--color-danger*`, `--color-success-ink`, `--color-warning-ink`), `--shadow-soft` y `--space-1…7`.
+>   `--text-dark`/`--text-light` son alias de `--color-ink`/`--color-ink-muted`, así todo lo que ya los
+>   usaba (incluido `body`) toma el azul petróleo.
+> - El color "Texto" (`textDark`) de la paleta de temas hoy solo se usa en la vista previa del
+>   ThemesManager; no se inyecta como variable CSS en el sitio.
 
 ---
 
@@ -261,14 +283,37 @@ La sesión la maneja **Supabase Auth**; el backend Express no expone endpoints `
 ### 6.3 Carrito y checkout
 1. El usuario agrega al carrito (`cartStore.addItem`) o va a "compra directa" (setea `item`).
 2. Cada unidad puede tener variantes (`PurchaseVariantModal`); se validan contra el producto.
-3. En `Checkout` se elige método de pago:
-   - **Transferencia**: `orderService.createOrder` → `POST /orders/transfer`. La escritura va por
-     el backend a propósito: insertar directo en `ventas` con la anon key lo bloquea RLS
-     (BUG-001). El trigger `trg_decrement_stock` descuenta stock al insertar.
-   - **Mercado Pago**: `orderService.createMpPreference` → `POST /orders/mp-preference`,
-     recibe `init_point` (redirección a MP) + `order_ids`. Si el usuario vuelve sin pagar,
-     `cancelMpOrder` → `POST /orders/:id/cancel` (el backend restaura stock; hay sweep de respaldo
-     cada 60 s).
+3. `/checkout` es un flujo de 3 pasos con stepper (Carrito ✓ → Entrega → Pago) y dos vistas reales
+   sincronizadas con la URL: **Entrega** (`/checkout`) y **Pago** (`/checkout?paso=pago`). El botón
+   atrás del navegador vuelve de Pago a Entrega; "Modificar" hace lo mismo sin duplicar historial.
+   Entrar por URL a `?paso=pago` sin datos válidos reemplaza la entrada por Entrega. El estado
+   (nombre, entrega, método de pago) vive en el container, así que ir y volver no pierde datos. Al
+   cambiar de paso el foco va al `h2` del paso y un `aria-live` anuncia "Paso N de 3".
+   - **Entrega**: "Datos de contacto" con el e-mail de la sesión en solo lectura (es la clave de
+     propiedad de la venta, ver abajo) y, solo si el perfil no tiene nombre, un campo "Nombre y
+     apellido". Forma de entrega: **Retiro en local** (preseleccionada, costo 0) o **Correo
+     Argentino** ($4.400, deshabilitada con motivo visible). No hay envío a domicilio, así que no se
+     pide dirección. "Continuar para el pago" solo se deshabilita por precio inválido, falta de
+     nombre o de e-mail, mostrando el motivo.
+   - **Pago**: repaso de contacto/entrega + método de pago:
+     - **Transferencia**: `orderService.createOrder` → `POST /orders/transfer`. La escritura va por
+       el backend a propósito: insertar directo en `ventas` con la anon key lo bloquea RLS
+       (BUG-001). El trigger `trg_decrement_stock` descuenta stock al insertar. Abre WhatsApp con el
+       resumen y arma el nudge al volver a la pestaña.
+     - **Mercado Pago**: aviso de 15 minutos (`MpRedirectNotice`, `role="dialog"`, cierra con Escape)
+       → `orderService.createMpPreference` → `POST /orders/mp-preference`, recibe `init_point`
+       (redirección a MP) + `order_ids` (guardados en `sessionStorage` `mp_last_order` /
+       `mp_order_ids`). Si el usuario vuelve sin pagar, `cancelMpOrder` → `POST /orders/:id/cancel`
+       (el backend restaura stock; hay sweep de respaldo cada 60 s).
+     - Ambos envían `Idempotency-Key` (una por intento; huella = método, ítems, envío, costo, total,
+       nombre y e-mail). Los errores se muestran con `role="alert"`.
+   - **Resumen** (`OrderSummaryCard`): miniatura, nombre × cantidad, variantes (`VariantTags`),
+     precio, subtotal, envío y total. Desktop (≥992px): columna derecha sticky. Mobile: colapsable
+     con el total visible en el encabezado.
+   - **E-mail de contacto vs dueño**: `buyerEmail` siempre es el e-mail de la sesión. El backend lo
+     guarda en `ventas.buyer_email` y lo usa para "Mis compras" (`GET /orders/user?email=`), para
+     autorizar `POST /orders/:id/cancel` y el nudge. No existe un campo de e-mail de contacto
+     separado; hacerlo editable requiere un cambio de contrato y schema en el backend.
 4. `CheckoutResult` confirma el pago con `POST /orders/mp-confirm` (el backend lo verifica contra
    la API de MP, no confía en los parámetros de la URL) y muestra el resultado.
 5. `POST /orders/nudge` registra el recordatorio al usuario con el pago pendiente.

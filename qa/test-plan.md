@@ -1151,6 +1151,8 @@ Resultado: no probado
 | Admin productos (caché) | | ADMPROD-01,ADMPROD-02,ADMPROD-03 | | | |
 | Ventas (server-side) | SALES-01,SALES-03,SALES-08,SALES-14 | SALES-02,SALES-04,SALES-05,SALES-06,SALES-07,SALES-09,SALES-11,SALES-13 | SALES-10,SALES-12 | | |
 | Despachos (server-side) | DESP-02,DESP-04 | DESP-03,DESP-06 | DESP-05 | | DESP-07 |
+| Checkout: formas de entrega (sin moto) | SHIP-01,SHIP-02,SHIP-03 | SHIP-05 | SHIP-04 | | SHIP-01 |
+| Checkout: rediseño por pasos (stepper) | CHKUI-01,CHKUI-02,CHKUI-07,CHKUI-12 | CHKUI-03,CHKUI-04,CHKUI-05,CHKUI-06,CHKUI-11,CHKUI-16 | CHKUI-09,CHKUI-10,CHKUI-15 | CHKUI-08 | CHKUI-02,CHKUI-04,CHKUI-13,CHKUI-14 |
 
 ## Casos — Performance de carga mobile / MUI fuera del bundle crítico (2026-10-02)
 
@@ -1722,7 +1724,7 @@ Tipo: edge
 Pre-condición: pedidos con `dispatch_status` NULL en la base
 Pasos:
   1. Filtrar "Pendiente"
-  2. Combinar con "Retiro en local", "Envío por moto" y "Correo Argentino"
+  2. Combinar con "Retiro en local" y "Correo Argentino" (la opción "Envío por moto" se eliminó el 2026-10-08, ver TC-SHIP-05)
   3. Probar "Despachado", "Listo para retiro" y "Entregado"
 Esperado: "Pendiente" trae los 'pendiente' y los NULL (mostrados como Pendiente); los filtros
   se combinan; cambiar cualquiera vuelve a la página 1
@@ -1835,7 +1837,7 @@ Resultado: no probado
 | H-DESP-SILENT | 🟡 Medio | ABIERTO | `Dispatches.handleChangeDispatchStatus` ignora el error del UPDATE (`if (!error) refreshAll()`): si falla (permisos tras `2026-10-06_ventas_restrict_update.sql`, red, RLS) el admin no recibe ningún aviso | TC-DESP-04 |
 | H-SALES-ALERT | 🟢 Bajo | ABIERTO | `Sales` informa errores de confirmar/cancelar con `alert()` del navegador en vez del sistema global de feedback | TC-SALES-14 |
 | H-SALES-FILTER | 🟢 Bajo | ABIERTO | El filtro de estado de Ventas no ofrece "Cancelado" (el tipo `payment_status` sí lo incluye) | TC-SALES-02 |
-| H-KEY-FINGERPRINT | 🟢 Info | Documentado | La huella de la Idempotency-Key del front incluye nombre y email del comprador y el total; la del backend no (solo productos, cantidades, variantes, envío y medio de pago). Un cambio de nombre genera key nueva pero el backend lo trataría como el mismo carrito: dos órdenes si el primer intento ya había commiteado | TC-CHK-04 |
+| H-KEY-FINGERPRINT | 🟢 Info | Resuelto (2026-10-08) | La huella del backend ahora incluye nombre y email del comprador además de items, envío, costo y total, igual que la del front. Un cambio de nombre/email genera key nueva y es otra compra (la orden pendiente anterior expira sola); reusar una key con otro comprador da 422 | TC-CHK-04 |
 
 ## Casos — Vista previa de producto del admin (2026-10-06)
 
@@ -1861,3 +1863,43 @@ ID: TC-STOCK-02 — Caso: filtros combinados (nombre, nivel En stock/Bajo/Sin st
 ID: TC-STOCK-03 — Caso: producto con talles muestra la suma de `stockByOption` (igual que Productos), no la columna `stock`. Tipo: edge. Resultado: no probado.
 ID: TC-STOCK-04 — Caso: sin resultados (empty con filtros / sin productos) y error de red con "Reintentar". Tipo: failure. Resultado: no probado.
 ID: TC-STOCK-05 — Caso: Ventas ya no muestra "Alertas de stock"; contadores y filtro de stock de Ventas siguen funcionando. Tipo: regresión. Resultado: no probado.
+
+## Casos — Eliminación de "Envío por moto" (2026-10-08)
+
+> Se quitó la opción de envío por moto del checkout junto con su modal de domicilio, la
+> búsqueda de localidad por código postal (mapas CABA/GBA + API GeoRef) y la validación de
+> zonas AMBA/restringidas. Formas de entrega vigentes: "Retiro en local" (por defecto, gratis)
+> y "Correo Argentino" (visible pero deshabilitada).
+
+ID: TC-SHIP-01 — Caso: /checkout muestra solo "Correo Argentino" (deshabilitada) y "Retiro en local" (seleccionada por defecto); no aparece "Envío por moto" ni "Ingresá tu domicilio de entrega". Tipo: happy/a11y. Pasos: login → producto → comprar → /checkout a 320/375/768/1440 px; navegar con Tab hasta los radios de envío. Esperado: resumen "Envío: Gratis", total = subtotal, botón "Continuar al pago" habilitado sin pedir domicilio; sin scroll horizontal. Resultado: no probado (solo build).
+ID: TC-SHIP-02 — Caso: Mercado Pago con retiro en local. Tipo: happy. Pasos: /checkout → "Pagar con Mercado Pago" → "Continuar al pago" → aviso 15 min (modal sigue con su estilo: bottom sheet en mobile, centrado ≥600px) → "Ir a Mercado Pago". Esperado: `POST /api/orders/mp-preference` con `shippingMethod: 'local'`, `shippingCost: 0`; redirige a MP. Resultado: no probado.
+ID: TC-SHIP-03 — Caso: transferencia con retiro en local. Tipo: happy. Pasos: elegir "Transferencia por alias" → "Enviar comprobante por WhatsApp". Esperado: `POST /api/orders/transfer` con `shippingMethod: 'local'`; el mensaje de WhatsApp dice "Envío: Gratis (Retiro en local)" y "Método de entrega: Retiro en local", sin línea de domicilio. Resultado: no probado.
+ID: TC-SHIP-04 — Caso: checkout sin red / backend caído tras quitar moto. Tipo: failure. Pasos: cortar el backend y "Continuar al pago" / enviar transferencia. Esperado: mismo error humano que antes ("No se pudo conectar con el sistema de pagos..." / "No se pudo iniciar la compra..."), botón re-habilitado. Resultado: no probado.
+ID: TC-SHIP-05 — Caso: datos históricos con `shipping_method = 'moto'`. Tipo: edge. Pasos: con una venta pagada previa con moto, abrir /admin/dispatches, /admin/sales y "Mis compras". Esperado: el filtro de Despachos ya no ofrece "Envío por moto"; la fila se muestra con el valor crudo "moto" e ícono genérico, y su estado de despacho ofrece "Despachado" (no "Listo para retiro"). Resultado: no probado.
+
+## Casos — Checkout rediseñado por pasos (2026-10-08)
+
+> Stepper Carrito → Entrega → Pago con dos vistas reales (`/checkout` y `/checkout?paso=pago`),
+> resumen sticky / colapsable y paleta azul petróleo. La lógica de pago (payloads, idempotencia,
+> `mp_*` en sessionStorage, nudge, aviso de 15 min) no cambia: los casos TC-SHIP-02/03 y CHK-*
+> siguen vigentes, pero ahora se llega al CTA de pago pasando por "Continuar para el pago".
+> Verificación automatizada local: Playwright (Chromium) contra `vite` con Supabase/backend
+> mockeados (sin red real), sesión y carrito sembrados en localStorage. No se envió ningún pedido.
+
+ID: TC-CHKUI-01 — Caso: render inicial en Entrega. Tipo: happy. Pasos: login → producto → comprar → /checkout. Esperado: stepper con Carrito completado (✓, texto sr-only "completado"), Entrega activo (`aria-current="step"`), Pago pendiente; "Datos de contacto" con el e-mail de la cuenta en solo lectura; "Retiro en local" preseleccionado; "Continuar para el pago" habilitado. Resultado: ok (Chromium, entorno mockeado).
+ID: TC-CHKUI-02 — Caso: avanzar a Pago. Tipo: happy/a11y. Pasos: "Continuar para el pago" (click o Enter en un campo). Esperado: URL `?paso=pago`, foco en el h2 "Pago", `aria-live` anuncia "Paso 3 de 3: Pago", stepper con Entrega completado. Resultado: ok (375 y 1440 px).
+ID: TC-CHKUI-03 — Caso: botón atrás del navegador desde Pago. Tipo: edge. Pasos: en Pago elegir "Transferencia por alias" → atrás del navegador → adelante. Esperado: vuelve a Entrega (URL sin `paso`, foco en "Datos de contacto"); al ir adelante sigue elegida Transferencia (no se pierden datos). Resultado: ok.
+ID: TC-CHKUI-04 — Caso: "Modificar" desde Pago. Tipo: edge/a11y. Pasos: en Pago → "Modificar". Esperado: vuelve a Entrega sin agregar una entrada extra al historial (equivale a atrás). Resultado: ok.
+ID: TC-CHKUI-05 — Caso: entrada directa por URL a `/checkout?paso=pago`. Tipo: edge. Pasos: con sesión y carrito válidos abrir la URL en una pestaña nueva / recargar. Esperado: abre en Pago; sin datos válidos (p. ej. precio inválido) reemplaza la URL por Entrega y muestra el motivo. Resultado: ok (caso válido); caso inválido no probado.
+ID: TC-CHKUI-06 — Caso: perfil sin nombre. Tipo: edge. Pasos: usuario cuyo `profiles.name` está vacío → /checkout. Esperado: aparece "Nombre y apellido" (requerido); "Continuar para el pago" deshabilitado con el motivo "Completá tu nombre y apellido para continuar."; al completarlo se habilita y el nombre se conserva al volver de Pago. Resultado: ok.
+ID: TC-CHKUI-07 — Caso: Mercado Pago desde el paso Pago. Tipo: happy. Pasos: Pago → "Pagar con Mercado Pago" → "Continuar al pago" → aviso de 15 min → "Ir a Mercado Pago". Esperado: igual que TC-SHIP-02 (payload, `Idempotency-Key`, `mp_last_order`/`mp_order_ids`, redirección). Resultado: aviso ok (abre `role="dialog"`, Escape lo cierra y devuelve el foco al CTA); redirección real no probada (sin backend).
+ID: TC-CHKUI-08 — Caso: e-mail de contacto no editable. Tipo: security. Pasos: intentar editar el campo E-mail; inspeccionar el body de `POST /orders/transfer` y `/orders/mp-preference`. Esperado: campo `readonly`; `buyerEmail` = e-mail de la sesión (clave de "Mis compras" y de la autorización de cancel/nudge). Resultado: readonly ok; body no probado (sin backend).
+ID: TC-CHKUI-09 — Caso: error del backend en Pago. Tipo: failure. Pasos: cortar el backend y "Continuar al pago" → "Ir a Mercado Pago" / "Enviar comprobante por WhatsApp". Esperado: mensaje humano en un bloque `role="alert"` arriba del CTA; CTA re-habilitado; reintentar reutiliza la misma `Idempotency-Key`. Resultado: no probado.
+ID: TC-CHKUI-10 — Caso: precio inválido. Tipo: failure. Pasos: producto con precio 0 en el carrito → /checkout. Esperado: "Continuar para el pago" deshabilitado con el mensaje de precio inválido visible; `?paso=pago` redirige a Entrega. Resultado: no probado.
+ID: TC-CHKUI-11 — Caso: variantes distintas por unidad en el resumen. Tipo: edge. Pasos: 2 unidades con talle/color distintos → /checkout. Esperado: el resumen lista "Unidad 1"/"Unidad 2" con sus tags (color con muestra); con variantes iguales, una sola fila. Resultado: ok (por unidad); fila única no probada.
+ID: TC-CHKUI-12 — Caso: usuario sin sesión. Tipo: happy. Pasos: sin login → /checkout con carrito. Esperado: "Tenés que iniciar sesión para continuar con la compra." + botón pill "Iniciar sesión" que abre el modal de auth. Resultado: ok (render; login real no probado).
+ID: TC-CHKUI-13 — Caso: responsive. Tipo: a11y/responsive. Pasos: 320, 375, 768, 1024, 1440 px en Entrega y Pago. Esperado: sin scroll horizontal; <992 px una columna con resumen colapsable ("Ver resumen" + total) arriba; ≥992 px dos columnas con resumen sticky a la derecha; targets ≥44 px. Resultado: ok (scrollWidth = clientWidth en los 5 anchos; solo Chromium).
+ID: TC-CHKUI-14 — Caso: teclado. Tipo: a11y. Pasos: Tab por toda la vista de Entrega y Pago. Esperado: foco visible en el toggle del resumen, inputs, radios (flechas cambian la opción), "Modificar" y CTA; Correo Argentino no seleccionable y con motivo "Temporalmente no disponible." leído vía `aria-describedby`. Resultado: no probado manualmente.
+ID: TC-CHKUI-15 — Caso: recarga en frío de /checkout. Tipo: failure (regresión). Pasos: con sesión y carrito, recargar `/checkout` o `/checkout?paso=pago`. Esperado: la pantalla de carga inicial desaparece y se ve el paso (antes quedaba colgada). Resultado: ok.
+ID: TC-CHKUI-16 — Caso: paleta global vs temas del admin. Tipo: edge. Pasos: Admin → Temas: aplicar "Rosa", "Esmeralda" y un tema personalizado; recorrer home, catálogo, detalle, carrito, checkout. Esperado: botones/acentos tematizados (`--primary-*`, `--button-dark`, `--brand-green`) siguen el tema; texto general y CTA del checkout en azul petróleo, legibles. Resultado: no probado (sin Supabase).
+

@@ -21,7 +21,7 @@ export interface CreateOrderPayload {
   items: OrderLineItemPayload[];
   paymentMethod: string;
   shippingMethod?: string;
-  shippingCost?: number | null;
+  shippingCost?: number;
   totalPrice: number;
 }
 

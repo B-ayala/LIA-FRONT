@@ -1,0 +1,62 @@
+.pill-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.pill-input__label {
+  padding-left: var(--space-4);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.pill-input__field {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--color-ink);
+  transition: border-color var(--transition-fast) var(--transition-ease),
+    box-shadow var(--transition-fast) var(--transition-ease);
+}
+
+.pill-input__field::placeholder {
+  color: var(--color-ink-subtle);
+}
+
+.pill-input__field:focus-visible {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px var(--color-surface), 0 0 0 5px var(--color-focus);
+}
+
+.pill-input__field:read-only {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  cursor: default;
+}
+
+.pill-input__field--error {
+  border-color: var(--color-danger);
+}
+
+.pill-input__hint,
+.pill-input__error {
+  padding-left: var(--space-4);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.pill-input__hint {
+  color: var(--color-ink-subtle);
+}
+
+.pill-input__error {
+  color: var(--color-danger);
+}
