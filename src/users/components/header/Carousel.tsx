@@ -34,15 +34,9 @@ const slideVariants = {
   })
 };
 
-// Alto real del carrusel según el layout definido en Carousel.css. El navbar
-// se superpone (no reserva espacio), así que "collage" ocupa toda la
-// pantalla; "single" es un banner más bajo y ancho, como una foto de portada.
-function getCarouselHeight(width: number, layout: CarouselLayout): number {
-  if (layout === 'single') {
-    return width <= 768
-      ? Math.min(window.innerHeight * 0.6, 520)
-      : Math.min(window.innerHeight * 0.7, 640);
-  }
+// El carrusel ocupa toda la altura de la pantalla en ambos layouts; el navbar
+// se superpone (no reserva espacio), así la portada se ve completa al tope.
+function getCarouselHeight(): number {
   return window.innerHeight;
 }
 
@@ -53,11 +47,11 @@ const MAX_DPR = 2;
 // `imageCount` es la cantidad de imágenes que realmente comparten el slide
 // (el último grupo puede tener menos que el máximo por dispositivo), ya que
 // cada una ocupa 1/imageCount del ancho vía flexbox.
-function getSlotSize(viewportWidth: number, imageCount: number, layout: CarouselLayout): { width: number; height: number } {
+function getSlotSize(viewportWidth: number, imageCount: number): { width: number; height: number } {
   const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
   return {
     width: Math.round((viewportWidth / Math.max(imageCount, 1)) * dpr),
-    height: Math.round(getCarouselHeight(viewportWidth, layout) * dpr)
+    height: Math.round(getCarouselHeight() * dpr)
   };
 }
 
@@ -116,7 +110,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
     // esta descarga de más se descarta sola, sin ningún efecto visible.
     const cachedHint = readCachedFirstImage(deviceType);
     if (cachedHint) {
-      const hintSize = getSlotSize(window.innerWidth, cachedHint.imageCount, cachedHint.layout);
+      const hintSize = getSlotSize(window.innerWidth, cachedHint.imageCount);
       const hintUrl = buildCloudinaryUrl(cachedHint.url, {
         ...hintSize,
         quality: 'auto',
@@ -194,7 +188,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
       return;
     }
 
-    const firstSlideSize = getSlotSize(window.innerWidth, slides[0].images.length, layout);
+    const firstSlideSize = getSlotSize(window.innerWidth, slides[0].images.length);
     const optimizedUrl = buildCloudinaryUrl(firstImg, {
       width: firstSlideSize.width,
       height: firstSlideSize.height,
@@ -221,7 +215,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
       image.onerror = null;
       image.src = '';
     };
-  }, [slides, notifyReady, layout]);
+  }, [slides, notifyReady]);
 
   const nextSlide = () => {
     setDirection(1);
@@ -282,7 +276,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
               <img
                 key={idx}
                 src={buildCloudinaryUrl(img, {
-                  ...getSlotSize(viewportWidth, slides[currentSlide].images.length, layout),
+                  ...getSlotSize(viewportWidth, slides[currentSlide].images.length),
                   quality: 'auto',
                   format: 'auto',
                   gravity: 'auto'
