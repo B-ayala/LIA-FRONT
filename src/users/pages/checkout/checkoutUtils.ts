@@ -15,6 +15,16 @@ export const SHIPPING_LABEL: Record<ShippingMethod, string> = {
   local: 'Retiro en local',
 };
 
+export interface CheckoutReturnState {
+  shipping?: ShippingMethod;
+}
+
+/** Envío recibido por `location.state` al volver de Mercado Pago; ignora valores desconocidos. */
+export const parseReturnShipping = (state: unknown): ShippingMethod | null => {
+  const shipping = (state as CheckoutReturnState | null)?.shipping;
+  return shipping === 'local' || shipping === 'correo' ? shipping : null;
+};
+
 export const DEFAULT_SHIPPING: ShippingMethod = 'local';
 export const DEFAULT_PAYMENT: PaymentMethod = 'mp';
 export const WHATSAPP_PHONE = '5491133631325';

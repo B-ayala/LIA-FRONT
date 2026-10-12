@@ -15,6 +15,8 @@ import MpRedirectNotice from './components/MpRedirectNotice';
 import PrimaryPillButton from './components/PrimaryPillButton';
 import { useCheckoutItems } from './hooks/useCheckoutItems';
 import { useCheckoutFlow } from './hooks/useCheckoutFlow';
+import { EXPIRED_MP_MESSAGE } from './mpDeadline';
+import { useReleaseAbandonedMpPayment } from './hooks/useReleaseAbandonedMpPayment';
 import './Checkout.css';
 
 const STEP_ANNOUNCEMENT = {
@@ -31,10 +33,14 @@ interface CheckoutFlowProps {
 const CheckoutFlow = ({ user, items, isDirectPurchase }: CheckoutFlowProps) => {
   const flow = useCheckoutFlow(user, items, isDirectPurchase);
   const { stepper, pay, nudge } = flow;
+  const paymentExpired = useReleaseAbandonedMpPayment();
 
   return (
     <div className="checkout-page">
       <h1 className="sr-only">Finalizar compra</h1>
+      {paymentExpired && (
+        <p className="checkout-expired" role="alert">{EXPIRED_MP_MESSAGE}</p>
+      )}
       <CheckoutStepper current={stepper.step} />
       <p className="sr-only" aria-live="polite">{STEP_ANNOUNCEMENT[stepper.step]}</p>
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useCartStore } from '../../../../store/cartStore';
 import type { CheckoutItem } from '../../../../store/cartStore';
 import type { AuthUser } from '../../../../store/authStore';
@@ -7,6 +8,7 @@ import {
   DEFAULT_SHIPPING,
   computeCheckoutTotals,
   getCheckoutBlockReason,
+  parseReturnShipping,
   type PaymentMethod,
   type ShippingMethod,
 } from '../checkoutUtils';
@@ -18,7 +20,10 @@ import { useTransferNudge } from './useTransferNudge';
 export const useCheckoutFlow = (user: AuthUser, items: CheckoutItem[], isDirectPurchase: boolean) => {
   const clearCart = useCartStore((s) => s.clearCart);
   const [nameDraft, setNameDraft] = useState('');
-  const [shipping, setShipping] = useState<ShippingMethod>(DEFAULT_SHIPPING);
+  const location = useLocation();
+  const [shipping, setShipping] = useState<ShippingMethod>(
+    () => parseReturnShipping(location.state) ?? DEFAULT_SHIPPING
+  );
   const [payment, setPayment] = useState<PaymentMethod>(DEFAULT_PAYMENT);
   const sessionName = user.name.trim();
   // Nombre y e-mail salen de la sesión: el e-mail es la clave de propiedad de la venta

@@ -27,6 +27,7 @@ interface Sale {
     payment_method: string;
     payment_status: 'pendiente' | 'pagado' | 'fallido' | 'expirado' | 'cancelado';
     shipping_method: string | null;
+    oversold: boolean;
     created_at: string;
 }
 
@@ -49,12 +50,19 @@ interface SalesSummary {
 }
 
 // Filtros, orden, búsqueda y paginación corren en el servidor (.range + count exact).
-const SALES_COLUMNS = 'id, buyer_name, buyer_email, product_id, product_name, product_image, quantity, unit_price, total_price, units_config, payment_method, payment_status, shipping_method, created_at';
+const SALES_COLUMNS = 'id, buyer_name, buyer_email, product_id, product_name, product_image, quantity, unit_price, total_price, units_config, payment_method, payment_status, shipping_method, oversold, created_at';
 const SEARCH_DEBOUNCE_MS = 300;
 const LOW_STOCK_THRESHOLD = 5;
 // Tope de ids a pasar en .in() para no exceder el largo de URL de PostgREST.
 const STOCK_IDS_LIMIT = 500;
 const DEFAULT_SORT: SortConfig = { key: 'created_at', direction: 'desc' };
+
+// El pago llegó cuando ya no quedaba stock: hay que reembolsar o conseguir la mercadería.
+const OversoldTag = ({ sale }: { sale: Sale }) => (sale.oversold ? (
+    <span className="oversold-tag" title="El pago se acreditó cuando ya no había stock. Reembolsá o conseguí la mercadería.">
+        Sin stock: reembolsar
+    </span>
+) : null);
 
 const MP_EXPIRY_MS = 15 * 60 * 1000;
 const TRANSFER_EXPIRY_MS = 5 * 60 * 60 * 1000;
@@ -512,9 +520,12 @@ const Sales = () => {
                                                     <option value="cancelado">Cancelado</option>
                                                 </select>
                                             ) : (
-                                                <span className={`payment-badge ${getEffectiveStatus(sale)}`}>
-                                                    {PAYMENT_STATUS_LABEL[getEffectiveStatus(sale)]}
-                                                </span>
+                                                <>
+                                                    <span className={`payment-badge ${getEffectiveStatus(sale)}`}>
+                                                        {PAYMENT_STATUS_LABEL[getEffectiveStatus(sale)]}
+                                                    </span>
+                                                    <OversoldTag sale={sale} />
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -592,9 +603,12 @@ const Sales = () => {
                                                     <option value="cancelado">Cancelado</option>
                                                 </select>
                                             ) : (
-                                                <span className={`payment-badge ${getEffectiveStatus(sale)}`}>
-                                                    {PAYMENT_STATUS_LABEL[getEffectiveStatus(sale)]}
-                                                </span>
+                                                <>
+                                                    <span className={`payment-badge ${getEffectiveStatus(sale)}`}>
+                                                        {PAYMENT_STATUS_LABEL[getEffectiveStatus(sale)]}
+                                                    </span>
+                                                    <OversoldTag sale={sale} />
+                                                </>
                                             )}
                                         </td>
                                     </tr>

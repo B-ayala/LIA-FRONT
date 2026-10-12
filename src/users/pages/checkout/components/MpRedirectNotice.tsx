@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Hourglass } from 'lucide-react';
 import PrimaryPillButton from './PrimaryPillButton';
+import { formatPaymentDeadline } from '../mpDeadline';
 import './MpRedirectNotice.css';
 
 interface MpRedirectNoticeProps {
@@ -15,6 +16,8 @@ const TITLE_ID = 'mp-notice-title';
 /** Aviso de 15 minutos antes de redirigir a Mercado Pago (mismo texto y acciones que antes del rediseño). */
 const MpRedirectNotice = ({ open, submitting, onConfirm, onClose }: MpRedirectNoticeProps) => {
   const dialogRef = useRef<HTMLDivElement>(null);
+  // Se fija al abrir: el límite real lo pone el backend un instante después, así que esta hora es conservadora.
+  const deadline = useMemo(() => (open ? formatPaymentDeadline() : ''), [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -45,7 +48,7 @@ const MpRedirectNotice = ({ open, submitting, onConfirm, onClose }: MpRedirectNo
         <Hourglass size={44} aria-hidden="true" className="mp-notice__icon" />
         <h3 id={TITLE_ID} className="mp-notice__title">Estás a un paso de finalizar tu compra</h3>
         <p className="mp-notice__desc">
-          Tenés <strong>15 minutos</strong> para completar el pago en Mercado Pago. Si no se acredita en ese tiempo, la orden se cancelará automáticamente y el producto volverá a estar disponible.
+          Tenés <strong>15 minutos</strong> (hasta las <strong>{deadline}</strong>) para completar el pago en Mercado Pago. Si no se acredita en ese tiempo, la orden se cancelará automáticamente y el producto volverá a estar disponible.
         </p>
         <div className="mp-notice__actions">
           <PrimaryPillButton onClick={onConfirm} disabled={submitting}>Ir a Mercado Pago</PrimaryPillButton>

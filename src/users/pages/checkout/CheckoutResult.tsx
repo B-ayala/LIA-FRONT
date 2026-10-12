@@ -5,6 +5,8 @@ import { useCartStore } from '../../../store/cartStore';
 import { cancelMpOrder, confirmMpPayment } from '../../../services/orderService';
 import SEO from '../../../components/common/SEO/SEO';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
+import { parseReturnShipping, type CheckoutReturnState } from './checkoutUtils';
+import { clearMpDeadline } from './mpDeadline';
 import './CheckoutResult.css';
 
 type ResultStatus = 'approved' | 'pending' | 'failure' | 'unknown';
@@ -81,6 +83,7 @@ const CheckoutResult = () => {
     else if (mpStatus === 'null' || mpStatus === 'rejected' || mpStatus === 'cancelled') status = 'failure';
 
     useEffect(() => {
+        clearMpDeadline();
         const raw = sessionStorage.getItem('mp_last_order');
         if (raw) {
             try { setLastOrder(JSON.parse(raw)); } catch { /* ignore */ }
@@ -146,6 +149,18 @@ const CheckoutResult = () => {
         : CONTENT[status].desc;
     const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2 });
 
+    // Reabre el checkout en el paso de pago con el envío ya elegido (el estado del
+    // checkout es local y se pierde al salir a Mercado Pago).
+    const handleBackToCheckout = () => {
+        const shipping = parseReturnShipping({ shipping: lastOrder?.shippingMethod });
+        if (shipping) {
+            const returnState: CheckoutReturnState = { shipping };
+            navigate('/checkout?paso=pago', { state: returnState });
+            return;
+        }
+        navigate('/checkout');
+    };
+
     return (
         <div className="checkout-result-page">
             <SEO title="Resultado de Compra" description="Estado de tu compra en LIA." path="/checkout/result" />
@@ -189,7 +204,7 @@ const CheckoutResult = () => {
                     {status === 'failure' && (
                         <button
                             className="checkout-result-btn secondary"
-                            onClick={() => navigate('/checkout')}
+                            onClick={handleBackToCheckout}
                         >
                             Volver al checkout
                         </button>

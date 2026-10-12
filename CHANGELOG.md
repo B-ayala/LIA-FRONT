@@ -5,11 +5,16 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Security
+- `npm audit fix`: `react-router`/`react-router-dom` (open redirect, XSS, DoS), `ws` y `yaml` actualizados. 0 vulnerabilidades en dependencias de producción.
+
 ### Added
 - Admin: nueva sección "Stock" (`/admin/stock`) en el sidebar para ver el stock de todos los productos, con búsqueda por nombre, filtros por nivel de stock / categoría / estado, orden y contadores.
 - Admin Productos: "Guardar producto" pasa a "Ver vista previa" (`/admin/products/preview`): muestra el borrador 1:1 como la tienda (Vista Card con `ProductGrid`/`ProductCard` y Vista Detalle con `ProductDetailView`) y el producto se guarda recién con "Confirmar"; "Editar producto" vuelve al modal con el borrador.
 
 ### Changed
+- Admin Ventas: etiqueta "Sin stock: reembolsar" en las ventas con `oversold` (pago acreditado cuando ya no había stock). Requiere la migración `2026-10-13` del backend.
+- Checkout: el aviso previo a Mercado Pago muestra la hora límite exacta de pago; si el usuario vuelve a `/checkout` con Atrás sin pagar, se cancela su reserva anterior (el backend rechaza cancelar órdenes ya pagadas) para que el reintento no dé 409 contra su propia reserva, y si el plazo de 15 minutos había vencido se muestra el aviso "Se venció el tiempo para pagar…".
 - Admin Ventas: se quitó la tarjeta "Alertas de stock" (el seguimiento de stock pasa a la sección Stock).
 - Admin Productos: el precio original (tachado) ahora se guarda; el precio que escribe el admin es el precio final exacto que ve y paga el cliente (antes se perdía el original y la tienda aplicaba el % sobre el precio final).
 - `ProductDetail` se divide en carga de datos + `ProductDetailView` (presentacional, reutilizado por la vista previa del admin); sin cambios visibles en la tienda.
@@ -42,6 +47,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Admin: el modal de producto autocorrige mayúsculas/minúsculas mientras se escribe (títulos en nombre, categoría, variantes y especificaciones; oraciones en descripción, características, garantía, devolución y FAQ) y las vuelve a normalizar al guardar (`utils/textCase.ts`).
 
 ### Fixed
+- Checkout: "Volver al checkout" tras un pago fallido de Mercado Pago reabre el paso de pago con el envío que se había elegido, en vez de volver al primer paso con valores por defecto.
 - Checkout: entrar en frío o recargar `/checkout` dejaba colgada la pantalla de carga inicial (la ruta no marcaba la tarea `route` como lista desde que se quitó la espera artificial).
 - Cards de producto: el nombre reserva siempre 2 líneas, así precio, sellos y botón quedan alineados entre cards sin importar el largo del nombre.
 - Login de admin: el Footer (y el botón de WhatsApp) ya no parpadea entre el login y el redirect a `/admin` (`App.tsx`).

@@ -10,6 +10,7 @@ import {
   type PaymentMethod,
   type ShippingMethod,
 } from '../checkoutUtils';
+import { saveMpDeadline } from '../mpDeadline';
 
 interface CheckoutPaymentInput {
   items: CheckoutItem[];
@@ -111,6 +112,7 @@ export const useCheckoutPayment = (input: CheckoutPaymentInput): CheckoutPayment
       shippingMethod: shipping,
     }));
     sessionStorage.setItem('mp_order_ids', JSON.stringify(orderIds));
+    saveMpDeadline();
   };
 
   const confirmMpRedirect = async () => {
