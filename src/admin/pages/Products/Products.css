@@ -78,3 +78,15 @@
     }
 
 }
+
+/* Estado al abrir un producto para editar (se relee sin caché). */
+.products-open-status {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-ink-muted);
+}
+
+.products-open-status--error {
+    color: var(--color-danger);
+    font-weight: 600;
+}

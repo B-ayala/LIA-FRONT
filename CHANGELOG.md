@@ -9,10 +9,24 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - `npm audit fix`: `react-router`/`react-router-dom` (open redirect, XSS, DoS), `ws` y `yaml` actualizados. 0 vulnerabilidades en dependencias de producción.
 
 ### Added
+- Checkout: al entrar se releen precio, stock y talles de cada producto (sin caché); un precio nuevo se avisa y las líneas con talle agotado/inexistente o producto dado de baja se resaltan con "Cambiar talle" (`PurchaseVariantModal`) y "Quitar del carrito" ("Ver producto" en compra directa). El pago queda bloqueado mientras se verifica o si quedan líneas inválidas.
+- Checkout: ante un error de stock del backend (`OUT_OF_STOCK`, `SIZE_OUT_OF_STOCK`, `SIZE_UNAVAILABLE`, `SIZE_REQUIRED`, `INVALID_VARIANT`) se muestra el mensaje del backend sobre la línea afectada con la salida concreta (error tipado `CheckoutStockError`).
+- Checkout (transferencia): panel "Pedido creado" con botón "Abrir WhatsApp" (por si el navegador bloqueó la ventana) y "Volver a la tienda"; reemplaza al botón de envío, así un segundo click no crea otra venta.
+- Carrito sincronizado entre pestañas (evento `storage` sobre `damiana-bella-cart` + `persist.rehydrate()`).
+- Admin Ventas: estado "Pago en proceso" (y filtro) para ventas de Mercado Pago pendientes entre 15 min y 24 h; etiquetas "Revisar: monto distinto / cobro duplicado / reembolsado / contracargo" según `review_reason`; botón "Confirmar pago tardío" para transferencias `expirado` (`PATCH /orders/:id/confirm-late-transfer`) con confirmación y aviso si ya no había stock.
+- Admin Productos: control de concurrencia al editar: se envía `expectedUpdatedAt` (el `updated_at` crudo leído de la base) y ante `409 PRODUCT_CHANGED` la vista previa recarga el producto, conserva lo escrito por el admin, toma el stock por talle actual y pide volver a confirmar.
+- Mis compras: cada compra muestra un seguimiento visual del despacho (Pendiente → En preparación → Despachado / Listo para retiro → Entregado) con iconos, paso actual resaltado y mensaje de estado; refleja los cambios que hace el admin en Despachos y se actualiza solo cada 20 s mientras el modal está abierto (pausa con la pestaña oculta).
 - Admin: nueva sección "Stock" (`/admin/stock`) en el sidebar para ver el stock de todos los productos, con búsqueda por nombre, filtros por nivel de stock / categoría / estado, orden y contadores.
 - Admin Productos: "Guardar producto" pasa a "Ver vista previa" (`/admin/products/preview`): muestra el borrador 1:1 como la tienda (Vista Card con `ProductGrid`/`ProductCard` y Vista Detalle con `ProductDetailView`) y el producto se guarda recién con "Confirmar"; "Editar producto" vuelve al modal con el borrador.
 
 ### Changed
+- Checkout: al volver de Mercado Pago sin pasar por el resultado, la reserva anterior se libera con `POST /orders/mp-cancel` (un request por compra) y se ESPERA la respuesta: mientras tanto el pago queda bloqueado ("Liberando tu reserva anterior…", tope de 15 s con "Reintentar"); `held` avisa "Tu pago todavía se está procesando" y bloquea el pago; `paid` muestra "¡Tu pago ya fue acreditado!" con acceso a Mis compras y saca del carrito solo lo comprado. El aviso de plazo vencido solo aparece si la reserva realmente se liberó. La compra guardada incluye el e-mail del dueño y no se libera con otra cuenta.
+- `/checkout/result`: muestra "Confirmando tu pago…" mientras corre `mp-confirm`; si falla, "Recibimos tu pago y lo estamos verificando"; `pending` informa el pago en proceso con acceso a Mis compras; en un pago fallido espera el resultado de liberar la reserva (con "Reintentar" si falla). Solo se quitan del carrito los productos de esa compra.
+- Checkout: el aviso previo a Mercado Pago atrapa el foco, arranca en "Volver" y dice "se liberará el producto si no se acredita el pago".
+- Creación de órdenes (`mp-preference`/`transfer`) con timeout de 20 s; los errores de red/timeout se muestran como "No pudimos conectarnos. Revisá tu conexión y reintentá." (en todo el sitio vía `extractErrorMessage`). Reintentar reutiliza la misma `Idempotency-Key`.
+- Precios del front redondeados a centavos y montos con máximo 2 decimales.
+- Admin Ventas: se quitó el estado `fallido` (el backend no lo escribe); los avisos usan el modal de confirmación global en lugar de `alert()`; la consulta incluye `review_reason` y, si la columna no existe, se muestra un error con "Reintentar" que lo explica.
+- Admin Productos: al abrir un producto para editar se relee sin caché.
 - Admin Ventas: etiqueta "Sin stock: reembolsar" en las ventas con `oversold` (pago acreditado cuando ya no había stock). Requiere la migración `2026-10-13` del backend.
 - Checkout: el aviso previo a Mercado Pago muestra la hora límite exacta de pago; si el usuario vuelve a `/checkout` con Atrás sin pagar, se cancela su reserva anterior (el backend rechaza cancelar órdenes ya pagadas) para que el reintento no dé 409 contra su propia reserva, y si el plazo de 15 minutos había vencido se muestra el aviso "Se venció el tiempo para pagar…".
 - Admin Ventas: se quitó la tarjeta "Alertas de stock" (el seguimiento de stock pasa a la sección Stock).
@@ -47,6 +61,20 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Admin: el modal de producto autocorrige mayúsculas/minúsculas mientras se escribe (títulos en nombre, categoría, variantes y especificaciones; oraciones en descripción, características, garantía, devolución y FAQ) y las vuelve a normalizar al guardar (`utils/textCase.ts`).
 
 ### Fixed
+- Admin Productos: editar un producto sin stock por talle mandaba `stock: 0` y borraba su stock; ahora no se envía `stock` y el formulario muestra el stock actual en solo lectura.
+- Checkout: volver con Atrás desde Mercado Pago (bfcache) dejaba "Redirigiendo a Mercado Pago..." deshabilitado para siempre; ahora se reinicia al restaurar la página (`pageshow`) y hay un tope de 15 s en la redirección.
+- Checkout (transferencia): Safari iOS/Firefox bloqueaban WhatsApp porque la ventana se abría después de un `await`; ahora se abre en el click y recibe la URL al crear la orden.
+- `/checkout/result`: recargar la página ya no vacía un carrito ajeno a la compra; se eliminaron el `console.error`, el `catch` vacío y el `setState` sincrónico en efecto.
+- "Mis compras": el refresco automático corta a los 15 s un request colgado y cancela los pendientes al cerrar el modal, para que el polling no se frene.
+- Mis compras: si la carga inicial fallaba, el mensaje de error quedaba fijo aunque el refresco automático trajera las compras; ahora se limpia.
+- Mis compras: con dos compras del mismo producto, abrir la segunda mostraba el detalle (cantidad, total, seguimiento) de la primera; ahora se abre la compra elegida.
+- Mis compras: el seguimiento ubica el 3er paso según el estado real ("Despachado" o "Listo para retiro") y el mensaje de ayuda coincide siempre con el paso resaltado, aunque el método de envío histórico no concuerde.
+- Mis compras: el seguimiento no desborda en pantallas de 320 px; las etiquetas largas cortan línea dentro de su columna.
+- Mis compras: respuestas tardías (cerrar/reabrir el modal, volver atrás o abrir otra compra mientras carga el detalle) ya no pisan lo que se está viendo.
+- Mis compras: el texto atenuado del seguimiento cumple contraste AA y los pasos completados/actual se leen bien también en los temas estacionales de acento claro.
+- Mis compras: el seguimiento anuncia a lectores de pantalla "completado / paso actual / pendiente" en cada paso, los pasos completados muestran un tilde y se quitó la región en vivo por compra que generaba ruido.
+- Mis compras: el pulso del paso actual se repite 3 veces en lugar de animarse indefinidamente y el halo toma el color del tema.
+- Mis compras: un `dispatch_status` con nombre de propiedad de objeto (`constructor`, `toString`) ya no rompe el modal; se muestra como "Pendiente".
 - Checkout: "Volver al checkout" tras un pago fallido de Mercado Pago reabre el paso de pago con el envío que se había elegido, en vez de volver al primer paso con valores por defecto.
 - Checkout: entrar en frío o recargar `/checkout` dejaba colgada la pantalla de carga inicial (la ruta no marcaba la tarea `route` como lista desde que se quitó la espera artificial).
 - Cards de producto: el nombre reserva siempre 2 líneas, así precio, sellos y botón quedan alineados entre cards sin importar el largo del nombre.

@@ -79,6 +79,21 @@
   gap: var(--space-3);
 }
 
+.order-summary__item--issue {
+  margin: calc(var(--space-2) * -1);
+  padding: var(--space-2);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-danger-bg);
+}
+
+.order-summary__item-issue {
+  margin: var(--space-1) 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
 .order-summary__thumb {
   width: 64px;
   height: 64px;

@@ -298,32 +298,82 @@ La sesión la maneja **Supabase Auth**; el backend Express no expone endpoints `
    - **Pago**: repaso de contacto/entrega + método de pago:
      - **Transferencia**: `orderService.createOrder` → `POST /orders/transfer`. La escritura va por
        el backend a propósito: insertar directo en `ventas` con la anon key lo bloquea RLS
-       (BUG-001). El trigger `trg_decrement_stock` descuenta stock al insertar. Abre WhatsApp con el
-       resumen y arma el nudge al volver a la pestaña.
-     - **Mercado Pago**: aviso de 15 minutos (`MpRedirectNotice`, `role="dialog"`, cierra con Escape)
-       → `orderService.createMpPreference` → `POST /orders/mp-preference`, recibe `init_point`
-       (redirección a MP) + `order_ids` (guardados en `sessionStorage` `mp_last_order` /
-       `mp_order_ids`). Si el usuario vuelve sin pagar, `cancelMpOrder` → `POST /orders/:id/cancel`
-       (el backend restaura stock; hay sweep de respaldo cada 60 s).
+       (BUG-001). La ventana de WhatsApp se abre vacía **en el click** (`whatsAppWindow.ts`, con
+       `opener = null`) y recibe la URL al crear la orden: Safari iOS/Firefox bloquean `window.open`
+       después de un `await`. Creada la orden, el CTA se reemplaza por el panel "Pedido creado"
+       (`TransferCreatedPanel`: "Abrir WhatsApp" + "Volver a la tienda") y la `Idempotency-Key` se
+       conserva hasta vaciar el carrito, así un segundo click nunca crea otra venta. Se arma el nudge
+       al volver a la pestaña.
+     - **Mercado Pago**: aviso de 15 minutos (`MpRedirectNotice`, `role="dialog"`, foco atrapado,
+       foco inicial en "Volver", Escape cierra) → `orderService.createMpPreference` →
+       `POST /orders/mp-preference`, recibe `init_point` + `order_ids`. Antes de redirigir se guarda
+       la compra en `sessionStorage` (`mpPendingPurchase.ts`: `mp_order_ids`, `mp_deadline`,
+       `mp_owner` = e-mail del dueño, `mp_last_order` con `productId` por línea). Si la redirección
+       no ocurre en 15 s se rehabilita el CTA (misma key: el backend devuelve la misma preferencia).
+     - **Liberación de la compra MP anterior** (`useReleaseAbandonedMpPayment`, en `CheckoutSession`):
+       si al montar `/checkout` (o al restaurarlo desde bfcache, evento `pageshow` con `persisted`)
+       hay una compra guardada del mismo usuario, se llama `cancelMpOrders` →
+       `POST /orders/mp-cancel { orderIds }` y se ESPERA el `outcome`. Estados: `releasing` (pago
+       bloqueado, "Liberando tu reserva anterior…", tope de 15 s) → `released` (se olvida la compra;
+       banner "Se venció el tiempo para pagar…" solo si además había vencido el plazo), `held` (pago
+       en curso: aviso + pago bloqueado + "Verificar de nuevo"), `paid` (aviso "¡Tu pago ya fue
+       acreditado!" + Mis compras; se quitan del carrito solo esos productos, `mpSettlement.ts`) o
+       `error` (aviso con "Reintentar"; no bloquea). Una compra guardada con otro `mp_owner` no se toca.
+     - **Precio y stock frescos** (`useCartFreshness`): al montar se leen los productos del pedido
+       sin caché (`fetchActiveProductsByIds`) y se concilian con `cartStore.syncProducts` (no descarta
+       líneas). Precio cambiado → aviso; talle agotado/inexistente o producto inactivo → línea
+       resaltada en el resumen y en `CheckoutItemIssues` con "Cambiar talle" / "Quitar del carrito"
+       ("Ver producto" en compra directa). El pago se bloquea mientras carga o con líneas inválidas;
+       si la lectura falla se avisa y se deja seguir (el backend revalida).
+     - Errores del backend: los de stock (`OUT_OF_STOCK`, `SIZE_OUT_OF_STOCK`, `SIZE_UNAVAILABLE`,
+       `SIZE_REQUIRED`, `INVALID_VARIANT`, con `productId`/`size`) llegan como `CheckoutStockError`:
+       se resalta la línea y se relee el stock. Red caída/timeout (20 s en la creación de órdenes) →
+       "No pudimos conectarnos. Revisá tu conexión y reintentá." (`extractErrorMessage`).
      - Ambos envían `Idempotency-Key` (una por intento; huella = método, ítems, envío, costo, total,
-       nombre y e-mail). Los errores se muestran con `role="alert"`.
+       nombre y e-mail) y tienen guard anti doble click. Los errores se muestran con `role="alert"`.
+     - Montos: precios redondeados a centavos (`roundToCents`) y `formatAmount` con máximo 2
+       decimales. El backend no devuelve el total cobrado: el total de WhatsApp y de `mp_last_order`
+       sale del front (con precios recién releídos).
    - **Resumen** (`OrderSummaryCard`): miniatura, nombre × cantidad, variantes (`VariantTags`),
      precio, subtotal, envío y total. Desktop (≥992px): columna derecha sticky. Mobile: colapsable
      con el total visible en el encabezado.
    - **E-mail de contacto vs dueño**: `buyerEmail` siempre es el e-mail de la sesión. El backend lo
      guarda en `ventas.buyer_email` y lo usa para "Mis compras" (`GET /orders/user?email=`), para
-     autorizar `POST /orders/:id/cancel` y el nudge. No existe un campo de e-mail de contacto
+     autorizar `POST /orders/mp-cancel` y el nudge. No existe un campo de e-mail de contacto
      separado; hacerlo editable requiere un cambio de contrato y schema en el backend.
-4. `CheckoutResult` confirma el pago con `POST /orders/mp-confirm` (el backend lo verifica contra
-   la API de MP, no confía en los parámetros de la URL) y muestra el resultado.
-5. `POST /orders/nudge` registra el recordatorio al usuario con el pago pendiente.
-6. `MyPurchasesModal` lista compras por email vía `GET /orders/user?email=…` (el backend
-   bypassa RLS de Supabase y valida que seas el dueño o admin).
+4. `CheckoutResult` (`useMpResultSettlement` + `resultContent.tsx`): si MP dice `approved` muestra
+   "Confirmando tu pago…" mientras corre `POST /orders/mp-confirm` (el backend lo verifica contra la
+   API de MP); si falla, "Recibimos tu pago y lo estamos verificando". `pending` → "Pago en proceso"
+   con acceso a Mis compras. En ambos se quitan del carrito SOLO los productos de `mp_last_order`
+   (si la compra es del usuario actual); sin ese detalle (recarga) el carrito no se toca. `failure`
+   → `POST /orders/mp-cancel` esperando el `outcome` (`held`/`paid` cambian el mensaje; `error`
+   ofrece "Reintentar").
+5. El carrito se sincroniza entre pestañas (`useCartTabSync`, montado en `App`): evento `storage`
+   sobre la key `damiana-bella-cart` → `useCartStore.persist.rehydrate()` (sin eco entre pestañas).
+6. `POST /orders/nudge` registra el recordatorio al usuario con el pago pendiente.
+7. `MyPurchasesModal` lista compras por email vía `GET /orders/user?email=…` (el backend
+   bypassa RLS de Supabase y valida que seas el dueño o admin). Cada compra muestra un
+   `DispatchTracker` con el `dispatch_status` que el admin cambia en Despachos (`null` = pendiente;
+   el 3er paso es "Listo para retiro" si el envío es `local`, "Despachado" en otro caso). Mientras
+   el modal está abierto se re-consulta cada 20 s (polling silencioso, pausado con la pestaña oculta;
+   no hay Realtime porque la lectura va por el backend, no por Supabase).
 
 ### 6.4 Admin
-- `Products`: CRUD vía API (`/products`), imágenes vía Cloudinary firmado.
-- `Sales`: lee `ventas` de Supabase; confirma/cancela transferencias vía
-  `PATCH /orders/:id/confirm-transfer` y `/orders/:id/cancel-transfer` (solo admin).
+- `Products`: CRUD vía API (`/products`), imágenes vía Cloudinary firmado. Al abrir un producto
+  para editar se relee sin caché (`fetchProductById`, `mapAdminProductRow`) y el guardado (en la
+  vista previa) envía `expectedUpdatedAt` = `updated_at` crudo de la base; ante
+  `409 PRODUCT_CHANGED` se relee el producto, se conserva el borrador salvo el stock por talle
+  (`rebaseDraftOnFresh`) y se pide confirmar de nuevo. Productos sin stock por talle: al editar no
+  se envía `stock` (el formulario lo muestra en solo lectura); al crear se envía explícito.
+- `Sales` (`salesQueries.ts`, `SaleStatusCell`, `useSaleActions`): lee `ventas` de Supabase
+  (incluye `oversold` y `review_reason`; si la columna falta, error con "Reintentar"). Estado
+  efectivo: MP `pendiente` <15 min = "Pendiente", 15 min–24 h = "Pago en proceso", >24 h =
+  "Expirado"; transferencia >5 h = "Expirado" (filtros y contador "Pendientes" usan la misma regla).
+  Etiquetas "Sin stock: reembolsar" y "Revisar: …" según `review_reason`. Acciones admin con
+  confirmación y anti doble click: confirmar/cancelar transferencia (`PATCH
+  /orders/:id/confirm-transfer` y `/cancel-transfer`) y "Confirmar pago tardío" para transferencias
+  `expirado` (`PATCH /orders/:id/confirm-late-transfer`, avisa si quedó `oversold`). El resultado
+  se muestra con `ConfirmationModal` (no hay sistema global de toasts).
 - `Asistente`: analítica vía `GET /admin/insights/*` (`insightsService.ts`).
 - `Dispatches`: gestiona estado de despacho sobre `ventas`.
 - `Users`: lista/edita/borra usuarios vía `/users` (solo admin).
@@ -465,8 +515,11 @@ Tablas que el frontend toca directamente con la `anon key`:
   dependencia** en `package.json`; su uso real es parcial/ausente. Verificar antes de asumirlo.
 - Carpeta `producDetail/` con typo (sin `t`); es el nombre real del directorio, respetarlo en imports.
 - `fetchAllProducts` está `@deprecated` → usar `fetchProducts(false)`.
-- `cancelMpOrder` es **best-effort**: loguea el fallo y no lo propaga (el sweep de expiración del
-  backend limpia igual). `createOrder`, en cambio, **sí lanza** el error normalizado.
+- `cancelMpOrders` nunca lanza: devuelve `'released' | 'held' | 'paid' | 'error'` (red, timeout o
+  4xx/5xx = `'error'`, que la UI muestra con "Reintentar"). `createOrder`/`createMpPreference`, en
+  cambio, **sí lanzan** (`CheckoutStockError` para errores de stock con `productId`).
+- No existe un sistema global de toasts/confirm: el admin de Ventas usa `ConfirmationModal`
+  (`components/common/Modal`) para el resultado de sus acciones.
 - Las rutas de skills en `CLAUDE.md` apuntan a `../../skill` (carpeta compartida fuera del repo).
 
 ---

@@ -49,6 +49,26 @@
     line-height: 1.5;
 }
 
+/* Estado secundario (p. ej. liberación de la reserva tras un pago fallido). */
+.checkout-result-note {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink-subtle);
+}
+
+.checkout-result-spin {
+    animation: checkout-result-spin 1s linear infinite;
+}
+
+@keyframes checkout-result-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .checkout-result-spin { animation: none; }
+}
+
 .checkout-result-actions {
     display: flex;
     flex-direction: column;

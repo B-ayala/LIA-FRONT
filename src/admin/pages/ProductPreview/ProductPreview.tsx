@@ -1,10 +1,17 @@
 import { useMemo, useState, type KeyboardEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Check, EyeOff, Info, LayoutGrid, Loader2, Monitor, Pencil, TriangleAlert } from 'lucide-react';
-import { createProduct, mapDbRowToProduct, updateProduct } from '../../../services/productService';
+import {
+  ProductChangedError,
+  createProduct,
+  fetchProductById,
+  mapDbRowToProduct,
+  updateProduct,
+} from '../../../services/productService';
 import ProductGrid from '../../../users/components/ProductGrid/ProductGrid';
 import ProductDetailView from '../../../users/pages/producDetail/ProductDetailView';
-import type { ProductDraft, ProductPreviewState } from '../../components/ProductModal/productDraft';
+import { rebaseDraftOnFresh, type ProductDraft, type ProductPreviewState } from '../../components/ProductModal/productDraft';
+import { mapAdminProductRow } from '../../utils/adminProductRow';
 import { getAuthToken } from '../../../utils/auth';
 import { extractErrorMessage } from '../../../utils/errorMessage';
 import { useTypography } from '../../../utils/TypographyProvider';
@@ -33,7 +40,8 @@ const draftToProduct = (draft: ProductDraft, productId: string | null) =>
     description: draft.description,
     category: draft.category,
     discount: draft.discount,
-    stock: draft.stock,
+    // Sin stock por talle el borrador no gestiona el stock: se previsualiza el actual.
+    stock: draft.stock ?? draft.unmanagedStock,
     condition: draft.condition,
     free_shipping: draft.freeShipping,
     hover_image_enabled: draft.hoverImageEnabled,
@@ -54,6 +62,7 @@ const ProductPreview = () => {
   const [view, setView] = useState<PreviewView>('card');
   const [confirming, setConfirming] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [conflictNotice, setConflictNotice] = useState('');
 
   const product = useMemo(
     () => (previewState ? draftToProduct(previewState.draft, previewState.productId) : null),
@@ -76,20 +85,42 @@ const ProductPreview = () => {
     document.getElementById(`preview-tab-${next}`)?.focus();
   };
 
+  // 409 PRODUCT_CHANGED: se relee el producto y se reemplaza el borrador en el history
+  // conservando lo que escribió el admin (salvo el stock por talle, que manda la base).
+  const rebaseOnConflict = async (id: string, message: string) => {
+    try {
+      const row = await fetchProductById(id, false);
+      if (!row) {
+        setSaveError('Este producto fue eliminado mientras lo editabas');
+        return;
+      }
+      const nextState: ProductPreviewState = { draft: rebaseDraftOnFresh(draft, mapAdminProductRow(row as Record<string, unknown>)), productId: id };
+      navigate(location.pathname, { replace: true, state: nextState });
+      setConflictNotice(`${message.replace(/\.$/, '')}. Conservamos tus cambios y actualizamos el stock por talle con el valor actual: revisalo y volvé a confirmar.`);
+    } catch (err) {
+      setSaveError(`${message.replace(/\.$/, '')}. No pudimos recargarlo: ${extractErrorMessage(err, 'error de red')}`);
+    }
+  };
+
   const handleConfirm = async () => {
     if (confirming) return;
     setConfirming(true);
     setSaveError('');
+    setConflictNotice('');
     try {
       const token = await getAuthToken();
       if (productId) {
-        await updateProduct(productId, draft, token);
+        await updateProduct(productId, draft, token, { expectedUpdatedAt: draft.updatedAt });
       } else {
         await createProduct(draft, token);
       }
       navigate('/admin/products', { replace: true });
     } catch (err) {
-      setSaveError(extractErrorMessage(err, 'No se pudo guardar el producto'));
+      if (productId && err instanceof ProductChangedError) {
+        await rebaseOnConflict(productId, err.message);
+      } else {
+        setSaveError(extractErrorMessage(err, 'No se pudo guardar el producto'));
+      }
       setConfirming(false);
     }
   };
@@ -127,6 +158,12 @@ const ProductPreview = () => {
           <p className="product-preview__note product-preview__note--error" role="alert">
             <TriangleAlert size={16} aria-hidden="true" />
             {saveError.replace(/\.$/, '')}. Podés reintentar con Confirmar o volver a editar.
+          </p>
+        )}
+        {conflictNotice && (
+          <p className="product-preview__note product-preview__note--warning" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            {conflictNotice}
           </p>
         )}
         {draft.status === 'inactive' && (

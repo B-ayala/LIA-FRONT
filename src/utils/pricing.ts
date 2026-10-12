@@ -11,7 +11,13 @@ export type ProductPricing = {
   hasPromotion: boolean;
 };
 
-const roundDiscount = (value: number) => Math.round(value * 100) / 100;
+const CENTS_FACTOR = 100;
+
+/** Redondeo a centavos: evita totales como 8499.150000000001 al aplicar descuentos o multiplicar. */
+export const roundToCents = (value: number): number =>
+  Math.round((value + Number.EPSILON) * CENTS_FACTOR) / CENTS_FACTOR;
+
+const roundDiscount = (value: number) => roundToCents(value);
 
 export const calculateDiscountPercentage = (originalPrice: number, finalPrice: number) => {
   if (!Number.isFinite(originalPrice) || !Number.isFinite(finalPrice) || originalPrice <= 0 || finalPrice >= originalPrice) {
@@ -37,7 +43,7 @@ export const getProductPricing = ({ price, discount, originalPrice }: PriceLike)
   const safeDiscount = Number(discount);
   if (Number.isFinite(safeDiscount) && safeDiscount > 0) {
     return {
-      finalPrice: safePrice * (1 - safeDiscount / 100),
+      finalPrice: roundToCents(safePrice * (1 - safeDiscount / 100)),
       originalPrice: safePrice,
       discountPercentage: safeDiscount,
       hasPromotion: true,

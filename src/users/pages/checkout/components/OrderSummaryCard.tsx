@@ -7,8 +7,8 @@ import './OrderSummaryCard.css';
 
 const THUMB_SIZE = 64;
 
-const SummaryItem = ({ item }: { item: CheckoutItem }) => (
-  <li className="order-summary__item">
+const SummaryItem = ({ item, hasIssue }: { item: CheckoutItem; hasIssue: boolean }) => (
+  <li className={`order-summary__item${hasIssue ? ' order-summary__item--issue' : ''}`}>
     <img
       src={item.product.image}
       alt=""
@@ -22,6 +22,7 @@ const SummaryItem = ({ item }: { item: CheckoutItem }) => (
         {item.product.name} <span className="order-summary__item-qty">× {item.quantity}</span>
       </p>
       <VariantTags unitVariants={item.unitVariants} />
+      {hasIssue && <p className="order-summary__item-issue">Revisá este producto</p>}
     </div>
     <span className="order-summary__item-price">${formatAmount(item.totalPrice)}</span>
   </li>
@@ -30,10 +31,12 @@ const SummaryItem = ({ item }: { item: CheckoutItem }) => (
 interface OrderSummaryCardProps {
   items: CheckoutItem[];
   totals: CheckoutTotals;
+  /** Ids de producto con problemas de stock/talle: la línea se resalta. */
+  issueIds?: ReadonlySet<string>;
 }
 
 /** Resumen del pedido: card sticky en desktop; en mobile se colapsa mostrando el total en el encabezado. */
-const OrderSummaryCard = ({ items, totals }: OrderSummaryCardProps) => {
+const OrderSummaryCard = ({ items, totals, issueIds }: OrderSummaryCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const bodyId = useId();
   const total = `$${formatAmount(totals.grandTotal)}`;
@@ -55,7 +58,9 @@ const OrderSummaryCard = ({ items, totals }: OrderSummaryCardProps) => {
 
       <div id={bodyId} className="order-summary__body">
         <ul className="order-summary__items">
-          {items.map((item) => <SummaryItem key={String(item.product.id)} item={item} />)}
+          {items.map((item) => (
+            <SummaryItem key={String(item.product.id)} item={item} hasIssue={issueIds?.has(String(item.product.id)) ?? false} />
+          ))}
         </ul>
         <dl className="order-summary__totals">
           <div className="order-summary__row">

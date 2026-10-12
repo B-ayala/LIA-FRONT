@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import MuiThemeScope from '../../../../components/common/MuiTheme/MuiThemeScope';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Collapse, Divider } from '@mui/material';
 import { FiPackage, FiChevronDown, FiChevronUp, FiShoppingBag, FiArrowLeft } from 'react-icons/fi';
 import Modal from '../../../../components/common/Modal/Modal';
@@ -11,7 +11,11 @@ import type { Product } from '../../../../types/product';
 import { buildCloudinaryUrl } from '../../../../utils/cloudinary';
 import { formatDate, formatPrice } from '../../../../utils/formatters';
 import { getProductPricing } from '../../../../utils/pricing';
-import { DISPATCH_STATUS_LABEL, PAYMENT_METHOD_LABEL, SHIPPING_METHOD_LABEL } from '../../../../utils/labels';
+import DispatchTracker from './DispatchTracker';
+import { PAYMENT_METHOD_LABEL, SHIPPING_METHOD_LABEL } from '../../../../utils/labels';
+
+const REFRESH_INTERVAL_MS = 20_000;
+const REFRESH_TIMEOUT_MS = 15_000;
 
 interface MyPurchasesModalProps {
   isOpen: boolean;
@@ -26,23 +30,6 @@ const badgeStyle = {
   background: 'rgba(184,165,200,0.15)',
   color: 'var(--text-dark)',
 } as const;
-
-const dispatchStatusStyle = (status: string): { background: string; color: string } => {
-  switch (status) {
-    case 'pendiente':
-      return { background: '#f1f5f9', color: '#64748b' };
-    case 'en_preparacion':
-      return { background: '#ffedd5', color: '#c2410c' };
-    case 'despachado':
-      return { background: '#dbeafe', color: '#1d4ed8' };
-    case 'listo_para_retiro':
-      return { background: '#dcfce7', color: '#166534' };
-    case 'entregado':
-      return { background: '#f3e8ff', color: '#7c3aed' };
-    default:
-      return { background: 'rgba(184,165,200,0.15)', color: 'var(--text-dark)' };
-  }
-};
 
 const PurchaseItemContent = ({ purchase }: { purchase: Purchase }) => (
   <>
@@ -271,22 +258,6 @@ const PurchaseProductDetail = ({
                 </span>
               )}
             </div>
-            {/* Dispatch status */}
-            {purchase.dispatch_status && (
-              <div style={{ marginTop: '0.3rem' }}>
-                <span
-                  style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    padding: '0.3rem 0.75rem',
-                    borderRadius: '20px',
-                    ...dispatchStatusStyle(purchase.dispatch_status),
-                  }}
-                >
-                  {DISPATCH_STATUS_LABEL[purchase.dispatch_status] ?? purchase.dispatch_status}
-                </span>
-              </div>
-            )}
             {purchase.units_config && purchase.units_config.length > 0 && (
               <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 {purchase.units_config.map((unit, idx) => (
@@ -302,6 +273,10 @@ const PurchaseProductDetail = ({
                 ))}
               </div>
             )}
+          </div>
+
+          <div style={{ border: '1px solid rgba(184,165,200,0.25)', borderRadius: '12px' }}>
+            <DispatchTracker status={purchase.dispatch_status} shippingMethod={purchase.shipping_method} />
           </div>
 
           {/* Description */}
@@ -352,7 +327,7 @@ const PurchaseProductDetail = ({
   );
 };
 
-const PurchaseItem = ({ purchase, onOpenProduct }: { purchase: Purchase; onOpenProduct: (productId: string | number) => void }) => {
+const PurchaseItem = ({ purchase, onOpenProduct }: { purchase: Purchase; onOpenProduct: (purchase: Purchase) => void }) => {
   const [expanded, setExpanded] = useState(false);
   const hasVariants = purchase.units_config && purchase.units_config.length > 0;
   const canOpenProduct = purchase.product_id !== null && String(purchase.product_id).trim() !== '';
@@ -375,7 +350,7 @@ const PurchaseItem = ({ purchase, onOpenProduct }: { purchase: Purchase; onOpenP
       {canOpenProduct ? (
         <button
           type="button"
-          onClick={() => onOpenProduct(purchase.product_id!)}
+          onClick={() => onOpenProduct(purchase)}
           style={{
             ...headerStyles,
             width: '100%',
@@ -394,6 +369,9 @@ const PurchaseItem = ({ purchase, onOpenProduct }: { purchase: Purchase; onOpenP
           <PurchaseItemContent purchase={purchase} />
         </div>
       )}
+
+      <Divider sx={{ borderColor: 'rgba(184,165,200,0.2)' }} />
+      <DispatchTracker status={purchase.dispatch_status} shippingMethod={purchase.shipping_method} />
 
       {/* Expand button for variants */}
       {hasVariants && (
@@ -461,25 +439,30 @@ const MyPurchasesModalContent = ({ isOpen, onClose, email }: MyPurchasesModalPro
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const openPurchasedProduct = (productId: string | number) => {
-    const purchase = purchases.find((p) => p.product_id !== null && String(p.product_id) === String(productId));
-    if (!purchase) return;
+  // Cada apertura de detalle invalida la anterior: una respuesta lenta no puede pisar otra compra.
+  const detailRequestId = useRef(0);
+
+  const openPurchasedProduct = (purchase: Purchase) => {
+    const requestId = ++detailRequestId.current;
+    const isStale = () => requestId !== detailRequestId.current;
     setSelectedPurchase(purchase);
     setDetailLoading(true);
     setDetailProduct(null);
-    fetchProductById(String(productId), false)
+    fetchProductById(String(purchase.product_id), false)
       // row null = producto borrado: el detalle muestra solo los datos de la compra.
-      .then((row) => setDetailProduct(row ? mapDbRowToProduct(row) : null))
+      .then((row) => { if (!isStale()) setDetailProduct(row ? mapDbRowToProduct(row) : null); })
       .catch(() => {/* error real de red: el detalle muestra solo los datos de la compra */})
-      .finally(() => setDetailLoading(false));
+      .finally(() => { if (!isStale()) setDetailLoading(false); });
   };
 
   const handleBack = () => {
+    detailRequestId.current++;
     setSelectedPurchase(null);
     setDetailProduct(null);
   };
 
   const handleClose = () => {
+    detailRequestId.current++;
     onClose();
     setSelectedPurchase(null);
     setDetailProduct(null);
@@ -487,14 +470,60 @@ const MyPurchasesModalContent = ({ isOpen, onClose, email }: MyPurchasesModalPro
 
   useEffect(() => {
     if (!isOpen || !email) return;
+    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
     setSelectedPurchase(null);
     setDetailProduct(null);
-    getUserPurchases(email)
-      .then(setPurchases)
-      .catch(() => setError('No se pudieron cargar tus compras. Intentá más tarde.'))
-      .finally(() => setLoading(false));
+    getUserPurchases(email, controller.signal)
+      .then((data) => { if (!cancelled) setPurchases(data); })
+      .catch(() => { if (!cancelled) setError('No se pudieron cargar tus compras. Intentá más tarde.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [isOpen, email]);
+
+  // Refresco silencioso (sin loader) para que el usuario vea los cambios de despacho del admin
+  // sin cerrar y reabrir el modal. Se pausa con la pestaña oculta y no solapa requests.
+  useEffect(() => {
+    if (!isOpen || !email) return;
+    let cancelled = false;
+    let inFlight = false;
+    let controller: AbortController | null = null;
+
+    const refresh = () => {
+      if (document.hidden || inFlight) return;
+      inFlight = true;
+      const requestController = new AbortController();
+      controller = requestController;
+      // Sin timeout, un request colgado dejaría inFlight en true y frenaría el polling.
+      const timeoutId = window.setTimeout(() => requestController.abort(), REFRESH_TIMEOUT_MS);
+      getUserPurchases(email, requestController.signal)
+        .then((fresh) => {
+          if (cancelled) return;
+          setPurchases(fresh);
+          setError(null);
+          setSelectedPurchase((current) => current && (fresh.find((p) => p.id === current.id) ?? current));
+        })
+        // Un fallo puntual no debe pisar lo ya mostrado: se reintenta en el próximo ciclo.
+        .catch(() => undefined)
+        .finally(() => {
+          window.clearTimeout(timeoutId);
+          inFlight = false;
+        });
+    };
+
+    const intervalId = window.setInterval(refresh, REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      cancelled = true;
+      controller?.abort();
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [isOpen, email]);
 
   return (

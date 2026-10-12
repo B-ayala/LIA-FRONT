@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { CheckoutItem } from '../../../store/cartStore';
 import { useAuthStore } from '../../../store/authStore';
@@ -13,10 +13,13 @@ import CheckoutStepContent from './components/CheckoutStepContent';
 import OrderSummaryCard from './components/OrderSummaryCard';
 import MpRedirectNotice from './components/MpRedirectNotice';
 import PrimaryPillButton from './components/PrimaryPillButton';
+import ReleaseNotice from './components/ReleaseNotice';
+import FreshnessNotice from './components/FreshnessNotice';
+import CheckoutItemIssues from './components/CheckoutItemIssues';
+import PaidPurchaseNotice from './components/PaidPurchaseNotice';
 import { useCheckoutItems } from './hooks/useCheckoutItems';
 import { useCheckoutFlow } from './hooks/useCheckoutFlow';
-import { EXPIRED_MP_MESSAGE } from './mpDeadline';
-import { useReleaseAbandonedMpPayment } from './hooks/useReleaseAbandonedMpPayment';
+import { useReleaseAbandonedMpPayment, type AbandonedMpRelease } from './hooks/useReleaseAbandonedMpPayment';
 import './Checkout.css';
 
 const STEP_ANNOUNCEMENT = {
@@ -28,25 +31,33 @@ interface CheckoutFlowProps {
   user: AuthUser;
   items: CheckoutItem[];
   isDirectPurchase: boolean;
+  release: AbandonedMpRelease;
 }
 
-const CheckoutFlow = ({ user, items, isDirectPurchase }: CheckoutFlowProps) => {
-  const flow = useCheckoutFlow(user, items, isDirectPurchase);
-  const { stepper, pay, nudge } = flow;
-  const paymentExpired = useReleaseAbandonedMpPayment();
+const CheckoutFlow = ({ user, items, isDirectPurchase, release }: CheckoutFlowProps) => {
+  const flow = useCheckoutFlow(user, items, isDirectPurchase, release.status);
+  const { stepper, pay, nudge, freshness } = flow;
+  const stockErrorProductId = pay.stockError?.productId;
+  const issueIds = useMemo(() => {
+    const ids = new Set(Object.keys(freshness.issues));
+    if (stockErrorProductId) ids.add(stockErrorProductId);
+    return ids;
+  }, [freshness.issues, stockErrorProductId]);
 
   return (
     <div className="checkout-page">
       <h1 className="sr-only">Finalizar compra</h1>
-      {paymentExpired && (
-        <p className="checkout-expired" role="alert">{EXPIRED_MP_MESSAGE}</p>
-      )}
+      <div className="checkout-notices">
+        <ReleaseNotice release={release} />
+        <FreshnessNotice freshness={freshness} />
+        <CheckoutItemIssues flow={flow} />
+      </div>
       <CheckoutStepper current={stepper.step} />
       <p className="sr-only" aria-live="polite">{STEP_ANNOUNCEMENT[stepper.step]}</p>
 
       <div className="checkout-layout">
         <aside className="checkout-layout__summary" aria-label="Tu pedido">
-          <OrderSummaryCard items={items} totals={flow.totals} />
+          <OrderSummaryCard items={items} totals={flow.totals} issueIds={issueIds} />
         </aside>
         <div className="checkout-layout__main">
           <CheckoutStepContent flow={flow} />
@@ -68,6 +79,40 @@ const CheckoutFlow = ({ user, items, isDirectPurchase }: CheckoutFlowProps) => {
       />
     </div>
   );
+};
+
+interface CheckoutSessionProps {
+  user: AuthUser;
+  items: CheckoutItem[];
+  isDirectPurchase: boolean;
+}
+
+/**
+ * Sesión de checkout de un usuario concreto. La consulta de la compra de Mercado Pago anterior
+ * vive acá (y no en CheckoutFlow) porque, si ya estaba pagada, se quitan esos productos del
+ * carrito: con el carrito vacío hay que mostrar el aviso en vez de redirigir a /products.
+ */
+const CheckoutSession = ({ user, items, isDirectPurchase }: CheckoutSessionProps) => {
+  const navigate = useNavigate();
+  const release = useReleaseAbandonedMpPayment(user.email);
+  const isPaid = release.status === 'paid';
+
+  useEffect(() => {
+    if (items.length === 0 && !isPaid) navigate('/products');
+  }, [items.length, isPaid, navigate]);
+
+  if (items.length === 0) {
+    return isPaid ? (
+      <div className="checkout-page">
+        <h1 className="sr-only">Finalizar compra</h1>
+        <div className="checkout-notices checkout-notices--standalone">
+          <PaidPurchaseNotice hasRemainingItems={false} />
+        </div>
+      </div>
+    ) : null;
+  }
+
+  return <CheckoutFlow user={user} items={items} isDirectPurchase={isDirectPurchase} release={release} />;
 };
 
 const LoginGate = () => {
@@ -104,9 +149,10 @@ const Checkout = () => {
   // (la ruta nunca marcaba 'route' como lista desde que se quitó la espera artificial).
   useInitialLoadTask('route', false);
 
+  // Con sesión, la redirección por carrito vacío la decide CheckoutSession.
   useEffect(() => {
-    if (items.length === 0) navigate('/products');
-  }, [items.length, navigate]);
+    if (items.length === 0 && !currentUser) navigate('/products');
+  }, [items.length, currentUser, navigate]);
 
   // Con usuario hidratado desde storage no bloqueamos: el backend autoriza igual en cada llamada.
   if (!authInitialized && !currentUser) {
@@ -118,13 +164,17 @@ const Checkout = () => {
     );
   }
 
-  if (!currentUser) return <LoginGate />;
-  if (items.length === 0) return null;
+  if (!currentUser) return items.length === 0 ? null : <LoginGate />;
 
   return (
     <>
       {CHECKOUT_SEO}
-      <CheckoutFlow user={currentUser} items={items} isDirectPurchase={isDirectPurchase} />
+      <CheckoutSession
+        key={currentUser.email}
+        user={currentUser}
+        items={items}
+        isDirectPurchase={isDirectPurchase}
+      />
     </>
   );
 };

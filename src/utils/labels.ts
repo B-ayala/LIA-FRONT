@@ -10,8 +10,8 @@ export const SHIPPING_METHOD_LABEL: Record<string, string> = {
 
 export const PAYMENT_STATUS_LABEL: Record<string, string> = {
   pendiente: 'Pendiente',
+  en_proceso: 'Pago en proceso',
   pagado: 'Pagado',
-  fallido: 'Fallido',
   expirado: 'Expirado',
   cancelado: 'Cancelado',
 };

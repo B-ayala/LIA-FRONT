@@ -33,16 +33,34 @@
 }
 /* Payment status badge (clickable toggle) */
 .payment-badge.expirado  { background: #f3f4f6; color: #6b7280; cursor: default; }
-.payment-badge.fallido   { background: #fee2e2; color: #991b1b; cursor: default; }
 .payment-badge.cancelado { background: #f3f4f6; color: #6b7280; cursor: default; }
+/* MP pendiente > 15 min: el backend la retiene hasta 24 h por si Mercado Pago acredita. */
+.payment-badge.en_proceso {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-ink);
+  border: 1px solid var(--color-warning-border);
+  cursor: default;
+}
 .payment-badge.expirado:hover,
-.payment-badge.fallido:hover,
+.payment-badge.en_proceso:hover,
 .payment-badge.cancelado:hover { opacity: 1; transform: none; }
 
-/* Pago acreditado sin stock disponible: requiere acción del admin */
-.oversold-tag {
+.sale-status-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sale-late-btn {
+  min-height: 44px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* Alertas que requieren acción del admin: pago sin stock (oversold) o conciliación con MP (review_reason). */
+.sale-alert-tag {
   display: inline-block;
-  margin-left: 0.4rem;
   padding: 0.1rem 0.5rem;
   border: 1px solid var(--color-danger-border);
   border-radius: 999px;

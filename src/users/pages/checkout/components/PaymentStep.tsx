@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import OptionList, { type OptionItem } from './OptionList';
 import PrimaryPillButton from './PrimaryPillButton';
 import { SHIPPING_LABEL, TRANSFER_ALIAS, type PaymentMethod, type ShippingMethod } from '../checkoutUtils';
@@ -36,7 +36,11 @@ interface PaymentStepProps {
   onPaymentChange: (method: PaymentMethod) => void;
   submitting: boolean;
   error: string | null;
+  /** Motivo (no error) por el que el CTA está bloqueado: verificando stock, reserva anterior, etc. */
+  lockReason: string | null;
   canSubmit: boolean;
+  /** Reemplaza al CTA (p. ej. "Pedido creado"): evita un segundo envío. */
+  completedSlot?: ReactNode;
   onSubmit: () => void;
   onBack: () => void;
 }
@@ -68,10 +72,15 @@ const PaymentStep = (props: PaymentStepProps) => {
       />
 
       <div className="checkout-step__actions">
-        {error && <p className="checkout-step__error" role="alert">{error}</p>}
-        <PrimaryPillButton onClick={props.onSubmit} disabled={!props.canSubmit} loading={submitting}>
-          {ctaLabel(payment, submitting)}
-        </PrimaryPillButton>
+        {props.completedSlot ?? (
+          <>
+            {error && <p className="checkout-step__error" role="alert">{error}</p>}
+            {!error && props.lockReason && <p className="checkout-step__reason" role="status">{props.lockReason}</p>}
+            <PrimaryPillButton onClick={props.onSubmit} disabled={!props.canSubmit} loading={submitting}>
+              {ctaLabel(payment, submitting)}
+            </PrimaryPillButton>
+          </>
+        )}
       </div>
     </div>
   );

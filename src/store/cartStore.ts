@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import type { Product } from '../types/product';
-import { getProductPricing } from '../utils/pricing';
+import { getProductPricing, roundToCents } from '../utils/pricing';
 import { areUnitVariantSelectionsValid, getProductStockLimit } from '../utils/productVariants';
 
 export type UnitVariants = { [key: string]: string };
@@ -33,7 +33,11 @@ interface CartState {
   clearCart: () => void;
   totalItems: () => number;
   setItem: (item: CheckoutItem | null) => void;
+  syncProducts: (freshProducts: Product[]) => void;
 }
+
+/** Key del persist en localStorage (la escucha también el sync entre pestañas). */
+export const CART_STORAGE_KEY = 'damiana-bella-cart';
 
 // El carrito vive en localStorage; sin caducidad un ítem puede quedar meses.
 // Se le da un TTL deslizante: cada vez que se escribe se restampa, y al rehidratar
@@ -135,7 +139,7 @@ const sanitizeCheckoutItem = (item: CheckoutItem | null): CheckoutItem | null =>
     quantity,
     unitVariants,
     unitPrice: finalPrice,
-    totalPrice: finalPrice * quantity,
+    totalPrice: roundToCents(finalPrice * quantity),
   };
 };
 
@@ -147,9 +151,29 @@ const buildCheckoutItemFromCartItem = (cartItem: CartItem): CheckoutItem => {
     quantity: cartItem.quantity,
     unitVariants: cartItem.unitVariants,
     unitPrice: finalPrice,
-    totalPrice: finalPrice * cartItem.quantity,
+    totalPrice: roundToCents(finalPrice * cartItem.quantity),
     source: 'cart',
   };
+};
+
+// Solo se pisan los datos que cambian entre que se agregó al carrito y el pago (precio,
+// stock, talles, nombre/imagen); el resto del producto guardado se conserva.
+const mergeFreshProduct = (current: Product, fresh: Product | undefined): Product => (fresh ? {
+  ...current,
+  name: fresh.name,
+  image: fresh.image || current.image,
+  price: fresh.price,
+  originalPrice: fresh.originalPrice,
+  discount: fresh.discount,
+  stock: fresh.stock,
+  variants: fresh.variants,
+} : current);
+
+// A diferencia de sanitizeCheckoutItem, NO descarta líneas inválidas: el checkout las marca
+// para que el usuario elija qué hacer en vez de verlas desaparecer.
+const repriceCheckoutItem = (item: CheckoutItem, product: Product): CheckoutItem => {
+  const { finalPrice } = getProductPricing(product);
+  return { ...item, product, unitPrice: finalPrice, totalPrice: roundToCents(finalPrice * item.quantity) };
 };
 
 const syncCheckoutItemWithCart = (cartItems: CartItem[], currentItem: CheckoutItem | null) => {
@@ -331,10 +355,24 @@ export const useCartStore = create<CartState>()(
 
       clearCart: () => set({ items: [], item: null }),
 
+      syncProducts: (freshProducts) =>
+        set((state) => {
+          const byId = new Map(freshProducts.map((product) => [String(product.id), product]));
+          const items = state.items.map((cartItem) => ({
+            ...cartItem,
+            product: mergeFreshProduct(cartItem.product, byId.get(String(cartItem.product.id))),
+          }));
+          if (state.item?.source === 'direct') {
+            const product = mergeFreshProduct(state.item.product, byId.get(String(state.item.product.id)));
+            return { items, item: repriceCheckoutItem(state.item, product) };
+          }
+          return { items, item: syncCheckoutItemWithCart(items, state.item) };
+        }),
+
       totalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
     }),
     {
-      name: 'damiana-bella-cart',
+      name: CART_STORAGE_KEY,
       storage: createJSONStorage(() => expiringStorage),
       merge: (persistedState, currentState) => {
         const persistedCartState = persistedState as Partial<CartState>;

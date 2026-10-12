@@ -1,0 +1,37 @@
+.checkout-issues {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkout-issues__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-danger-border);
+}
+
+.checkout-issues__item:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.checkout-issues__item p {
+  margin: 0;
+}
+
+.checkout-issues__name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.checkout-issues__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}

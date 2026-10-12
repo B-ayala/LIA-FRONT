@@ -1,6 +1,7 @@
 import type { CheckoutFlowState } from '../hooks/useCheckoutFlow';
 import DeliveryStep from './DeliveryStep';
 import PaymentStep from './PaymentStep';
+import TransferCreatedPanel from './TransferCreatedPanel';
 import './CheckoutStepContent.css';
 
 interface CheckoutStepContentProps {
@@ -9,7 +10,7 @@ interface CheckoutStepContentProps {
 
 /** Vista del paso actual: Entrega o Pago. El estado vive en el container, así volver no pierde datos. */
 const CheckoutStepContent = ({ flow }: CheckoutStepContentProps) => {
-  const { stepper, buyer, pay, blockReason } = flow;
+  const { stepper, buyer, pay, blockReason, submitLockReason } = flow;
 
   if (stepper.step === 'entrega') {
     return (
@@ -36,7 +37,11 @@ const CheckoutStepContent = ({ flow }: CheckoutStepContentProps) => {
       onPaymentChange={flow.setPayment}
       submitting={pay.submitting}
       error={pay.mpError || blockReason}
-      canSubmit={blockReason === null}
+      lockReason={submitLockReason}
+      canSubmit={blockReason === null && submitLockReason === null}
+      completedSlot={pay.transferCreated
+        ? <TransferCreatedPanel created={pay.transferCreated} onDone={flow.nudge.finish} />
+        : undefined}
       onSubmit={pay.submit}
       onBack={stepper.backToDelivery}
     />

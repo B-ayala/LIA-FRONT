@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useCartStore } from '../../../../store/cartStore';
 import type { CheckoutItem } from '../../../../store/cartStore';
-import { getProductPricing } from '../../../../utils/pricing';
+import { getProductPricing, roundToCents } from '../../../../utils/pricing';
 
 interface CheckoutItemsState {
   items: CheckoutItem[];
@@ -25,7 +25,7 @@ export const useCheckoutItems = (): CheckoutItemsState => {
         quantity: cartItem.quantity,
         unitVariants: cartItem.unitVariants,
         unitPrice,
-        totalPrice: unitPrice * cartItem.quantity,
+        totalPrice: roundToCents(unitPrice * cartItem.quantity),
         source: 'cart',
       };
     });

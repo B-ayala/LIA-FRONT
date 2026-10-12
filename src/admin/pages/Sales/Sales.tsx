@@ -1,184 +1,41 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, RefreshCw, ShoppingBag, User, Mail, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import { Box, InputAdornment, MenuItem, Pagination, TextField } from '@mui/material';
-import { supabase } from '../../../config/supabaseClient';
 import { formatDate, formatPriceInt } from '../../../utils/formatters';
-import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, SHIPPING_METHOD_LABEL, filterSelectSlotProps } from '../../../utils/labels';
-import { RANGE_NOT_SATISFIABLE_CODE, getPageRange, getTotalPages, sanitizeSearchTerm } from '../../../utils/serverPagination';
+import { PAYMENT_METHOD_LABEL, SHIPPING_METHOD_LABEL, filterSelectSlotProps } from '../../../utils/labels';
+import { RANGE_NOT_SATISFIABLE_CODE, getTotalPages, sanitizeSearchTerm } from '../../../utils/serverPagination';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
-import { apiFetch, authHeaders, API_BASE_URL } from '../../../utils/apiFetch';
-import { getAuthToken } from '../../../utils/auth';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
+import {
+    MISSING_COLUMN_CODE,
+    fetchSalesPage,
+    fetchSalesSummary,
+    type Sale,
+    type SalesFilters,
+    type SalesSummary,
+    type SortConfig,
+    type SortKey,
+} from './salesQueries';
+import SaleStatusCell from './SaleStatusCell';
+import SaleConfirmDialog from './SaleConfirmDialog';
+import { SALE_ACTIONS, useSaleActions } from './useSaleActions';
 import './Sales.css';
 
-const API_URL = API_BASE_URL;
-
-interface Sale {
-    id: string;
-    buyer_name: string | null;
-    buyer_email: string | null;
-    product_id: number | null;
-    product_name: string;
-    product_image: string | null;
-    quantity: number;
-    unit_price: number;
-    total_price: number;
-    units_config: Record<string, string>[] | null;
-    payment_method: string;
-    payment_status: 'pendiente' | 'pagado' | 'fallido' | 'expirado' | 'cancelado';
-    shipping_method: string | null;
-    oversold: boolean;
-    created_at: string;
-}
-
-type SortKey = 'buyer_name' | 'product_name' | 'created_at' | 'quantity' | 'total_price' | 'payment_method' | 'shipping_method' | 'payment_status';
-interface SortConfig { key: SortKey; direction: 'asc' | 'desc' }
-
-interface SalesFilters {
-    search: string;
-    paymentStatus: string;
-    paymentMethod: string;
-    stock: string;
-    sort: SortConfig | null;
-}
-
-interface SalesSummary {
-    total: number;
-    pending: number;
-    paid: number;
-    outOfStock: number;
-}
-
-// Filtros, orden, búsqueda y paginación corren en el servidor (.range + count exact).
-const SALES_COLUMNS = 'id, buyer_name, buyer_email, product_id, product_name, product_image, quantity, unit_price, total_price, units_config, payment_method, payment_status, shipping_method, oversold, created_at';
 const SEARCH_DEBOUNCE_MS = 300;
-const LOW_STOCK_THRESHOLD = 5;
-// Tope de ids a pasar en .in() para no exceder el largo de URL de PostgREST.
-const STOCK_IDS_LIMIT = 500;
-const DEFAULT_SORT: SortConfig = { key: 'created_at', direction: 'desc' };
 
-// El pago llegó cuando ya no quedaba stock: hay que reembolsar o conseguir la mercadería.
-const OversoldTag = ({ sale }: { sale: Sale }) => (sale.oversold ? (
-    <span className="oversold-tag" title="El pago se acreditó cuando ya no había stock. Reembolsá o conseguí la mercadería.">
-        Sin stock: reembolsar
-    </span>
-) : null);
-
-const MP_EXPIRY_MS = 15 * 60 * 1000;
-const TRANSFER_EXPIRY_MS = 5 * 60 * 60 * 1000;
-
-// UI-only: muestra como expirado antes de que corra el cron del backend
-const getEffectiveStatus = (sale: Sale): Sale['payment_status'] => {
-    if (sale.payment_status !== 'pendiente') return sale.payment_status;
-    const elapsed = Date.now() - new Date(sale.created_at).getTime();
-    if (sale.payment_method === 'mp' && elapsed > MP_EXPIRY_MS) return 'expirado';
-    if (sale.payment_method === 'transfer' && elapsed > TRANSFER_EXPIRY_MS) return 'expirado';
-    return sale.payment_status;
-};
-
-interface FilterableQuery<Q> {
-    eq: (column: string, value: string) => Q;
-    or: (filters: string) => Q;
-}
-
-// Traduce el estado "efectivo" (pendiente vencido = expirado) a condiciones de servidor,
-// espejando getEffectiveStatus.
-const applyPaymentStatusFilter = <Q extends FilterableQuery<Q>>(query: Q, status: string): Q => {
-    const now = Date.now();
-    const mpCutoff = new Date(now - MP_EXPIRY_MS).toISOString();
-    const transferCutoff = new Date(now - TRANSFER_EXPIRY_MS).toISOString();
-
-    if (status === 'pendiente') {
-        return query.eq('payment_status', 'pendiente').or(
-            `payment_method.not.in.(mp,transfer),and(payment_method.eq.mp,created_at.gte.${mpCutoff}),and(payment_method.eq.transfer,created_at.gte.${transferCutoff})`,
-        );
-    }
-    if (status === 'expirado') {
-        return query.or(
-            `payment_status.eq.expirado,and(payment_status.eq.pendiente,payment_method.eq.mp,created_at.lt.${mpCutoff}),and(payment_status.eq.pendiente,payment_method.eq.transfer,created_at.lt.${transferCutoff})`,
-        );
-    }
-    return query.eq('payment_status', status);
-};
-
-// El stock vive en `productos`: se resuelven primero los ids y luego se filtra ventas con .in().
-const fetchProductIdsByStock = async (kind: 'out_of_stock' | 'low_stock'): Promise<number[]> => {
-    const base = supabase.from('productos').select('id').limit(STOCK_IDS_LIMIT);
-    const { data, error } = kind === 'out_of_stock'
-        ? await base.lte('stock', 0)
-        : await base.gt('stock', 0).lte('stock', LOW_STOCK_THRESHOLD);
-    if (error) throw error;
-    return (data ?? []).map((p) => p.id);
-};
-
-const baseCountQuery = () => supabase.from('ventas').select('id', { count: 'exact', head: true });
-
-const countSales = async (build: (q: ReturnType<typeof baseCountQuery>) => ReturnType<typeof baseCountQuery>): Promise<number> => {
-    const { count, error } = await build(baseCountQuery());
-    if (error) throw error;
-    return count ?? 0;
-};
-
-const fetchSalesSummary = async (): Promise<SalesSummary> => {
-    const outOfStockIds = await fetchProductIdsByStock('out_of_stock');
-    const [total, pending, paid, outOfStock] = await Promise.all([
-        countSales((q) => q),
-        countSales((q) => applyPaymentStatusFilter(q, 'pendiente')),
-        countSales((q) => q.eq('payment_status', 'pagado')),
-        outOfStockIds.length > 0 ? countSales((q) => q.in('product_id', outOfStockIds)) : Promise.resolve(0),
-    ]);
-    return { total, pending, paid, outOfStock };
-};
-
-interface SalesPageResult {
-    rows: Sale[];
-    totalCount: number;
-}
-
-const fetchSalesPage = async (filters: SalesFilters, page: number): Promise<SalesPageResult> => {
-    let stockIds: number[] | null = null;
-    if (filters.stock === 'out_of_stock' || filters.stock === 'low_stock') {
-        stockIds = await fetchProductIdsByStock(filters.stock);
-        if (stockIds.length === 0) return { rows: [], totalCount: 0 };
-    }
-
-    let query = supabase.from('ventas').select(SALES_COLUMNS, { count: 'exact' });
-
-    if (filters.paymentStatus) query = applyPaymentStatusFilter(query, filters.paymentStatus);
-    if (filters.paymentMethod) query = query.eq('payment_method', filters.paymentMethod);
-    if (stockIds) query = query.in('product_id', stockIds);
-    if (filters.search) {
-        const term = `%${filters.search}%`;
-        query = query.or(`product_name.ilike.${term},buyer_name.ilike.${term},buyer_email.ilike.${term}`);
-    }
-
-    const sort = filters.sort ?? DEFAULT_SORT;
-    // id como desempate: con valores repetidos, range() podría duplicar u omitir filas entre páginas.
-    query = query
-        .order(sort.key, { ascending: sort.direction === 'asc', nullsFirst: false })
-        .order('id', { ascending: true });
-
-    const { from, to } = getPageRange(page);
-    const { data, error, count } = await query.range(from, to);
-    if (error) throw error;
-
-    return { rows: (data ?? []) as Sale[], totalCount: count ?? 0 };
-};
+type LoadError = 'generic' | 'missing_column' | null;
 
 const Sales = () => {
     const [sales, setSales] = useState<Sale[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [summary, setSummary] = useState<SalesSummary | null>(null);
     const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState(false);
+    const [loadError, setLoadError] = useState<LoadError>(null);
     const [searchInput, setSearchInput] = useState('');
     const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
     const [filterStock, setFilterStock] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
-    const [confirmingSale, setConfirmingSale] = useState<Sale | null>(null);
-    const [confirming, setConfirming] = useState(false);
-    const [cancellingSale, setCancellingSale] = useState<Sale | null>(null);
-    const [cancelling, setCancelling] = useState(false);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [pageState, setPageState] = useState({ key: '', page: 1 });
     const requestIdRef = useRef(0);
@@ -198,7 +55,7 @@ const Sales = () => {
     const loadSales = useCallback(async () => {
         const requestId = ++requestIdRef.current;
         setLoading(true);
-        setLoadError(false);
+        setLoadError(null);
         const filters: SalesFilters = {
             search: searchTerm,
             paymentStatus: filterPaymentStatus,
@@ -217,7 +74,8 @@ const Sales = () => {
                 setPageState({ key: filterKey, page: 1 });
                 return;
             }
-            setLoadError(true);
+            // Columna inexistente = falta la migración de `review_reason` en la base.
+            setLoadError((err as { code?: string }).code === MISSING_COLUMN_CODE ? 'missing_column' : 'generic');
         } finally {
             if (requestId === requestIdRef.current) setLoading(false);
         }
@@ -249,57 +107,8 @@ const Sales = () => {
         loadSummary();
     };
 
-    const handleTransferStatusChange = (sale: Sale, newStatus: string) => {
-        if (sale.payment_method !== 'transfer' || getEffectiveStatus(sale) !== 'pendiente') return;
-        if (newStatus === 'pagado') setConfirmingSale(sale);
-        if (newStatus === 'cancelado') setCancellingSale(sale);
-    };
-
-    const handleConfirmCancel = async () => {
-        if (!cancellingSale) return;
-        setCancelling(true);
-        try {
-            const token = await getAuthToken();
-            const res = await apiFetch(`${API_URL}/orders/${cancellingSale.id}/cancel-transfer`, {
-                method: 'PATCH',
-                headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
-            });
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                alert(body.message ?? 'Error al cancelar la orden');
-                return;
-            }
-            setCancellingSale(null);
-            refreshAll();
-        } catch {
-            alert('Error de red al cancelar la orden');
-        } finally {
-            setCancelling(false);
-        }
-    };
-
-    const handleConfirmTransfer = async () => {
-        if (!confirmingSale) return;
-        setConfirming(true);
-        try {
-            const token = await getAuthToken();
-            const res = await apiFetch(`${API_URL}/orders/${confirmingSale.id}/confirm-transfer`, {
-                method: 'PATCH',
-                headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
-            });
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                alert(body.message ?? 'Error al confirmar el pago');
-                return;
-            }
-            setConfirmingSale(null);
-            refreshAll();
-        } catch {
-            alert('Error de red al confirmar el pago');
-        } finally {
-            setConfirming(false);
-        }
-    };
+    const actions = useSaleActions(refreshAll);
+    const pendingConfig = actions.pending ? SALE_ACTIONS[actions.pending.action] : null;
 
     const requestSort = (key: SortKey) => {
         const direction = sortConfig?.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
@@ -310,36 +119,25 @@ const Sales = () => {
 
     return (
         <div className="admin-sales-page">
-            {confirmingSale && (
-                <div className="confirm-overlay">
-                    <div className="confirm-dialog">
-                        <p className="confirm-message">¿Confirmás el pago? Una vez realizada, no se podrá deshacer.</p>
-                        <div className="confirm-actions">
-                            <button className="admin-btn-secondary" onClick={() => setConfirmingSale(null)} disabled={confirming}>
-                                Volver
-                            </button>
-                            <button className="admin-btn-primary" onClick={handleConfirmTransfer} disabled={confirming}>
-                                {confirming ? 'Confirmando...' : 'Confirmar pago'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            {pendingConfig && (
+                <SaleConfirmDialog
+                    message={pendingConfig.prompt}
+                    confirmLabel={pendingConfig.confirmLabel}
+                    busyLabel={pendingConfig.busyLabel}
+                    danger={pendingConfig.danger}
+                    busy={actions.busy}
+                    onConfirm={actions.run}
+                    onCancel={actions.dismiss}
+                />
             )}
-            {cancellingSale && (
-                <div className="confirm-overlay">
-                    <div className="confirm-dialog">
-                        <p className="confirm-message">¿Cancelar esta orden de transferencia? Esta acción no se puede deshacer.</p>
-                        <div className="confirm-actions">
-                            <button className="admin-btn-secondary" onClick={() => setCancellingSale(null)} disabled={cancelling}>
-                                Volver
-                            </button>
-                            <button className="admin-btn-danger" onClick={handleConfirmCancel} disabled={cancelling}>
-                                {cancelling ? 'Cancelando...' : 'Cancelar orden'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmationModal
+                isOpen={actions.feedback !== null}
+                onClose={actions.clearFeedback}
+                title={actions.feedback?.title ?? ''}
+                message={actions.feedback?.message ?? ''}
+                status={actions.feedback?.status ?? 'info'}
+                actionButtonText="Entendido"
+            />
             <div className="admin-page-header admin-flex-between">
                 <div>
                     <h1 className="admin-page-title">Ventas</h1>
@@ -381,9 +179,10 @@ const Sales = () => {
                     >
                         <MenuItem value="">Todos los pagos</MenuItem>
                         <MenuItem value="pendiente">Pendiente</MenuItem>
+                        <MenuItem value="en_proceso">Pago en proceso</MenuItem>
                         <MenuItem value="pagado">Pagado</MenuItem>
                         <MenuItem value="expirado">Expirado</MenuItem>
-                        <MenuItem value="fallido">Fallido</MenuItem>
+                        <MenuItem value="cancelado">Cancelado</MenuItem>
                     </TextField>
                     <TextField
                         select
@@ -443,7 +242,11 @@ const Sales = () => {
                     <div className="sales-empty-state" role="alert">
                         <AlertTriangle size={48} className="sales-empty-icon" />
                         <p className="sales-empty-title">No pudimos cargar las ventas</p>
-                        <p className="sales-empty-subtitle">Revisá tu conexión e intentá de nuevo.</p>
+                        <p className="sales-empty-subtitle">
+                            {loadError === 'missing_column'
+                                ? 'Falta aplicar la migración de la base que agrega la columna "review_reason". Aplicala y reintentá.'
+                                : 'Revisá tu conexión e intentá de nuevo.'}
+                        </p>
                         <button className="admin-btn-secondary admin-flex-center gap-2" onClick={refreshAll}>
                             <RefreshCw size={16} /> Reintentar
                         </button>
@@ -509,24 +312,7 @@ const Sales = () => {
                                         </div>
                                         <div className="sale-card-field">
                                             <span className="field-label">Estado pago</span>
-                                            {sale.payment_method === 'transfer' && getEffectiveStatus(sale) === 'pendiente' ? (
-                                                <select
-                                                    className="transfer-status-select pendiente"
-                                                    value="pendiente"
-                                                    onChange={(e) => handleTransferStatusChange(sale, e.target.value)}
-                                                >
-                                                    <option value="pendiente">Pendiente</option>
-                                                    <option value="pagado">Pagado</option>
-                                                    <option value="cancelado">Cancelado</option>
-                                                </select>
-                                            ) : (
-                                                <>
-                                                    <span className={`payment-badge ${getEffectiveStatus(sale)}`}>
-                                                        {PAYMENT_STATUS_LABEL[getEffectiveStatus(sale)]}
-                                                    </span>
-                                                    <OversoldTag sale={sale} />
-                                                </>
-                                            )}
+                                            <SaleStatusCell sale={sale} onRequest={actions.request} />
                                         </div>
                                     </div>
                                 </div>
@@ -592,24 +378,7 @@ const Sales = () => {
                                         <td>{PAYMENT_METHOD_LABEL[sale.payment_method] ?? sale.payment_method}</td>
                                         <td>{sale.shipping_method ? (SHIPPING_METHOD_LABEL[sale.shipping_method] ?? sale.shipping_method) : '—'}</td>
                                         <td>
-                                            {sale.payment_method === 'transfer' && getEffectiveStatus(sale) === 'pendiente' ? (
-                                                <select
-                                                    className="transfer-status-select pendiente"
-                                                    value="pendiente"
-                                                    onChange={(e) => handleTransferStatusChange(sale, e.target.value)}
-                                                >
-                                                    <option value="pendiente">Pendiente</option>
-                                                    <option value="pagado">Pagado</option>
-                                                    <option value="cancelado">Cancelado</option>
-                                                </select>
-                                            ) : (
-                                                <>
-                                                    <span className={`payment-badge ${getEffectiveStatus(sale)}`}>
-                                                        {PAYMENT_STATUS_LABEL[getEffectiveStatus(sale)]}
-                                                    </span>
-                                                    <OversoldTag sale={sale} />
-                                                </>
-                                            )}
+                                            <SaleStatusCell sale={sale} onRequest={actions.request} />
                                         </td>
                                     </tr>
                                 ))}

@@ -11,6 +11,7 @@ import { useAuthStore } from './store/authStore';
 import { InitialLoadProvider, useInitialLoad } from './components/common/InitialLoad/InitialLoadProvider';
 import { AUTH_LOGOUT_EVENT } from './utils/apiFetch';
 import { useTabAwayMarketing } from './hooks/useTabAwayMarketing';
+import { useCartTabSync } from './hooks/useCartTabSync';
 
 const AppContent = () => {
   const location = useLocation();
@@ -26,6 +27,7 @@ const AppContent = () => {
   const { completeTask, isInitialLoading } = useInitialLoad();
 
   useTabAwayMarketing(!isAdmin && !isAuthRoute);
+  useCartTabSync();
 
   useEffect(() => {
     // Hidratación rápida y sincrónica desde localStorage: ya deja el estado de

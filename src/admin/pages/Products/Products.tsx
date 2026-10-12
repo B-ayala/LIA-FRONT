@@ -7,45 +7,19 @@ import ProductModal from '../../components/ProductModal/ProductModal';
 import type { ProductDraft, ProductPreviewState } from '../../components/ProductModal/productDraft';
 import ProductCardOptionsManager from '../../components/ProductCardOptionsManager/ProductCardOptionsManager';
 import { useAdminStore, type AdminProduct } from '../../store/adminStore';
-import { fetchAdminProducts } from '../../../services/productService';
-import { getProductStockFromVariants } from '../../../utils/productVariants';
+import { fetchAdminProducts, fetchProductById } from '../../../services/productService';
 import { filterSelectSlotProps } from '../../../utils/labels';
-import { cleanText, normalizeCategory } from '../../../utils/formatters';
+import { extractErrorMessage } from '../../../utils/errorMessage';
+import { mapAdminProductRow } from '../../utils/adminProductRow';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './Products.css';
-
-const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
-    id: String(p.id),
-    name: cleanText(p.name as string),
-    price: p.price as number,
-    originalPrice: (p.original_price as number) || undefined,
-    // Si el producto trackea stock por talle, la suma de variantes es la fuente de
-    // verdad (igual que la tienda pública). La columna `stock` puede quedar
-    // desincronizada; sólo se usa como fallback para productos sin talles.
-    stock: getProductStockFromVariants(p.variants as AdminProduct['variants']) ?? (p.stock as number),
-    category: normalizeCategory(p.category as string),
-    imageUrl: (p.image_url as string) || '',
-    images: (p.images as string[]) || undefined,
-    description: (p.description as string) || undefined,
-    discount: (p.discount as number) || undefined,
-    condition: (p.condition as 'new' | 'used') || 'new',
-    freeShipping: (p.free_shipping as boolean) || false,
-    hoverImageEnabled: (p.hover_image_enabled as boolean) ?? true,
-    variants: (p.variants as AdminProduct['variants']) || undefined,
-    specifications: (p.specifications as AdminProduct['specifications']) || undefined,
-    features: (p.features as string[]) || undefined,
-    faqs: (p.faqs as AdminProduct['faqs']) || undefined,
-    sizeGuide: (p.size_guide as AdminProduct['sizeGuide']) || undefined,
-    warranty: (p.warranty as string) || undefined,
-    returnPolicy: (p.return_policy as string) || undefined,
-    status: (p.status as 'active' | 'inactive') || 'active',
-    featured: (p.featured as boolean) || false,
-});
 
 const Products = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { setProducts, products } = useAdminStore();
+    const { setProducts, products, updateProduct: updateStoredProduct } = useAdminStore();
+    const [openingProductId, setOpeningProductId] = useState<string | null>(null);
+    const [openError, setOpenError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
@@ -63,7 +37,7 @@ const Products = () => {
     const loadProducts = async () => {
         try {
             const data = await fetchAdminProducts({ force: true });
-            setProducts(data.map((p: Record<string, unknown>) => mapProductRow(p)));
+            setProducts(data.map((p: Record<string, unknown>) => mapAdminProductRow(p)));
         } catch (err) {
             console.error('Error cargando productos:', err);
         } finally {
@@ -101,10 +75,36 @@ const Products = () => {
         navigate('/admin/products/preview', { state });
     };
 
-    const handleOpenModal = (product?: AdminProduct) => {
-        setEditingProduct(product || null);
+    const openEditor = (product: AdminProduct | null) => {
+        setEditingProduct(product);
         setDraft(null);
         setIsModalOpen(true);
+    };
+
+    // Al editar se relee el producto SIN caché: el listado puede tener hasta 30 s de antigüedad
+    // y su `updated_at` es el que el backend compara para no pisar cambios de otro admin/ventas.
+    const handleOpenModal = async (product?: AdminProduct) => {
+        if (!product) {
+            openEditor(null);
+            return;
+        }
+        if (openingProductId) return;
+        setOpeningProductId(product.id);
+        setOpenError('');
+        try {
+            const row = await fetchProductById(product.id, false);
+            if (!row) {
+                setOpenError('Este producto ya no existe. Actualizá la lista.');
+                return;
+            }
+            const fresh = mapAdminProductRow(row as Record<string, unknown>);
+            updateStoredProduct(fresh.id, fresh);
+            openEditor(fresh);
+        } catch (err) {
+            setOpenError(extractErrorMessage(err, 'No pudimos cargar el producto. Reintentá.'));
+        } finally {
+            setOpeningProductId(null);
+        }
     };
 
     const handleCloseModal = () => {
@@ -186,6 +186,9 @@ const Products = () => {
                     </TextField>
                 </div>
             </div>
+
+            {openingProductId && <p className="products-open-status" role="status">Cargando producto…</p>}
+            {openError && <p className="products-open-status products-open-status--error" role="alert">{openError}</p>}
 
             <div className="admin-card table-card">
                 {loading ? (

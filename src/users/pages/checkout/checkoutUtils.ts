@@ -1,6 +1,7 @@
 import type { CheckoutItem, UnitVariants } from '../../../store/cartStore';
 import { INVALID_PRODUCT_PRICE_MESSAGE, type OrderLineItemPayload } from '../../../services/orderService';
 import { buildVariantLine, allUnitsShareVariants } from '../../../utils/formatters';
+import { roundToCents } from '../../../utils/pricing';
 
 export type ShippingMethod = 'correo' | 'local';
 export type PaymentMethod = 'mp' | 'transfer';
@@ -27,11 +28,11 @@ export const parseReturnShipping = (state: unknown): ShippingMethod | null => {
 
 export const DEFAULT_SHIPPING: ShippingMethod = 'local';
 export const DEFAULT_PAYMENT: PaymentMethod = 'mp';
-export const WHATSAPP_PHONE = '5491133631325';
-export const TRANSFER_ALIAS = 'brianayala.mp';
+export const WHATSAPP_PHONE = '5491141442409';
+export const TRANSFER_ALIAS = 'Liazapatos';
 
 export const formatAmount = (n: number): string =>
-  n.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+  n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export interface CheckoutTotals {
   itemsSubtotal: number;
@@ -55,7 +56,12 @@ export const computeCheckoutTotals = (
     items.length > 0 &&
     items.every((item) => isPositiveAmount(item.unitPrice) && isPositiveAmount(item.totalPrice));
 
-  return { itemsSubtotal, shippingCost, grandTotal: itemsSubtotal + shippingCost, hasValidPrice };
+  return {
+    itemsSubtotal: roundToCents(itemsSubtotal),
+    shippingCost,
+    grandTotal: roundToCents(itemsSubtotal + shippingCost),
+    hasValidPrice,
+  };
 };
 
 export const buildOrderItemsPayload = (items: CheckoutItem[]): OrderLineItemPayload[] =>
@@ -118,6 +124,9 @@ export const buildWhatsAppMessage = (
 
   return lines.join('\n');
 };
+
+export const buildWhatsAppUrl = (message: string): string =>
+  `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(message)}`;
 
 export const MISSING_NAME_MESSAGE = 'Completá tu nombre y apellido para continuar.';
 export const MISSING_EMAIL_MESSAGE = 'Tu cuenta no tiene un e-mail asociado. Cerrá sesión y volvé a ingresar.';

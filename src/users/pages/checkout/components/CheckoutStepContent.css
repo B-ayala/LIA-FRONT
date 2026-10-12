@@ -140,3 +140,8 @@
     font-size: 1.75rem;
   }
 }
+
+/* Contenedor enfocable del panel "Pedido creado" (recibe el foco al aparecer). */
+.checkout-step__created:focus {
+  outline: none;
+}

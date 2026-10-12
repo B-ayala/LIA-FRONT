@@ -28,6 +28,8 @@ export interface AdminProduct {
   sizeGuide?: SizeGuide;
   status: 'active' | 'inactive';
   featured?: boolean;
+  /** `updated_at` tal cual lo devolvió la base (con microsegundos): control de concurrencia al editar. */
+  updatedAt?: string;
 }
 
 export interface AdminUser {

@@ -71,7 +71,8 @@ b {
      --brand-green, --button-dark*, --season-* y sombras primarias, así que estos
      tokens no compiten con ellos. Contraste medido sobre #ffffff:
      ink 14.9:1 · ink-muted 6.8:1 · ink-subtle 5.0:1 · link 7.4:1 ·
-     border-input 3.3:1 (no-texto, WCAG 1.4.11) · danger 6.6:1 · success-ink 5.7:1 · warning-ink 5.4:1. */
+     border-input 3.3:1 (no-texto, WCAG 1.4.11) · danger 6.6:1 · success-ink 5.7:1 · warning-ink 5.4:1 (los *-ink conservan AA sobre sus
+     fondos *-bg, que son casi blancos). */
   --color-ink: #0b2a3a;
   --color-ink-hover: #14405a;
   --color-ink-muted: #4a5d6b;
@@ -88,7 +89,11 @@ b {
   --color-danger-bg: #fef3f2;
   --color-danger-border: #fecdca;
   --color-success-ink: #067647;
+  --color-success-bg: #ecfdf3;
+  --color-success-border: #abefc6;
   --color-warning-ink: #b54708;
+  --color-warning-bg: #fffaeb;
+  --color-warning-border: #fedf89;
   --color-overlay: rgba(11, 42, 58, 0.5);
   --shadow-soft: 0 8px 28px rgba(11, 42, 58, 0.08), 0 1px 3px rgba(11, 42, 58, 0.06);
 

@@ -1,0 +1,104 @@
+/* Mobile first: icono + texto en una fila, acciones apiladas debajo. */
+.checkout-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.checkout-notice__icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.checkout-notice__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.checkout-notice__title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.checkout-notice__text p {
+  margin: 0;
+}
+
+.checkout-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.checkout-notice__action {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.checkout-notice__action:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.checkout-notice__action:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.checkout-notice__action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkout-notice--progress .checkout-notice__icon {
+  animation: checkout-notice-spin 1s linear infinite;
+}
+
+.checkout-notice--warning {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-ink);
+}
+
+.checkout-notice--danger {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.checkout-notice--success {
+  border-color: var(--color-success-border);
+  background: var(--color-success-bg);
+  color: var(--color-success-ink);
+}
+
+@keyframes checkout-notice-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkout-notice--progress .checkout-notice__icon {
+    animation: none;
+  }
+}

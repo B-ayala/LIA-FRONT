@@ -113,7 +113,8 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
 
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [missingDataMessage, setMissingDataMessage] = useState<string | null>(null);
-    const derivedVariantStock = useMemo(() => {
+    // undefined = el producto no maneja stock por talle: el formulario no gestiona su stock.
+    const derivedSizeStock = useMemo(() => {
         const builtVariants = sanitizeProductVariants(
             variants.map((variant) => ({
                 name: variant.name,
@@ -122,8 +123,12 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
             }))
         );
 
-        return getProductStockFromVariants(builtVariants) ?? 0;
+        return getProductStockFromVariants(builtVariants);
     }, [variants]);
+    // Al editar un producto sin stock por talle se muestra (solo lectura) el stock actual.
+    const unmanagedStock = product && derivedSizeStock === undefined
+        ? (draft?.unmanagedStock ?? product.stock)
+        : undefined;
 
     // Clear category error as soon as a category is selected
     React.useEffect(() => {
@@ -329,14 +334,19 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                 colorsByOption: variant.colorsByOption,
             }))
         ) ?? [];
-        const totalStock = getProductStockFromVariants(builtVariants) ?? 0;
+        const sizeStock = getProductStockFromVariants(builtVariants);
+        // Sin talles con stock: al EDITAR no se manda `stock` (mandar 0 borraba el stock real);
+        // al CREAR se manda explícito lo que indica el formulario.
+        const stock = sizeStock ?? (product ? undefined : 0);
 
         return {
             name: toTitleCase(name.trim()),
             category: toTitleCase(category.trim()),
             price: parseFloat(price),
             originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
-            stock: totalStock,
+            stock,
+            unmanagedStock: stock === undefined ? unmanagedStock : undefined,
+            updatedAt: draft?.updatedAt ?? product?.updatedAt,
             imageUrl: validImages[0] || '',
             images: validImages,
             condition,
@@ -375,7 +385,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
         const payload = buildPayload();
         const missing = getMissingProductFields({
             imageUrls: payload.images,
-            stock: payload.stock ?? 0,
+            stock: payload.stock ?? payload.unmanagedStock ?? 0,
             variants: payload.variants,
         });
         if (missing.length > 0) {
@@ -838,10 +848,17 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                 </div>
                                 <div className="form-group">
                                     <label>Stock total</label>
-                                    <div className="stock-derived-card">
-                                        <strong>{derivedVariantStock}</strong>
-                                        <span>Se calcula automáticamente desde los talles cargados en Variantes.</span>
-                                    </div>
+                                    {unmanagedStock === undefined ? (
+                                        <div className="stock-derived-card">
+                                            <strong>{derivedSizeStock ?? 0}</strong>
+                                            <span>Se calcula automáticamente desde los talles cargados en Variantes.</span>
+                                        </div>
+                                    ) : (
+                                        <div className="stock-derived-card">
+                                            <strong>{unmanagedStock}</strong>
+                                            <span>Este producto no tiene stock por talle: el stock actual se conserva al guardar. Para gestionarlo desde acá, cargá el stock de cada talle en Variantes.</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="form-group">
                                     <label>Condición</label>

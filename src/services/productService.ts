@@ -297,9 +297,10 @@ export const toggleProductFeatured = async (id: string, featured: boolean) => {
 
 // Columnas explícitas (en vez de select('*')): las vistas del admin comparten el mismo
 // fetch y el modal de edición usa todos los campos editables del producto, así que la
-// lista es casi completa. Quedan afuera las de uso interno (public_id, timestamps).
+// lista es casi completa. Quedan afuera las de uso interno (public_id, created_at).
+// `updated_at` viaja para el control de concurrencia al editar (expectedUpdatedAt).
 const ADMIN_LIST_COLUMNS =
-  'id, name, price, original_price, stock, category, image_url, images, description, discount, condition, free_shipping, hover_image_enabled, variants, specifications, features, faqs, warranty, return_policy, size_guide, status, featured';
+  'id, name, price, original_price, stock, category, image_url, images, description, discount, condition, free_shipping, hover_image_enabled, variants, specifications, features, faqs, warranty, return_policy, size_guide, status, featured, updated_at';
 
 // Fetch products from Supabase. Pass activeOnly=false for admin (includes inactive).
 export const fetchProducts = async (activeOnly = true) => {
@@ -478,6 +479,26 @@ export const fetchProductById = async (id: string, activeOnly = true) => {
   return data;
 };
 
+// Columnas que el checkout necesita para reconciliar el carrito (precio, stock y talles).
+const CHECKOUT_PRODUCT_COLUMNS =
+  'id, name, price, original_price, image_url, images, discount, stock, hover_image_enabled, variants';
+
+/**
+ * Productos activos por id, siempre contra la base (sin caché): el checkout los usa para
+ * detectar precio o stock que cambiaron desde que el usuario armó el carrito. Un id que no
+ * vuelve es un producto borrado o inactivo.
+ */
+export const fetchActiveProductsByIds = async (ids: string[]): Promise<Product[]> => {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from('productos')
+    .select(CHECKOUT_PRODUCT_COLUMNS)
+    .in('id', ids)
+    .eq('status', 'active');
+  if (error) throw error;
+  return (data ?? []).map(mapDbRowToProduct);
+};
+
 // Body que el backend de productos consume — el server traduce a snake_case
 // internamente. `publicId` se deriva de la URL de Cloudinary (con carpeta y sin
 // extensión) para que el backend pueda hacer cleanup en delete sin recalcularlo.
@@ -506,9 +527,24 @@ const buildProductBody = (product: Partial<AdminProduct>) => ({
   status: product.status,
 });
 
+/** Otro admin (o una venta) cambió el producto desde que se abrió para editar: 409 PRODUCT_CHANGED. */
+export class ProductChangedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProductChangedError';
+  }
+}
+
+const PRODUCT_CHANGED_CODE = 'PRODUCT_CHANGED';
+const PRODUCT_CHANGED_FALLBACK = 'Este producto cambió mientras lo editabas.';
+const HTTP_CONFLICT = 409;
+
+/** Producto a crear: sin talles con stock, el stock va explícito (lo que diga el formulario). */
+export type NewProductInput = Omit<AdminProduct, 'id' | 'stock'> & { stock?: number };
+
 // Create product via backend API
 export const createProduct = async (
-  product: Omit<AdminProduct, 'id'>,
+  product: NewProductInput,
   token: string
 ) => {
   const response = await apiFetch(`${API_URL}/products`, {
@@ -533,25 +569,36 @@ const nullWhenPresent = <T extends object>(source: T, keys: (keyof T)[]) =>
     keys.filter((key) => key in source).map((key) => [key, source[key] ?? null]),
   );
 
+interface UpdateProductOptions {
+  /** `updated_at` EXACTO como se leyó de la base (string con microsegundos, sin pasar por Date). */
+  expectedUpdatedAt?: string;
+}
+
 // Update product via backend API
 export const updateProduct = async (
   id: string,
   product: Partial<AdminProduct>,
-  token: string
+  token: string,
+  options: UpdateProductOptions = {}
 ) => {
   const response = await apiFetch(`${API_URL}/products/${id}`, {
     method: 'PUT',
     headers: authHeaders(token),
     // JSON.stringify descarta los undefined y el backend solo actualiza lo que llega:
     // para poder QUITAR descuento, precio original o guía de talles se envía null explícito.
+    // Sin `stock` en el body el backend no toca esa columna (productos sin stock por talle).
     body: JSON.stringify({
       ...buildProductBody(product),
       ...nullWhenPresent(product, ['discount', 'originalPrice', 'sizeGuide']),
+      ...(options.expectedUpdatedAt ? { expectedUpdatedAt: options.expectedUpdatedAt } : {}),
     }),
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
+    if (response.status === HTTP_CONFLICT && error.code === PRODUCT_CHANGED_CODE) {
+      throw new ProductChangedError(error.message || PRODUCT_CHANGED_FALLBACK);
+    }
     throw new Error(error.message || 'Failed to update product');
   }
 
