@@ -4,10 +4,9 @@
   height: 100vh;
   height: 100svh;
   overflow: hidden;
-  /* Fondo neutro a propósito, NO el color del tema: durante la transición de
-     slides el contenedor queda visible un instante por el crossfade, y con un
-     primario saturado eso se lee como un flash de color ajeno a la foto. */
-  background: var(--dark-bg, #1a1a1a);
+  /* Gris claro, el mismo del skeleton y de los marcos de imagen: si en algún
+     instante del cruce de slides queda fondo a la vista, nunca es negro. */
+  background: #c4c0c0;
 }
 
 .carousel--skeleton,

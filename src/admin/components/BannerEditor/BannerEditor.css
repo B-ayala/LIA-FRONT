@@ -1,0 +1,486 @@
+/* Editor de banner — mobile first. Pantalla completa sobre el panel admin. */
+
+.banner-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: flex;
+  flex-direction: column;
+  background: #f1f5f9;
+  color: #0f172a;
+  outline: none;
+}
+
+/* ── Barra superior ───────────────────────────────────────────────────── */
+
+.be-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.be-bar__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 100%;
+  order: 3;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.be-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+.be-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-left: auto;
+}
+
+.be-error {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+/* ── Botones ──────────────────────────────────────────────────────────── */
+
+.be-btn,
+.be-icon-btn,
+.be-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.be-btn {
+  padding: 0 0.9rem;
+}
+
+.be-btn--primary {
+  background: #000;
+  color: #fff;
+  font-weight: 600;
+}
+
+.be-btn--primary:hover:not(:disabled) {
+  background: #1e293b;
+}
+
+.be-btn--ghost {
+  background: transparent;
+  color: #334155;
+}
+
+.be-btn--ghost:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.be-btn--outline {
+  background: #fff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.be-btn--outline:hover:not(:disabled) {
+  border-color: #000;
+}
+
+.be-btn--danger {
+  color: #dc2626;
+}
+
+.be-icon-btn {
+  width: 44px;
+  background: transparent;
+  color: #334155;
+}
+
+.be-icon-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.be-icon-btn--danger {
+  color: #dc2626;
+}
+
+.be-icon-btn--danger:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.be-btn:disabled,
+.be-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.be-btn:focus-visible,
+.be-icon-btn:focus-visible,
+.be-tool:focus-visible,
+.be-swatch:focus-visible,
+.be-segmented__btn:focus-visible,
+.be-input:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* ── Cuerpo ───────────────────────────────────────────────────────────── */
+
+.be-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.be-body > * {
+  flex-shrink: 0;
+}
+
+.be-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  overflow-x: auto;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.be-tools__label {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.be-tool {
+  flex-shrink: 0;
+  padding: 0 0.85rem;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.be-tool:hover {
+  border-color: #000;
+  background: #fff;
+}
+
+.be-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.be-frame {
+  width: min(100%, calc((100dvh - 260px) * var(--be-ratio, 1.78)));
+  min-width: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.18);
+  background: #fff;
+}
+
+.be-stage__hint {
+  margin: 0;
+  max-width: 60ch;
+  text-align: center;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+/* ── Panel de propiedades ─────────────────────────────────────────────── */
+
+.be-panel {
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+}
+
+.be-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem 0.75rem 1.5rem;
+}
+
+.be-panel__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.be-panel__heading h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.be-panel__actions {
+  display: flex;
+}
+
+.be-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.be-row > .be-btn {
+  flex: 1 1 auto;
+}
+
+.be-details summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.be-details[open] > :not(summary) {
+  margin-top: 0.75rem;
+}
+
+/* ── Campos ───────────────────────────────────────────────────────────── */
+
+.be-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.be-field__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.be-field__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.be-field__error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #b91c1c;
+}
+
+.be-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.be-input[aria-invalid='true'] {
+  border-color: #dc2626;
+}
+
+.be-slider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.be-slider input[type='range'] {
+  flex: 1;
+  min-height: 44px;
+  accent-color: #000;
+}
+
+.be-slider output {
+  min-width: 3.5ch;
+  text-align: right;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: #475569;
+}
+
+.be-segmented {
+  display: flex;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.be-segmented__btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: none;
+  border-right: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.be-segmented__btn:last-child {
+  border-right: none;
+}
+
+.be-segmented__btn.is-active {
+  background: #000;
+  color: #fff;
+  font-weight: 600;
+}
+
+.be-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.be-swatch {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  cursor: pointer;
+  /* Zona táctil de 44px sin agrandar el círculo visible. */
+  box-shadow: 0 0 0 4px transparent;
+}
+
+.be-swatch.is-active {
+  border-color: #000;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+}
+
+.be-swatch--custom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: conic-gradient(#f87171, #fbbf24, #4ade80, #38bdf8, #a78bfa, #f87171);
+}
+
+.be-swatch--custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.be-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.be-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: #000;
+}
+
+.be-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── Escritorio: herramientas | lienzo | propiedades ──────────────────── */
+
+@media (min-width: 1024px) {
+  .be-bar__title {
+    flex: 0 1 auto;
+    order: 0;
+  }
+
+  .be-body {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) 340px;
+    overflow: hidden;
+  }
+
+  .be-tools {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem 0.5rem;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: none;
+    overflow-y: auto;
+  }
+
+  .be-tool {
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.6rem 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  .be-stage {
+    justify-content: center;
+    overflow: auto;
+    padding: 1.25rem;
+  }
+
+  .be-frame {
+    width: min(100%, calc((100dvh - 190px) * var(--be-ratio, 1.78)));
+  }
+
+  .be-panel {
+    overflow-y: auto;
+    border-top: none;
+    border-left: 1px solid #e2e8f0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .be-btn,
+  .be-icon-btn,
+  .be-tool {
+    transition: none;
+  }
+}

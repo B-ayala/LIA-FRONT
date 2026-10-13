@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect, useMemo } from 'react';
 import { Reorder } from 'framer-motion';
-import { Trash2, Copy, GripVertical, EyeOff, Eye, Monitor, Smartphone, GalleryHorizontal, Columns3, Check } from 'lucide-react';
+import { Monitor, Smartphone, GalleryHorizontal, Columns3, Check, LayoutTemplate } from 'lucide-react';
 import { useAdminStore, type CarouselImage } from '../../store/adminStore';
 import {
     fetchAllCarouselImages,
     insertCarouselImage,
+    insertCarouselBanner,
     updateCarouselImageDb,
     deleteCarouselImageDb,
     reorderCarouselImages,
@@ -12,8 +13,28 @@ import {
     updateCarouselLayout,
     type CarouselLayout,
 } from '../../../services/productService';
+import { createStarterDesign, type BannerDesign } from '../../../utils/carouselBanner';
+import { groupBySlide, imagesPerSlide } from '../../../utils/carouselSlides';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import CarouselListItem, { type SlidePosition } from './CarouselListItem';
 import './CarouselManager.css';
+
+const BannerEditor = lazy(() => import('../BannerEditor/BannerEditor'));
+const ConfirmationModal = lazy(() => import('../../../components/common/Modal/ConfirmationModal'));
+
+type DeviceView = 'desktop' | 'mobile';
+type EditorState = { mode: 'new' } | { mode: 'edit'; image: CarouselImage } | null;
+
+const MISSING_MIGRATION_CODE = 'PGRST204';
+const MISSING_MIGRATION_MESSAGE =
+    'La base todavía no tiene la migración de banners (2026-10-15_add_carousel_banner_slides.sql). Aplicala en Supabase y reintentá.';
+
+const isMissingColumnError = (error: unknown): boolean =>
+    typeof error === 'object' && error !== null && (error as { code?: string }).code === MISSING_MIGRATION_CODE;
+
+// Mensaje que el editor le muestra al admin: solo el caso accionable tiene texto propio.
+const toBannerSaveError = (error: unknown): unknown =>
+    isMissingColumnError(error) ? new Error(MISSING_MIGRATION_MESSAGE) : error;
 
 const CarouselManager = () => {
     const { carouselImages, setCarouselImages, updateCarouselImage, deleteCarouselImage } = useAdminStore();
@@ -21,9 +42,11 @@ const CarouselManager = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
-    const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
-    const [layouts, setLayouts] = useState<Record<'desktop' | 'mobile', CarouselLayout>>({ desktop: 'collage', mobile: 'collage' });
+    const [viewMode, setViewMode] = useState<DeviceView>('desktop');
+    const [layouts, setLayouts] = useState<Record<DeviceView, CarouselLayout>>({ desktop: 'collage', mobile: 'collage' });
     const [savingLayout, setSavingLayout] = useState(false);
+    const [editor, setEditor] = useState<EditorState>(null);
+    const [bannerToDelete, setBannerToDelete] = useState<CarouselImage | null>(null);
 
     useEffect(() => {
         fetchAllCarouselImages()
@@ -35,6 +58,33 @@ const CarouselManager = () => {
             .then(setLayouts)
             .catch(() => setError('No se pudo cargar el diseño del carrusel.'));
     }, [setCarouselImages]);
+
+    const filteredImages = useMemo(
+        () => carouselImages.filter(img => img.deviceType === viewMode),
+        [carouselImages, viewMode],
+    );
+    const currentLayout = layouts[viewMode];
+    const imgsPerSlide = imagesPerSlide(currentLayout, viewMode === 'mobile');
+
+    // Los banners ocupan un slide entero: la numeración sale del mismo
+    // agrupamiento que usa el carrusel público.
+    const slidePositions = useMemo(() => {
+        const positions = new Map<string, SlidePosition>();
+        groupBySlide(filteredImages, imgsPerSlide).forEach((group, groupIndex) => {
+            group.forEach((img, index) => {
+                positions.set(img.id, {
+                    slideNumber: groupIndex + 1,
+                    positionInSlide: index + 1,
+                    slideSize: group.length === 1 && img.kind === 'banner' ? 1 : imgsPerSlide,
+                    isFirstInSlide: index === 0,
+                });
+            });
+        });
+        return positions;
+    }, [filteredImages, imgsPerSlide]);
+
+    const activeImages = filteredImages.filter(img => img.isActive);
+    const activeSlides = groupBySlide(activeImages, imgsPerSlide).length;
 
     const handleLayoutChange = async (nextLayout: CarouselLayout) => {
         if (layouts[viewMode] === nextLayout || savingLayout) return;
@@ -59,7 +109,6 @@ const CarouselManager = () => {
         setSaving(true);
         setError('');
         try {
-            const filteredImages = carouselImages.filter(img => img.deviceType === viewMode);
             const nextOrder = filteredImages.length + 1;
             const newImg = await insertCarouselImage(url, nextOrder, viewMode);
             setCarouselImages([...carouselImages, newImg]);
@@ -69,6 +118,23 @@ const CarouselManager = () => {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleSaveBanner = async (design: BannerDesign) => {
+        if (!editor) return;
+        try {
+            if (editor.mode === 'edit') {
+                await updateCarouselImageDb(editor.image.id, { design });
+                updateCarouselImage(editor.image.id, { design });
+            } else {
+                const nextOrder = Math.max(0, ...filteredImages.map(img => img.order)) + 1;
+                const created = await insertCarouselBanner(design, nextOrder, viewMode);
+                setCarouselImages([...carouselImages, created]);
+            }
+        } catch (saveError) {
+            throw toBannerSaveError(saveError);
+        }
+        setEditor(null);
     };
 
     const handleReorder = async (newOrder: CarouselImage[]) => {
@@ -92,12 +158,21 @@ const CarouselManager = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const deleteImage = async (id: string) => {
         deleteCarouselImage(id);
         try {
             await deleteCarouselImageDb(id);
         } catch {
             setError('No se pudo eliminar la imagen.');
+        }
+    };
+
+    // Un banner es trabajo de diseño: se confirma antes de borrarlo.
+    const handleDelete = (img: CarouselImage) => {
+        if (img.kind === 'banner') {
+            setBannerToDelete(img);
+        } else {
+            void deleteImage(img.id);
         }
     };
 
@@ -110,9 +185,7 @@ const CarouselManager = () => {
         }
     };
 
-    const filteredImages = carouselImages.filter(img => img.deviceType === viewMode);
-    const currentLayout = layouts[viewMode];
-    const imgsPerSlide = currentLayout === 'single' ? 1 : (viewMode === 'mobile' ? 2 : 3);
+    const deviceLabel = viewMode === 'desktop' ? 'Desktop' : 'Mobile';
 
     return (
         <div className="admin-card carousel-manager">
@@ -136,7 +209,7 @@ const CarouselManager = () => {
                 </div>
             </div>
 
-            <div className="layout-picker" role="radiogroup" aria-label={`Diseño del carrusel en ${viewMode === 'desktop' ? 'desktop' : 'mobile'}`}>
+            <div className="layout-picker" role="radiogroup" aria-label={`Diseño del carrusel en ${deviceLabel.toLowerCase()}`}>
                 <button
                     type="button"
                     role="radio"
@@ -171,20 +244,30 @@ const CarouselManager = () => {
 
             <p className="admin-card-desc">
                 {currentLayout === 'single'
-                    ? `Single (${viewMode === 'desktop' ? 'Desktop' : 'Mobile'}): cada imagen que agregues es un slide completo.`
-                    : `Collage (${viewMode === 'desktop' ? 'Desktop' : 'Mobile'}): cada slide muestra ${imgsPerSlide} imágenes, agrupadas de a ${imgsPerSlide} según el orden establecido.`}
+                    ? `Single (${deviceLabel}): cada imagen que agregues es un slide completo.`
+                    : `Collage (${deviceLabel}): cada slide muestra ${imgsPerSlide} imágenes, agrupadas de a ${imgsPerSlide} según el orden establecido.`}
+                {' '}Los banners editables siempre ocupan un slide completo.
             </p>
 
             {error && (
-                <p style={{ color: 'var(--error, #ef4444)', marginBottom: '12px', fontSize: '14px' }}>{error}</p>
+                <p className="carousel-manager-error" role="alert">{error}</p>
             )}
+
+            <button type="button" className="add-banner-btn" onClick={() => setEditor({ mode: 'new' })}>
+                <span className="add-banner-btn__icon"><LayoutTemplate size={22} /></span>
+                <span className="add-banner-btn__text">
+                    <span className="add-banner-btn__title">Crear banner editable ({deviceLabel})</span>
+                    <span className="add-banner-btn__desc">Armá un slide con título, subtítulo, botón y fotos opcionales; movelos y cambiá los colores a gusto.</span>
+                </span>
+            </button>
 
             <form onSubmit={handleAdd} className="add-carousel-form">
                 <input
                     type="url"
                     value={newImageUrl}
                     onChange={(e) => setNewImageUrl(e.target.value)}
-                    placeholder="URL de la nueva imagen..."
+                    placeholder="O pegá la URL de una imagen..."
+                    aria-label="URL de la nueva imagen"
                     required
                     disabled={saving}
                 />
@@ -203,8 +286,7 @@ const CarouselManager = () => {
                     {filteredImages.length > 0 && (
                         <div className="slides-summary">
                             <span className="slides-count">
-                                {Math.ceil(filteredImages.filter(img => img.isActive).length / imgsPerSlide)} slides activos
-                                ({filteredImages.filter(img => img.isActive).length} imágenes activas)
+                                {activeSlides} slides activos ({activeImages.length} elementos activos)
                             </span>
                         </div>
                     )}
@@ -215,66 +297,55 @@ const CarouselManager = () => {
                         onReorder={handleReorder}
                         className="carousel-list"
                     >
-                        {filteredImages.map((img, index) => {
-                            const slideNumber = Math.floor(index / imgsPerSlide) + 1;
-                            const positionInSlide = (index % imgsPerSlide) + 1;
-                            const isFirstInSlide = index % imgsPerSlide === 0;
-
-                            return (
-                                <Reorder.Item
-                                    key={img.id}
-                                    value={img}
-                                    className={`carousel-item ${isFirstInSlide ? 'slide-start' : ''}`}
-                                >
-                                    {isFirstInSlide && (
-                                        <div className="slide-indicator">Slide {slideNumber}</div>
-                                    )}
-                                    <div className="drag-handle">
-                                        <GripVertical size={20} />
-                                    </div>
-                                    <div className="carousel-img-preview">
-                                        <img src={img.url} alt={`Slide ${slideNumber} - Img ${positionInSlide}`} />
-                                    </div>
-                                    <div className="carousel-item-info">
-                                        <span className="carousel-order">#{img.order} (Posición {positionInSlide}/{imgsPerSlide})</span>
-                                        <button
-                                            type="button"
-                                            className={`status-toggle ${img.isActive ? 'active' : 'inactive'}`}
-                                            onClick={() => handleToggle(img)}
-                                        >
-                                            {img.isActive ? <><Eye size={16} /> Activa</> : <><EyeOff size={16} /> Inactiva</>}
-                                        </button>
-                                    </div>
-                                    <div className="carousel-item-actions">
-                                        <button
-                                            type="button"
-                                            className="admin-action-btn copy"
-                                            onClick={() => handleCopy(img.url)}
-                                            title="Copiar URL"
-                                        >
-                                            <Copy size={18} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="admin-action-btn delete"
-                                            onClick={() => handleDelete(img.id)}
-                                            title="Eliminar"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                </Reorder.Item>
-                            );
-                        })}
+                        {filteredImages.map((img) => (
+                            <CarouselListItem
+                                key={img.id}
+                                image={img}
+                                position={slidePositions.get(img.id) ?? { slideNumber: 1, positionInSlide: 1, slideSize: imgsPerSlide, isFirstInSlide: true }}
+                                onToggle={handleToggle}
+                                onDelete={handleDelete}
+                                onCopy={handleCopy}
+                                onEditBanner={(image) => setEditor({ mode: 'edit', image })}
+                            />
+                        ))}
                     </Reorder.Group>
 
                     {filteredImages.length === 0 && (
                         <div className="empty-state">
                             No hay imágenes {viewMode === 'mobile' ? 'para mobile' : 'para desktop'} en el carrusel.
+                            Creá un banner editable o pegá la URL de una foto para empezar.
                         </div>
                     )}
                 </>
             )}
+
+            {editor && (
+                <Suspense fallback={<div className="banner-editor-loading"><LiaLoader size="lg" /></div>}>
+                    <BannerEditor
+                        key={editor.mode === 'edit' ? editor.image.id : 'new'}
+                        device={viewMode}
+                        isNew={editor.mode === 'new'}
+                        initialDesign={editor.mode === 'edit' && editor.image.design ? editor.image.design : createStarterDesign(viewMode)}
+                        onSave={handleSaveBanner}
+                        onClose={() => setEditor(null)}
+                    />
+                </Suspense>
+            )}
+
+            <Suspense fallback={null}>
+                {bannerToDelete && (
+                    <ConfirmationModal
+                        isOpen
+                        status="error"
+                        title="¿Eliminar este banner?"
+                        message="Se pierde todo el diseño y no se puede recuperar."
+                        actionButtonText="Eliminar"
+                        cancelButtonText="Cancelar"
+                        onActionClick={() => void deleteImage(bannerToDelete.id)}
+                        onClose={() => setBannerToDelete(null)}
+                    />
+                )}
+            </Suspense>
         </div>
     );
 };

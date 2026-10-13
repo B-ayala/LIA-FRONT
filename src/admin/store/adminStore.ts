@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Variant, Specification, FAQ, SizeGuide } from '../../types/product';
+import type { BannerDesign } from '../../utils/carouselBanner';
 
 // Auth (login/logout/currentUser/isAuthenticated) vive en `src/store/authStore.ts`
 // — separado para no forzar a la capa pública a importar desde `admin/`.
@@ -46,6 +47,8 @@ export interface CarouselImage {
   order: number;
   isActive: boolean;
   deviceType: 'desktop' | 'mobile';
+  kind: 'image' | 'banner';
+  design: BannerDesign | null;
 }
 
 export interface AboutInfo {
@@ -110,7 +113,7 @@ export const useAdminStore = create<AdminState>((set) => ({
   },
   setCarouselImages: (images) => set({ carouselImages: images }),
   addCarouselImage: (url, deviceType = 'desktop') => set((state) => ({
-    carouselImages: [...state.carouselImages, { id: Date.now().toString(), url, order: state.carouselImages.length + 1, isActive: true, deviceType }]
+    carouselImages: [...state.carouselImages, { id: Date.now().toString(), url, order: state.carouselImages.length + 1, isActive: true, deviceType, kind: 'image', design: null }]
   })),
   updateCarouselImage: (id, data) => set((state) => ({
     carouselImages: state.carouselImages.map(img => img.id === id ? { ...img, ...data } : img)

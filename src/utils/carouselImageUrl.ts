@@ -35,6 +35,8 @@ const IS_SLOW_CONNECTION = ((): boolean => {
 const roundUpToBucket = (value: number, buckets: readonly number[]): number =>
   buckets.find((bucket) => bucket >= value) ?? buckets[buckets.length - 1];
 
+export const roundUpToWidthBucket = (value: number): number => roundUpToBucket(value, WIDTH_BUCKETS);
+
 // `imageCount` es la cantidad de imágenes que realmente comparten el slide
 // (el último grupo puede tener menos que el máximo por dispositivo), ya que
 // cada una ocupa 1/imageCount del ancho vía flexbox.

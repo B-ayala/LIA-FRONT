@@ -16,9 +16,11 @@ interface CloudinaryImagePickerProps {
   open: boolean;
   onClose: () => void;
   onSelect: (urls: string[]) => void;
+  // Para campos que admiten una sola imagen: elegir una nueva reemplaza la anterior.
+  single?: boolean;
 }
 
-const CloudinaryImagePicker = ({ open, onClose, onSelect }: CloudinaryImagePickerProps) => {
+const CloudinaryImagePicker = ({ open, onClose, onSelect, single = false }: CloudinaryImagePickerProps) => {
   const [currentFolder, setCurrentFolder] = useState('');
   const [folders, setFolders] = useState<CloudinaryFolder[]>([]);
   const [foldersLoading, setFoldersLoading] = useState(true);
@@ -87,8 +89,8 @@ const CloudinaryImagePicker = ({ open, onClose, onSelect }: CloudinaryImagePicke
 
   const toggleSelect = (url: string) => {
     setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(url)) {
+      const next = new Set(single ? [] : prev);
+      if (prev.has(url)) {
         next.delete(url);
       } else {
         next.add(url);

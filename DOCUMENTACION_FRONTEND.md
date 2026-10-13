@@ -145,7 +145,7 @@ src/
     ├── routes/AdminProtectedRoute.tsx   # guard por rol admin
     ├── store/adminStore.ts     # estado del panel (products, users, carousel, about, footer)
     ├── styles/adminShared.css  # estilos compartidos del admin
-    ├── components/             # CarouselManager, CloudinaryImagePicker, CloudinaryStorageUsage,
+    ├── components/             # CarouselManager, BannerEditor, CloudinaryImagePicker, CloudinaryStorageUsage,
     │                           #   FeaturedProductsManager, ProductGallery, ProductModal, ProductTable
     └── pages/                  # Dashboard, Products, ProductPreview, Users, Sales, Dispatches, AboutEditor,
                                 #   FooterEditor, HomeManager, CloudinaryManager, ThemesManager
@@ -379,6 +379,16 @@ La sesión la maneja **Supabase Auth**; el backend Express no expone endpoints `
 - `Users`: lista/edita/borra usuarios vía `/users` (solo admin).
 - `HomeManager` / `AboutEditor` / `FooterEditor` / `ThemesManager`: editan contenido en
   `site_content` y `carousel_images`.
+- `CarouselManager` + `BannerEditor` (carrusel del home): además de fotos, el admin crea **banners
+  editables** por dispositivo. El diseño (`BannerDesign`: fondo + lista de elementos `text` /
+  `button` / `image` / `line` con `x`,`y`,`w` en % del lienzo, giro y estilo) se guarda en
+  `carousel_images.design` y se sanea al leerlo (`parseBannerDesign`: colores hex, links solo
+  `/ruta` o `https://`, fotos solo `https://`, números acotados, máx. 30 elementos). El mismo
+  `BannerCanvas` (`components/common/`) dibuja el banner en el carrusel público y en el editor
+  (modo `editing`: arrastre por pointer events, resize, teclado); los textos usan `cqw`, así que
+  escalan con el ancho. El editor es un chunk lazy con deshacer/rehacer (`useBannerHistory`).
+  `groupBySlide` (`utils/carouselSlides.ts`) agrupa las fotos según el layout y deja cada banner
+  como slide propio; lo usan el carrusel y el admin para numerar igual.
 - `CloudinaryManager`: explora carpetas/imágenes, uso de almacenamiento, sube/borra.
 
 ---
@@ -480,7 +490,7 @@ Tablas que el frontend toca directamente con la `anon key`:
 |---|---|---|
 | `productos` | read (público: `status='active'`; admin: todos) | mapeada a `Product` por `mapDbRowToProduct`. Campos snake_case: `image_url`, `original_price`, `free_shipping`, `return_policy`, `featured`, `status`. |
 | `categories` | read/write | árbol por `parent_id` + `level`; con fallback a categorías derivadas de `productos`. |
-| `carousel_images` | read/write | filtrable por `device_type` (`desktop`/`mobile`), `is_active`, `order`. |
+| `carousel_images` | read/write | filtrable por `device_type` (`desktop`/`mobile`), `is_active`, `order`. `kind` = `image` (usa `url`) o `banner` (usa `design` jsonb, `url` = `''`). |
 | `site_content` | read/write/delete | clave-valor (`key`/`value` JSON) para about, footer, banner, temas. Requiere UNIQUE en `key`. |
 | `ventas` | solo lectura (panel admin) | las altas van por el backend (RLS bloquea el insert con anon key — BUG-001); también la escribe el backend (MP, stock, despachos). Campos: `buyer_*`, `product_*`, `quantity`, `unit_price`, `total_price`, `units_config`, `payment_method`, `payment_status`, `shipping_method`, `dispatch_status`. |
 | `contact_messages` | insert | mensajes del formulario de contacto. |

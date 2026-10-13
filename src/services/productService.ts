@@ -7,6 +7,7 @@ import { getProductStockFromVariants, sanitizeProductVariants } from '../utils/p
 import { extractCloudinaryPublicId } from '../utils/cloudinary';
 import { cleanText, normalizeCategory } from '../utils/formatters';
 import { createCachedFetcher } from '../utils/createCachedFetcher';
+import { parseBannerDesign, type BannerDesign } from '../utils/carouselBanner';
 
 // Datos de configuración que el admin cambia muy de vez en cuando (categorías,
 // opciones de card) pero que el público pide en cada mount. Las mutadoras
@@ -630,14 +631,21 @@ export interface CarouselImageRow {
   order: number;
   isActive: boolean;
   deviceType: 'desktop' | 'mobile';
+  kind: 'image' | 'banner';
+  design: BannerDesign | null;
 }
 
+// Si la migración de banners aún no corrió, `kind` no existe y toda fila es una
+// imagen. El diseño pasa por el saneado: un banner con diseño ilegible se
+// descarta en vez de romper el carrusel.
 const mapCarouselRow = (row: Record<string, unknown>): CarouselImageRow => ({
   id: row.id as string,
-  url: row.url as string,
+  url: (row.url as string) ?? '',
   order: row.order as number,
   isActive: row.is_active as boolean,
   deviceType: (row.device_type as 'desktop' | 'mobile') ?? 'desktop',
+  kind: row.kind === 'banner' ? 'banner' : 'image',
+  design: row.kind === 'banner' ? parseBannerDesign(row.design) : null,
 });
 
 // Fetch active images (user-facing) — filterable by deviceType
@@ -676,9 +684,25 @@ export const insertCarouselImage = async (
   return mapCarouselRow(data);
 };
 
+// Los banners guardan su composición en `design`; `url` queda vacío (ver la
+// migración 2026-10-15_add_carousel_banner_slides.sql).
+export const insertCarouselBanner = async (
+  design: BannerDesign,
+  order: number,
+  deviceType: 'desktop' | 'mobile'
+): Promise<CarouselImageRow> => {
+  const { data, error } = await supabase
+    .from('carousel_images')
+    .insert([{ url: '', order, is_active: true, device_type: deviceType, kind: 'banner', design }])
+    .select()
+    .single();
+  if (error) throw error;
+  return mapCarouselRow(data);
+};
+
 export const updateCarouselImageDb = async (
   id: string,
-  changes: { url?: string; order?: number; is_active?: boolean }
+  changes: { url?: string; order?: number; is_active?: boolean; design?: BannerDesign }
 ): Promise<void> => {
   const { error } = await supabase
     .from('carousel_images')

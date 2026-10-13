@@ -3,17 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import type { CarouselLayout } from '../../../services/productService';
 import { loadCarouselData } from '../../../utils/carouselData';
+import { groupBySlide, imagesPerSlide, type CarouselItem } from '../../../utils/carouselSlides';
+import { BANNER_REFERENCE_WIDTH, bannerImageUrls, type BannerDesign } from '../../../utils/carouselBanner';
 import { buildCarouselImageUrl, type CarouselViewport } from '../../../utils/carouselImageUrl';
 import { readCachedFirstImage, writeCachedFirstImage } from '../../../utils/carouselImageCache';
 import { preloadImage, preloadImages } from '../../../utils/preloadImage';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import BannerCanvas from '../../../components/common/BannerCanvas/BannerCanvas';
 import CarouselSlideImages, { CAROUSEL_LOADING_LABEL } from './CarouselSlideImages';
 import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
 
-interface Slide {
-  images: string[];
-}
+type Slide =
+  | { kind: 'images'; images: string[] }
+  | { kind: 'banner'; design: BannerDesign };
 
 type DeviceType = 'desktop' | 'mobile';
 
@@ -27,7 +30,6 @@ interface LoadedCarousel {
 const NO_SLIDES: Slide[] = [];
 const MOBILE_MAX_WIDTH = 768;
 const AUTOPLAY_INTERVAL_MS = 5000;
-const IMAGES_PER_SLIDE = { single: 1, collageMobile: 2, collageDesktop: 3 } as const;
 
 // Transición de empuje puro, sin fade. Dos razones, las dos sobre no dejar ver
 // el fondo del contenedor (que toma el color del tema del admin):
@@ -49,23 +51,21 @@ const slideVariants = {
 
 const readViewport = (): CarouselViewport => ({ width: window.innerWidth, height: window.innerHeight });
 
-function groupIntoSlides(imageUrls: string[], layout: CarouselLayout, isMobile: boolean): Slide[] {
-  let imagesPerSlide: number = IMAGES_PER_SLIDE.collageDesktop;
-  if (layout === 'single') {
-    imagesPerSlide = IMAGES_PER_SLIDE.single;
-  } else if (isMobile) {
-    imagesPerSlide = IMAGES_PER_SLIDE.collageMobile;
+const toSlide = (group: CarouselItem[]): Slide => {
+  const [first] = group;
+  if (first.kind === 'banner') {
+    return { kind: 'banner', design: first.design };
   }
+  return { kind: 'images', images: group.flatMap((item) => (item.kind === 'image' ? [item.url] : [])) };
+};
 
-  const slides: Slide[] = [];
-  for (let i = 0; i < imageUrls.length; i += imagesPerSlide) {
-    slides.push({ images: imageUrls.slice(i, i + imagesPerSlide) });
-  }
-  return slides;
-}
+const groupIntoSlides = (items: CarouselItem[], layout: CarouselLayout, isMobile: boolean): Slide[] =>
+  groupBySlide(items, imagesPerSlide(layout, isMobile)).map(toSlide);
 
-const getSlideImageUrls = (slide: Slide, viewport: CarouselViewport): string[] =>
-  slide.images.map((url) => buildCarouselImageUrl(url, viewport, slide.images.length));
+const getSlideImageUrls = (slide: Slide, viewport: CarouselViewport, deviceType: DeviceType): string[] =>
+  slide.kind === 'banner'
+    ? bannerImageUrls(slide.design, BANNER_REFERENCE_WIDTH[deviceType])
+    : slide.images.map((url) => buildCarouselImageUrl(url, viewport, slide.images.length));
 
 const Carousel = () => {
   const [loaded, setLoaded] = useState<LoadedCarousel | null>(null);
@@ -108,18 +108,19 @@ const Carousel = () => {
     let cancelled = false;
 
     loadCarouselData(deviceType)
-      .then(({ imageUrls, layout: loadedLayout }) => {
+      .then(({ items, layout: loadedLayout }) => {
         if (cancelled) return;
 
-        const grouped = groupIntoSlides(imageUrls, loadedLayout, deviceType === 'mobile');
+        const grouped = groupIntoSlides(items, loadedLayout, deviceType === 'mobile');
         // Se guarda la cantidad real de imágenes del primer slide (el último
         // grupo puede tener menos que el máximo): determina el ancho exacto
         // que pide el flujo real, y la pista tiene que coincidir con él.
-        if (grouped[0]) {
+        const firstSlide = grouped[0];
+        if (firstSlide?.kind === 'images') {
           writeCachedFirstImage(deviceType, {
-            url: grouped[0].images[0],
+            url: firstSlide.images[0],
             layout: loadedLayout,
-            imageCount: grouped[0].images.length,
+            imageCount: firstSlide.images.length,
           });
         }
         setLoaded({ deviceType, slides: grouped, layout: loadedLayout, hasError: false });
@@ -152,10 +153,10 @@ const Carousel = () => {
     let timerId: ReturnType<typeof setTimeout> | undefined;
     const nextIndex = (currentSlide + 1) % slides.length;
 
-    preloadImages(getSlideImageUrls(slides[currentSlide], viewport))
+    preloadImages(getSlideImageUrls(slides[currentSlide], viewport, deviceType))
       .then(() => Promise.all([
         new Promise<void>((resolve) => { timerId = setTimeout(resolve, AUTOPLAY_INTERVAL_MS); }),
-        preloadImages(getSlideImageUrls(slides[nextIndex], viewport)),
+        preloadImages(getSlideImageUrls(slides[nextIndex], viewport, deviceType)),
       ]))
       .then(() => {
         if (cancelled) return;
@@ -167,7 +168,7 @@ const Carousel = () => {
       cancelled = true;
       clearTimeout(timerId);
     };
-  }, [currentSlide, slides, viewport]);
+  }, [currentSlide, slides, viewport, deviceType]);
 
   const layoutClass = layout === 'single' ? 'carousel--single' : '';
 
@@ -204,10 +205,14 @@ const Carousel = () => {
           }}
           className="carousel-slide"
         >
-          <CarouselSlideImages
-            sources={visibleSlide.images.map((url) => buildCarouselImageUrl(url, viewport, visibleSlide.images.length))}
-            isFirstSlide={currentSlide === 0}
-          />
+          {visibleSlide.kind === 'banner' ? (
+            <BannerCanvas design={visibleSlide.design} referenceWidth={BANNER_REFERENCE_WIDTH[deviceType]} />
+          ) : (
+            <CarouselSlideImages
+              sources={visibleSlide.images.map((url) => buildCarouselImageUrl(url, viewport, visibleSlide.images.length))}
+              isFirstSlide={currentSlide === 0}
+            />
+          )}
         </motion.div>
       </AnimatePresence>
 

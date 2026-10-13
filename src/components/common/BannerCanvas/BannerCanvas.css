@@ -1,0 +1,183 @@
+/* Lienzo del banner. `container-type` habilita las unidades `cqw` (1cqw = 1% del
+   ancho del lienzo) con las que se dimensionan textos y bordes: el diseño
+   escala entero con la pantalla, tal cual se ve en el editor. */
+.banner-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+  user-select: none;
+}
+
+.banner-canvas__bg-image,
+.banner-canvas__overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.banner-canvas__bg-image {
+  object-fit: cover;
+}
+
+.banner-el {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.banner-text {
+  margin: 0;
+  line-height: 1.15;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-height: 1em;
+}
+
+.banner-font--serif {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.banner-button {
+  display: block;
+  box-sizing: border-box;
+  padding: 0.75em 1em;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+a.banner-button:hover {
+  filter: brightness(1.12);
+}
+
+a.banner-button:active {
+  transform: scale(0.98);
+}
+
+a.banner-button:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+
+.banner-photo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.banner-photo--framed {
+  padding: 0.8cqw;
+  background: #fff;
+  box-shadow: 0 0.6cqw 2cqw rgba(0, 0, 0, 0.18);
+}
+
+.banner-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.banner-photo__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4cqw;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.banner-line {
+  width: 100%;
+  border-radius: 999px;
+}
+
+/* ── Modo edición ───────────────────────────────────────────────────────── */
+
+.banner-canvas--editing {
+  cursor: default;
+  touch-action: none;
+}
+
+.banner-canvas--editing .banner-el {
+  cursor: grab;
+  touch-action: none;
+}
+
+.banner-canvas--editing .banner-el:active {
+  cursor: grabbing;
+}
+
+.banner-canvas--editing .banner-el:hover:not(.banner-el--selected) {
+  outline: 2px dashed rgba(184, 55, 125, 0.55);
+  outline-offset: 4px;
+}
+
+.banner-canvas--editing .banner-el:focus-visible,
+.banner-el--selected {
+  outline: 2px solid var(--primary-accent, #b8377d);
+  outline-offset: 4px;
+}
+
+/* Un elemento de línea es muy fino: se agranda su zona de agarre. */
+.banner-canvas--editing .banner-el--line {
+  padding: 1cqw 0;
+}
+
+.banner-el__handle {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  transform: translate(50%, -50%);
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--primary-accent, #b8377d);
+  cursor: ew-resize;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Zona táctil más grande que el punto visible (≥ 44px). */
+.banner-el__handle::after {
+  content: '';
+  position: absolute;
+  inset: -16px;
+}
+
+.banner-guide {
+  position: absolute;
+  pointer-events: none;
+  background: var(--primary-accent, #b8377d);
+  opacity: 0.6;
+}
+
+.banner-guide--vertical {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+
+.banner-guide--horizontal {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner-button {
+    transition: none;
+  }
+}

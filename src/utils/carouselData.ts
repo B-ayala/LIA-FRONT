@@ -1,11 +1,12 @@
 import { fetchCarouselImages, fetchCarouselLayout, type CarouselLayout } from '../services/productService';
 import { createCachedFetcher } from './createCachedFetcher';
 import { withTimeout } from './withTimeout';
+import type { CarouselItem } from './carouselSlides';
 
 type DeviceType = 'desktop' | 'mobile';
 
 export interface CarouselData {
-  imageUrls: string[];
+  items: CarouselItem[];
   layout: CarouselLayout;
 }
 
@@ -34,7 +35,14 @@ async function fetchOnce(deviceType: DeviceType): Promise<CarouselData> {
     throw new Error('Tiempo de espera agotado al cargar el carrusel');
   }
 
-  return { imageUrls: images.map((image) => image.url), layout: layout ?? 'collage' };
+  const items = images.flatMap((image): CarouselItem[] => {
+    if (image.kind === 'banner') {
+      return image.design ? [{ kind: 'banner', design: image.design }] : [];
+    }
+    return [{ kind: 'image', url: image.url }];
+  });
+
+  return { items, layout: layout ?? 'collage' };
 }
 
 async function fetchWithRetry(deviceType: DeviceType): Promise<CarouselData> {
