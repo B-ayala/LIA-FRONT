@@ -11,7 +11,7 @@ import type { Product } from '../../../../types/product';
 import { buildCloudinaryUrl } from '../../../../utils/cloudinary';
 import { formatDate, formatPrice } from '../../../../utils/formatters';
 import { getProductPricing } from '../../../../utils/pricing';
-import DispatchTracker from './DispatchTracker';
+import PaymentStatusNotice from './PaymentStatusNotice';
 import { PAYMENT_METHOD_LABEL, SHIPPING_METHOD_LABEL } from '../../../../utils/labels';
 
 const REFRESH_INTERVAL_MS = 20_000;
@@ -276,7 +276,11 @@ const PurchaseProductDetail = ({
           </div>
 
           <div style={{ border: '1px solid rgba(184,165,200,0.25)', borderRadius: '12px' }}>
-            <DispatchTracker status={purchase.dispatch_status} shippingMethod={purchase.shipping_method} />
+            <PaymentStatusNotice
+              paymentStatus={purchase.payment_status}
+              dispatchStatus={purchase.dispatch_status}
+              shippingMethod={purchase.shipping_method}
+            />
           </div>
 
           {/* Description */}
@@ -371,7 +375,11 @@ const PurchaseItem = ({ purchase, onOpenProduct }: { purchase: Purchase; onOpenP
       )}
 
       <Divider sx={{ borderColor: 'rgba(184,165,200,0.2)' }} />
-      <DispatchTracker status={purchase.dispatch_status} shippingMethod={purchase.shipping_method} />
+      <PaymentStatusNotice
+        paymentStatus={purchase.payment_status}
+        dispatchStatus={purchase.dispatch_status}
+        shippingMethod={purchase.shipping_method}
+      />
 
       {/* Expand button for variants */}
       {hasVariants && (
@@ -569,7 +577,7 @@ const MyPurchasesModalContent = ({ isOpen, onClose, email }: MyPurchasesModalPro
             {!loading && !error && purchases.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: '#999' }}>
-                  {purchases.length} {purchases.length === 1 ? 'compra realizada' : 'compras realizadas'}
+                  {purchases.length} {purchases.length === 1 ? 'compra' : 'compras'}
                 </p>
                 {purchases.map((p) => (
                   <PurchaseItem key={p.id} purchase={p} onOpenProduct={openPurchasedProduct} />

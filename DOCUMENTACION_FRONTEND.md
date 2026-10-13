@@ -352,7 +352,10 @@ La sesión la maneja **Supabase Auth**; el backend Express no expone endpoints `
    sobre la key `damiana-bella-cart` → `useCartStore.persist.rehydrate()` (sin eco entre pestañas).
 6. `POST /orders/nudge` registra el recordatorio al usuario con el pago pendiente.
 7. `MyPurchasesModal` lista compras por email vía `GET /orders/user?email=…` (el backend
-   bypassa RLS de Supabase y valida que seas el dueño o admin). Cada compra muestra un
+   bypassa RLS de Supabase y valida que seas el dueño o admin); trae las pagadas y las transferencias
+   con comprobante avisado en el nudge. `PaymentStatusNotice` muestra "Verificando tu comprobante"
+   (`pendiente`) o "Pedido cancelado" / "Reserva vencida" (`cancelado` / `expirado`); solo con `pagado`
+   muestra el
    `DispatchTracker` con el `dispatch_status` que el admin cambia en Despachos (`null` = pendiente;
    el 3er paso es "Listo para retiro" si el envío es `local`, "Despachado" en otro caso). Mientras
    el modal está abierto se re-consulta cada 20 s (polling silencioso, pausado con la pestaña oculta;

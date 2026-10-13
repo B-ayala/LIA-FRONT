@@ -181,3 +181,23 @@ a.banner-button:focus-visible {
     transition: none;
   }
 }
+
+/* Mientras baja la foto de fondo: textos ocultos y loader sobre gris claro
+   (el mismo de los slides de imagen), nunca texto claro sobre fondo claro. */
+.banner-canvas--waiting {
+  background: #c4c0c0 !important;
+}
+
+.banner-canvas--waiting .banner-el,
+.banner-canvas--waiting .banner-canvas__overlay {
+  visibility: hidden;
+}
+
+.banner-canvas__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

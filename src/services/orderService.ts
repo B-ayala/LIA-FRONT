@@ -257,7 +257,11 @@ export interface Purchase {
   created_at: string;
 }
 
-/** Obtiene las compras pagadas del usuario por email. Usa el backend para bypassear RLS de Supabase. */
+/**
+ * Obtiene las compras del usuario por email: las pagadas y las transferencias con comprobante
+ * avisado (aún pendientes de verificación, o canceladas/expiradas por el admin; ver `payment_status`).
+ * Usa el backend para bypassear RLS de Supabase.
+ */
 export const getUserPurchases = async (email: string, signal?: AbortSignal): Promise<Purchase[]> => {
   const res = await apiFetch(`${API_BASE_URL}/orders/user?email=${encodeURIComponent(email)}`, { signal });
   if (!res.ok) {
