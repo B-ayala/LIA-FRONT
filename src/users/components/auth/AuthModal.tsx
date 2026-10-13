@@ -6,18 +6,18 @@ import {
   Dialog, DialogContent, Grow, Box, Typography, Stack, Button,
   useMediaQuery, Tabs, Tab, TextField, Alert, Link, InputAdornment, IconButton,
 } from '@mui/material';
-import { FcGoogle } from 'react-icons/fc';
 import {
-  FiLogIn, FiUserPlus, FiAlertCircle, FiCheckCircle, FiMail, FiArrowRight, FiMessageSquare,
+  FiLogIn, FiUserPlus, FiAlertCircle, FiCheckCircle, FiMail, FiMessageSquare,
   FiEye, FiEyeOff, FiPhone,
 } from 'react-icons/fi';
 import { useAuthStore } from '../../../store/authStore';
 import { isValidEmail, validatePassword, validatePasswordMatch, validatePhone } from '../../../utils/validation';
 import { extractErrorMessage } from '../../../utils/errorMessage';
 import { createUser, resendConfirmationEmail, requestPasswordReset } from '../../../services/userService';
-import { signInWithGoogle } from '../../../services/authService';
 import Modal from '../../../components/common/Modal/Modal';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import TurnstileWidget from '../../../components/common/Turnstile/TurnstileWidget';
+import { useCaptcha, CAPTCHA_REQUIRED_MESSAGE } from '../../../hooks/useCaptcha';
 import { EMAIL_CONFIRMED_CHANNEL, EMAIL_CONFIRMED_STORAGE_KEY } from '../../pages/auth/EmailConfirmation';
 
 interface AuthModalProps {
@@ -170,29 +170,6 @@ const resendBtnSx = {
   },
 };
 
-const googleBtnSx = {
-  background: '#fff',
-  color: 'var(--text-dark)',
-  border: '2px solid rgba(184,165,200,0.25)',
-  borderRadius: '12px',
-  py: { xs: '0.85rem', sm: '0.9rem', md: '1.1rem' },
-  fontSize: { xs: '0.95rem', sm: '1rem' },
-  fontWeight: 500,
-  textTransform: 'none' as const,
-  fontFamily: "'Poppins', sans-serif",
-  gap: '0.75rem',
-  transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
-  '&:hover': {
-    background: '#fff',
-    borderColor: 'var(--primary-color)',
-    boxShadow: '0 4px 15px rgba(184,165,200,0.2)',
-    transform: 'translateY(-2px)',
-    '& .MuiButton-startIcon': { transform: 'scale(1.1)' },
-  },
-  '& .MuiButton-startIcon': { transition: 'transform 0.3s ease' },
-  '&:active': { transform: 'translateY(0) scale(0.98)' },
-};
-
 const fieldError = (msg?: string) =>
   msg ? (
     <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -204,6 +181,8 @@ const fieldError = (msg?: string) =>
 const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const navigate = useNavigate();
   const login = useAuthStore(state => state.login);
+  const authCaptcha = useCaptcha();
+  const resendCaptcha = useCaptcha();
   const isMobile = useMediaQuery('(max-width:639px)');
   const [view, setView] = useState<'login' | 'register'>('login');
 
@@ -228,7 +207,6 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
 
   // Loading & server feedback
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [serverError, setServerError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isResendingEmail, setIsResendingEmail] = useState(false);
@@ -364,11 +342,15 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const handleLoginSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateLogin()) return;
+    if (authCaptcha.isCaptchaMissing) {
+      setServerError(CAPTCHA_REQUIRED_MESSAGE);
+      return;
+    }
 
     setServerError('');
     setIsLoading(true);
     try {
-      const isAdmin = await login(loginEmail, loginPassword);
+      const isAdmin = await login(loginEmail, loginPassword, authCaptcha.captchaToken);
       if (isAdmin) {
         onClose();
         navigate('/admin', { replace: true });
@@ -380,19 +362,8 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     } catch (err) {
       setServerError(extractErrorMessage(err, 'No pudimos iniciar sesión. Verificá tus datos e intentá de nuevo.'));
     } finally {
+      authCaptcha.resetCaptcha();
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setServerError('');
-    setIsGoogleLoading(true);
-    try {
-      // Redirige a Google; si no tira error acá, el navegador ya está navegando afuera.
-      await signInWithGoogle();
-    } catch (err) {
-      setServerError(extractErrorMessage(err, 'No pudimos iniciar sesión con Google. Intentá de nuevo.'));
-      setIsGoogleLoading(false);
     }
   };
 
@@ -402,15 +373,20 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
       setErrors({ forgotEmail: 'Ingresá un correo electrónico válido' });
       return;
     }
+    if (authCaptcha.isCaptchaMissing) {
+      setServerError(CAPTCHA_REQUIRED_MESSAGE);
+      return;
+    }
     setErrors({});
     setServerError('');
     setIsLoading(true);
     try {
-      await requestPasswordReset(forgotEmail.trim());
+      await requestPasswordReset(forgotEmail.trim(), authCaptcha.captchaToken);
       setForgotSent(true);
     } catch (err) {
       setServerError(extractErrorMessage(err, 'Error al enviar el email'));
     } finally {
+      authCaptcha.resetCaptcha();
       setIsLoading(false);
     }
   };
@@ -437,6 +413,10 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     setEmailErrorType(null);
 
     if (!validateRegister()) return;
+    if (authCaptcha.isCaptchaMissing) {
+      setServerError(CAPTCHA_REQUIRED_MESSAGE);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -445,6 +425,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
         email: registerEmail.trim(),
         phone: registerPhone.trim(),
         password: registerPassword,
+        captchaToken: authCaptcha.captchaToken,
       });
 
       // Mostrar modal de confirmación en lugar de redirigir automáticamente
@@ -477,6 +458,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
         setServerError(message);
       }
     } finally {
+      authCaptcha.resetCaptcha();
       setIsLoading(false);
     }
   };
@@ -490,7 +472,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     setIsResendingEmail(true);
     setServerError('');
     try {
-      const result = await resendConfirmationEmail(registerEmail.trim());
+      const result = await resendConfirmationEmail(registerEmail.trim(), resendCaptcha.captchaToken);
       setSuccessMessage(result.message);
       setTimeout(() => {
         setSuccessMessage('');
@@ -501,6 +483,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
       const message = error instanceof Error ? error.message : 'Error al reenviar el email';
       setServerError(message);
     } finally {
+      resendCaptcha.resetCaptcha();
       setIsResendingEmail(false);
     }
   };
@@ -514,12 +497,13 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     setIsResendingEmail(true);
     setConfirmationError('');
     try {
-      await resendConfirmationEmail(confirmedEmail);
+      await resendConfirmationEmail(confirmedEmail, resendCaptcha.captchaToken);
       setConfirmationError('');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error al reenviar el email';
       setConfirmationError(message);
     } finally {
+      resendCaptcha.resetCaptcha();
       setIsResendingEmail(false);
     }
   };
@@ -694,6 +678,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                 </Alert>
               )}
 
+              <TurnstileWidget {...authCaptcha.widgetProps} />
               <Button type="submit" disabled={isLoading} variant="contained" fullWidth sx={submitBtnSx}
                 startIcon={isLoading ? <LiaLoader size="xs" /> : <FiLogIn size={18} />}
               >
@@ -849,10 +834,11 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               {emailErrorType === 'pending' && (
                 <Alert severity="error" icon={<FiAlertCircle size={18} />} sx={alertErrorSx}>
                     <Box>Ese correo ya se encuentra registrado. Si todavia no confirmaste la cuenta, revisa tu bandeja de entrada (o spam).</Box>
+                  <TurnstileWidget {...resendCaptcha.widgetProps} />
                   <Button
                     type="button"
                     onClick={handleResendEmail}
-                    disabled={isResendingEmail}
+                    disabled={isResendingEmail || resendCaptcha.isCaptchaMissing}
                     startIcon={isResendingEmail ? <LiaLoader size="xs" /> : <FiMail size={15} />}
                     sx={resendBtnSx}
                   >
@@ -872,6 +858,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                 </Alert>
               )}
 
+              <TurnstileWidget {...authCaptcha.widgetProps} />
               <Button type="submit" disabled={isLoading} variant="contained" fullWidth sx={submitBtnSx}
                 startIcon={isLoading ? <LiaLoader size="xs" /> : <FiUserPlus size={18} />}
               >
@@ -880,32 +867,6 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
             </Box>
           )}
 
-          {/* Separator + Google */}
-          <Box>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              my: '1.75rem',
-              color: '#888',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              '&::before': {
-                content: '""',
-                flex: 1,
-                height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(184,165,200,0.4), transparent)',
-              },
-              '&::after': {
-                content: '""',
-                flex: 1,
-                height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(184,165,200,0.4), transparent)',
-              },
-            }}
-          >
-          </Box>
-          </Box>
         </Box>
       </Box>
 
@@ -1034,6 +995,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                 </Alert>
               )}
 
+              <TurnstileWidget {...authCaptcha.widgetProps} />
               <Button type="submit" disabled={isLoading} variant="contained" fullWidth sx={submitBtnSx}
                 startIcon={isLoading ? <LiaLoader size="xs" /> : <FiMail size={18} />}
               >
@@ -1172,9 +1134,10 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
           )}
 
           <Stack direction="column" spacing={1} sx={{ width: '100%', mt: 1 }}>
+            <TurnstileWidget {...resendCaptcha.widgetProps} />
             <Button
               onClick={handleResendEmailFromConfirmation}
-              disabled={isResendingEmail || resendCooldown > 0}
+              disabled={isResendingEmail || resendCooldown > 0 || resendCaptcha.isCaptchaMissing}
               variant="contained"
               fullWidth
               startIcon={isResendingEmail ? <LiaLoader size="xs" /> : <FiMail size={16} />}

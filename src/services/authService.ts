@@ -1,24 +1,27 @@
 /**
- * Auth service — autenticación vía Supabase Auth.
+ * Auth service.
  *
- * El backend (lia-store) autoriza decodificando el JWT de Supabase y leyendo el
- * rol en `profiles`. Por eso TODO el flujo de cuentas (login, registro, recuperación
- * y cambio de contraseña, confirmación de email) se resuelve contra Supabase Auth,
- * que valida credenciales y emite el token que el backend acepta como Bearer.
+ * Login, refresh y logout pasan por el backend (`/api/auth/*`): el refresh token
+ * queda en una cookie httpOnly (nunca lo lee JS) y el access token solo en memoria
+ * (authTokenStore). Así el rate limit y el bloqueo por fuerza bruta del backend no
+ * se pueden saltear, y un XSS no puede robar la sesión del almacenamiento.
+ * Registro, confirmación de email y recuperación de contraseña siguen contra Supabase Auth.
  */
 
-import type { Session, User, EmailOtpType } from '@supabase/supabase-js';
+import type { User, EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../config/supabaseClient';
-import { tokenStorage, type StoredUser } from '../utils/tokenStorage';
-import { API_BASE_URL } from '../utils/apiFetch';
+import { API_BASE_URL } from '../config/apiBaseUrl';
+import { authTokenStore, type AuthUser } from '../utils/authTokenStore';
+import { getValidAccessToken, refreshSession, storeSessionPayload } from './sessionRefresh';
 
-export interface AuthUser extends StoredUser {}
+export type { AuthUser };
 
 export interface RegisterPayload {
   name: string;
   email: string;
   phone?: string;
   password: string;
+  captchaToken?: string;
 }
 
 interface RegisterResult {
@@ -28,8 +31,19 @@ interface RegisterResult {
 }
 
 type SupabaseAuthMeta = { name?: string; phone?: string };
-type ProfileRow = { name: string | null; role: string | null };
 type CodedError = Error & { code?: string };
+type SessionPayload = Parameters<typeof storeSessionPayload>[0];
+interface AuthErrorBody {
+  code?: string;
+  message?: string;
+  data?: SessionPayload;
+}
+
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_TOO_MANY_REQUESTS = 429;
+const INVALID_CREDENTIALS_MESSAGE = 'Email o contraseña incorrectos.';
+const GENERIC_LOGIN_ERROR = 'No pudimos iniciar sesión. Intentá de nuevo en unos minutos.';
+const SESSION_EXPIRED_MESSAGE = 'Tu sesión expiró. Volvé a iniciar sesión.';
 
 // Construye la URL de redirección de los emails respetando el base path del deploy
 // (p. ej. `/LIA/` en GitHub Pages) — Supabase debe tenerla en su allowlist de redirects.
@@ -44,32 +58,16 @@ const codedError = (message: string, code?: string): CodedError => {
   return err;
 };
 
-const fetchProfile = async (userId: string): Promise<ProfileRow | null> => {
-  // maybeSingle (no single): si todavía no hay fila en profiles, devuelve null
-  // en vez de un 406. El rol cae a 'user' hasta que exista el perfil.
-  const { data } = await supabase
-    .from('profiles')
-    .select('name, role')
-    .eq('id', userId)
-    .maybeSingle();
-  return data;
-};
-
-const buildAuthUser = (user: User, profile: ProfileRow | null): AuthUser => {
+const buildAuthUser = (user: User): AuthUser => {
   const meta = (user.user_metadata ?? {}) as SupabaseAuthMeta;
   return {
     id: user.id,
-    name: profile?.name ?? meta.name ?? '',
+    name: meta.name ?? '',
     email: user.email ?? '',
     phone: meta.phone,
-    role: profile?.role ?? 'user',
+    role: 'user',
     emailConfirmed: Boolean(user.email_confirmed_at),
   };
-};
-
-const persistSession = (session: Session, user: AuthUser) => {
-  tokenStorage.setTokens(session.access_token, session.refresh_token);
-  tokenStorage.setUser(user);
 };
 
 // ─── Register ───
@@ -80,11 +78,12 @@ export const register = async (payload: RegisterPayload): Promise<RegisterResult
     options: {
       data: { name: payload.name, phone: payload.phone },
       emailRedirectTo: redirectUrl('/auth/confirm'),
+      captchaToken: payload.captchaToken,
     },
   });
 
   if (error) {
-    const rateLimited = error.status === 429 || /rate limit/i.test(error.message);
+    const rateLimited = error.status === HTTP_TOO_MANY_REQUESTS || /rate limit/i.test(error.message);
     throw codedError(error.message, rateLimited ? 'RATE_LIMIT' : undefined);
   }
 
@@ -96,78 +95,69 @@ export const register = async (payload: RegisterPayload): Promise<RegisterResult
   return {
     success: true,
     autoConfirmed: Boolean(data.session),
-    data: data.user ? buildAuthUser(data.user, null) : undefined,
+    data: data.user ? buildAuthUser(data.user) : undefined,
   };
 };
 
 // ─── Login ───
-const toFriendlyAuthError = (rawMessage: string): { message: string; code: string } => {
-  const message = rawMessage.toLowerCase();
-  if (message.includes('not confirmed')) {
-    return {
-      code: 'EMAIL_NOT_CONFIRMED',
-      message: 'Tu cuenta todavía no está confirmada. Revisá tu correo (y la carpeta de spam) para activarla.',
-    };
+const friendlyLoginError = (status: number, body: AuthErrorBody | null): CodedError => {
+  if (body?.code === 'EMAIL_NOT_CONFIRMED') {
+    return codedError(
+      'Tu cuenta todavía no está confirmada. Revisá tu correo (y la carpeta de spam) para activarla.',
+      'EMAIL_NOT_CONFIRMED',
+    );
   }
-  if (message.includes('invalid login credentials') || message.includes('invalid')) {
-    return { code: 'INVALID_CREDENTIALS', message: 'Email o contraseña incorrectos.' };
+  if (status === HTTP_TOO_MANY_REQUESTS) {
+    return codedError(body?.message ?? 'Demasiados intentos. Esperá un momento antes de reintentar.', body?.code ?? 'RATE_LIMIT');
   }
-  return { code: 'AUTH_ERROR', message: 'No pudimos iniciar sesión. Intentá de nuevo en unos minutos.' };
+  if (body?.code === 'CAPTCHA_FAILED') return codedError(body.message ?? GENERIC_LOGIN_ERROR, 'CAPTCHA_FAILED');
+  if (status === HTTP_UNAUTHORIZED) return codedError(INVALID_CREDENTIALS_MESSAGE, 'INVALID_CREDENTIALS');
+  return codedError(GENERIC_LOGIN_ERROR, 'AUTH_ERROR');
 };
 
-export const login = async (email: string, password: string): Promise<AuthUser> => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error || !data.session || !data.user) {
-    const friendly = toFriendlyAuthError(error?.message ?? '');
-    throw codedError(friendly.message, friendly.code);
+export const login = async (email: string, password: string, captchaToken?: string): Promise<AuthUser> => {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, captchaToken }),
+    });
+  } catch {
+    throw codedError(GENERIC_LOGIN_ERROR, 'AUTH_ERROR');
   }
 
-  const profile = await fetchProfile(data.user.id);
-  const authUser = buildAuthUser(data.user, profile);
-  persistSession(data.session, authUser);
-  return authUser;
-};
-
-// ─── OAuth (Google) ───
-export const signInWithGoogle = async (): Promise<void> => {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: redirectUrl('/') },
-  });
-  if (error) throw new Error(error.message);
+  const body = (await response.json().catch(() => null)) as AuthErrorBody | null;
+  if (!response.ok || !body?.data) throw friendlyLoginError(response.status, body);
+  return storeSessionPayload(body.data);
 };
 
 // ─── Logout ───
 export const logout = async (): Promise<void> => {
   try {
-    await supabase.auth.signOut();
+    const token = await getValidAccessToken();
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    await supabase.auth.signOut({ scope: 'local' });
   } catch {
-    /* no bloqueamos el logout local si Supabase falla */
+    /* no bloqueamos el logout local si el backend o la red fallan */
   } finally {
-    tokenStorage.clear();
+    authTokenStore.clear();
   }
 };
 
-// ─── Me (perfil actual, validado contra Supabase) ───
-export const me = async (): Promise<AuthUser | null> => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    const profile = await fetchProfile(user.id);
-    const authUser = buildAuthUser(user, profile);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) persistSession(session, authUser);
-    else tokenStorage.setUser(authUser);
-
-    return authUser;
-  } catch {
-    // Error de red transitorio: que el caller decida según el token persistido.
-    return null;
-  }
+// ─── Restauración de sesión ───
+// Se llama al cargar la app con la cookie del backend. `null` = sin sesión (o backend no disponible).
+export const restoreSession = async (): Promise<AuthUser | null> => {
+  const result = await refreshSession();
+  return result.status === 'ok' ? result.user : null;
 };
+
+export const me = async (): Promise<AuthUser | null> => authTokenStore.getUser() ?? restoreSession();
 
 // ─── Email confirmation ───
 export const confirmEmail = async (tokenHash: string, type: EmailOtpType = 'signup'): Promise<void> => {
@@ -178,14 +168,14 @@ export const confirmEmail = async (tokenHash: string, type: EmailOtpType = 'sign
 // Pasa por el backend propio (no llama a Supabase directo) para que el límite
 // de 3 intentos cada 24hs por email ([[emailActionLimiter]]) no se pueda
 // eludir limpiando el estado del navegador.
-const postPublicAuthAction = async (path: string, email: string): Promise<void> => {
+const postPublicAuthAction = async (path: string, email: string, captchaToken?: string): Promise<void> => {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, captchaToken }),
   });
   const data = await res.json().catch(() => null);
-  if (res.status === 429) {
+  if (res.status === HTTP_TOO_MANY_REQUESTS) {
     throw codedError(data?.message ?? 'Alcanzaste el máximo de intentos.', 'MAX_ATTEMPTS_REACHED');
   }
   if (!res.ok) {
@@ -193,8 +183,8 @@ const postPublicAuthAction = async (path: string, email: string): Promise<void> 
   }
 };
 
-export const resendConfirmation = async (email: string): Promise<void> => {
-  await postPublicAuthAction('/auth/resend-confirmation', email);
+export const resendConfirmation = async (email: string, captchaToken?: string): Promise<void> => {
+  await postPublicAuthAction('/auth/resend-confirmation', email, captchaToken);
 };
 
 export const hasActiveSession = async (): Promise<boolean> => {
@@ -212,8 +202,8 @@ export const onPasswordRecovery = (callback: () => void): (() => void) => {
 };
 
 // ─── Forgot / Reset password ───
-export const forgotPassword = async (email: string): Promise<void> => {
-  await postPublicAuthAction('/auth/forgot-password', email);
+export const forgotPassword = async (email: string, captchaToken?: string): Promise<void> => {
+  await postPublicAuthAction('/auth/forgot-password', email, captchaToken);
 };
 
 // El link de recuperación de Supabase establece una sesión temporal (evento
@@ -221,26 +211,51 @@ export const forgotPassword = async (email: string): Promise<void> => {
 export const resetPassword = async (newPassword: string): Promise<void> => {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw new Error(error.message);
-  await supabase.auth.signOut();
-  tokenStorage.clear();
+  await supabase.auth.signOut({ scope: 'local' });
+  authTokenStore.clear();
 };
 
 // ─── Change password (logueado) ───
-export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) throw codedError('Tu sesión expiró. Volvé a iniciar sesión.', 'AUTH_ERROR');
+const SUPABASE_USER_ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/user`;
 
-  // Supabase.updateUser no valida la contraseña actual: re-autenticamos para hacerlo.
-  const { error: reauthError } = await supabase.auth.signInWithPassword({
-    email: user.email,
-    password: currentPassword,
+const updatePasswordWithToken = async (accessToken: string, newPassword: string): Promise<void> => {
+  const response = await fetch(SUPABASE_USER_ENDPOINT, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ password: newPassword }),
   });
-  if (reauthError) throw codedError('La contraseña actual es incorrecta', 'INVALID_CURRENT_PASSWORD');
+  if (response.ok) return;
+  const body = (await response.json().catch(() => null)) as { msg?: string; message?: string } | null;
+  throw new Error(body?.msg ?? body?.message ?? 'No pudimos actualizar la contraseña.');
+};
 
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) throw new Error(error.message);
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string,
+  captchaToken?: string,
+): Promise<void> => {
+  const current = authTokenStore.getUser();
+  if (!current?.email) throw codedError(SESSION_EXPIRED_MESSAGE, 'AUTH_ERROR');
+
+  // Supabase no valida la contraseña actual al cambiarla: re-autenticamos por el
+  // backend (con su bloqueo por fuerza bruta) para hacerlo.
+  try {
+    await login(current.email, currentPassword, captchaToken);
+  } catch (err) {
+    if ((err as CodedError).code === 'INVALID_CREDENTIALS') {
+      throw codedError('La contraseña actual es incorrecta', 'INVALID_CURRENT_PASSWORD');
+    }
+    throw err;
+  }
+
+  const token = await getValidAccessToken();
+  if (!token) throw codedError(SESSION_EXPIRED_MESSAGE, 'AUTH_ERROR');
+  await updatePasswordWithToken(token, newPassword);
 
   // Forzamos re-login con la nueva contraseña.
-  await supabase.auth.signOut();
-  tokenStorage.clear();
+  await logout();
 };

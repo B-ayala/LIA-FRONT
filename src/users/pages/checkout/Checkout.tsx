@@ -154,7 +154,7 @@ const Checkout = () => {
     if (items.length === 0 && !currentUser) navigate('/products');
   }, [items.length, currentUser, navigate]);
 
-  // Con usuario hidratado desde storage no bloqueamos: el backend autoriza igual en cada llamada.
+  // La sesión se recupera al cargar la app: hasta entonces no sabemos si hay usuario.
   if (!authInitialized && !currentUser) {
     return (
       <div className="checkout-gate" role="status">

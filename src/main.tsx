@@ -2,6 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { purgeLegacyStoredSession } from './utils/authTokenStore'
+
+// Versiones anteriores guardaban tokens en localStorage: se borran para que no queden legibles por JS.
+purgeLegacyStoredSession()
 
 // Antes de que React monte nada: si esto se hace en un useEffect (dentro de la
 // app ya montada), el navegador puede restaurar el scroll de la visita

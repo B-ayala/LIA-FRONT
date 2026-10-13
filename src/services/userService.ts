@@ -11,6 +11,7 @@ interface CreateUserPayload {
   email: string;
   phone?: string;
   password: string;
+  captchaToken?: string;
 }
 
 interface User {
@@ -84,9 +85,9 @@ export const logoutUser = async (): Promise<void> => {
   await authService.logout();
 };
 
-export const resendConfirmationEmail = async (email: string): Promise<{ success: boolean; message: string }> => {
+export const resendConfirmationEmail = async (email: string, captchaToken?: string): Promise<{ success: boolean; message: string }> => {
   try {
-    await authService.resendConfirmation(email);
+    await authService.resendConfirmation(email, captchaToken);
     return {
       success: true,
       message: `Si la cuenta existe y está pendiente, te reenviamos el email a ${email}. Revisá tu bandeja de entrada (y carpeta de spam).`,
@@ -96,9 +97,9 @@ export const resendConfirmationEmail = async (email: string): Promise<{ success:
   }
 };
 
-export const requestPasswordReset = async (email: string): Promise<void> => {
+export const requestPasswordReset = async (email: string, captchaToken?: string): Promise<void> => {
   try {
-    await authService.forgotPassword(email);
+    await authService.forgotPassword(email, captchaToken);
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Error al enviar el email de recuperación');
   }
@@ -117,9 +118,9 @@ export const resetPassword = async (newPassword: string): Promise<void> => {
   }
 };
 
-export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+export const changePassword = async (currentPassword: string, newPassword: string, captchaToken?: string): Promise<void> => {
   try {
-    await authService.changePassword(currentPassword, newPassword);
+    await authService.changePassword(currentPassword, newPassword, captchaToken);
   } catch (err) {
     const code = codeOf(err);
     if (code === 'INVALID_CURRENT_PASSWORD') throw new Error('La contraseña actual es incorrecta');

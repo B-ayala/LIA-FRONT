@@ -2019,3 +2019,18 @@ ID: TC-NAV-09 — Caso: "Usar el del sitio". Tipo: happy. Esperado: borra el col
 ID: TC-NAV-10 — Caso: sin migración 2026-10-16. Tipo: failure. Esperado: el carrusel público sigue igual; guardar un color muestra el mensaje que nombra las migraciones. Resultado: no probado.
 ID: TC-NAV-11 — Caso: seguridad. Tipo: security. Esperado: un `navbar_color` que no sea `#rrggbb` se descarta al leer (y la base lo rechaza por CHECK). Resultado: ok el saneado en front (`parseNavbarColor`, solo hex de 6 dígitos); CHECK en base no probado.
 ID: TC-NAV-12 — Caso: build/tipos. Tipo: regresión. Resultado (2026-10-16): `tsc -b` y `vite build` ok; ESLint sin errores nuevos.
+
+
+## Seguridad de sesión + CSP + captcha (2026-10-11)
+
+ID: TC-SEC-01 — Caso: login por `/api/auth/login`; `localStorage`/`sessionStorage` sin tokens y `document.cookie` vacío (cookie httpOnly). Tipo: security. Esperado: sesión iniciada, sin credenciales legibles por JS. Resultado: ok (Playwright, preview con CSP)
+ID: TC-SEC-02 — Caso: recargar con sesión iniciada. Tipo: happy. Esperado: `POST /api/auth/refresh` 200 y el usuario sigue logueado. Resultado: ok
+ID: TC-SEC-03 — Caso: logout y luego refresh. Tipo: security. Esperado: logout 200, refresh 401. Resultado: ok
+ID: TC-SEC-04 — Caso: contraseña incorrecta. Tipo: failure. Esperado: 401 "Credenciales inválidas" y mensaje "Email o contraseña incorrectos". Resultado: ok (API); UI no probada
+ID: TC-SEC-05 — Caso: `POST /api/auth/refresh` con `Origin` ajeno. Tipo: security. Esperado: 403. Resultado: ok
+ID: TC-SEC-06 — Caso: recargar `/admin` con sesión admin. Tipo: edge. Esperado: loader y luego panel, sin rebotar al Home. Resultado: no probado
+ID: TC-SEC-07 — Caso: usuario con claves viejas en localStorage (`db_*`, `sb-*-auth-token`). Tipo: edge. Esperado: se borran al cargar la app. Resultado: no probado
+ID: TC-SEC-08 — Caso: cambiar contraseña logueado (actual correcta / incorrecta). Tipo: happy/failure. Esperado: ok fuerza re-login; incorrecta muestra "La contraseña actual es incorrecta". Resultado: no probado
+ID: TC-SEC-09 — Caso: Home, mapa del footer y panel Cloudinary con la CSP de `vercel.json`. Tipo: security. Esperado: sin violaciones de CSP en consola. Resultado: Home y mapa ok; Cloudinary, Checkout (georef) y Mercado Pago no probados
+ID: TC-SEC-10 — Caso: captcha con `VITE_TURNSTILE_SITE_KEY` definida y CAPTCHA activo en Supabase (login, registro, recuperación, reenvío, cambio de contraseña). Tipo: security. Esperado: widget visible y envío bloqueado hasta resolverlo. Resultado: no probado (falta crear el widget en Cloudflare)
+ID: TC-SEC-11 — DEPRECATED (se eliminó el login con Google).

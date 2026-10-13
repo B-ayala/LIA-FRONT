@@ -7,6 +7,9 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ### Security
 - `npm audit fix`: `react-router`/`react-router-dom` (open redirect, XSS, DoS), `ws` y `yaml` actualizados. 0 vulnerabilidades en dependencias de producción.
+- Auth: la sesión ya no se guarda en `localStorage`. El login pasa por `POST /api/auth/login`: el refresh token queda en cookie httpOnly y el access token solo en memoria (se recupera al recargar con `/api/auth/refresh`). Se purgan las claves viejas (`db_*`, `sb-*-auth-token`).
+- `vercel.json`: Content-Security-Policy, HSTS y Cross-Origin-Opener-Policy.
+- Captcha Cloudflare Turnstile opcional (`VITE_TURNSTILE_SITE_KEY`) en login, registro, recuperación, reenvío de confirmación y cambio de contraseña.
 
 ### Added
 - Mis compras: la transferencia en la que el usuario respondió "Sí, ya envié el comprobante" aparece de inmediato con el aviso "Verificando tu comprobante" y pasa a "Pagado" (con seguimiento de despacho), "Pedido cancelado" o "Reserva vencida" cuando el admin la resuelve (`PaymentStatusNotice`). Requiere el cambio de `GET /orders/user` del backend.
@@ -24,6 +27,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Admin Productos: "Guardar producto" pasa a "Ver vista previa" (`/admin/products/preview`): muestra el borrador 1:1 como la tienda (Vista Card con `ProductGrid`/`ProductCard` y Vista Detalle con `ProductDetailView`) y el producto se guarda recién con "Confirmar"; "Editar producto" vuelve al modal con el borrador.
 
 ### Changed
+- Cambio de contraseña: la contraseña actual se valida por el backend (con bloqueo por fuerza bruta).
+- Se eliminó el login con Google (botón, `signInWithGoogle` y la adopción de su sesión): solo se inicia sesión con email y contraseña.
 - Checkout: al volver de Mercado Pago sin pasar por el resultado, la reserva anterior se libera con `POST /orders/mp-cancel` (un request por compra) y se ESPERA la respuesta: mientras tanto el pago queda bloqueado ("Liberando tu reserva anterior…", tope de 15 s con "Reintentar"); `held` avisa "Tu pago todavía se está procesando" y bloquea el pago; `paid` muestra "¡Tu pago ya fue acreditado!" con acceso a Mis compras y saca del carrito solo lo comprado. El aviso de plazo vencido solo aparece si la reserva realmente se liberó. La compra guardada incluye el e-mail del dueño y no se libera con otra cuenta.
 - `/checkout/result`: muestra "Confirmando tu pago…" mientras corre `mp-confirm`; si falla, "Recibimos tu pago y lo estamos verificando"; `pending` informa el pago en proceso con acceso a Mis compras; en un pago fallido espera el resultado de liberar la reserva (con "Reintentar" si falla). Solo se quitan del carrito los productos de esa compra.
 - Checkout: el aviso previo a Mercado Pago atrapa el foco, arranca en "Volver" y dice "se liberará el producto si no se acredita el pago".

@@ -5,11 +5,11 @@ import {
   getSiteContent,
   normalizeWelcomeModalInfo,
 } from '../../../services/siteContentService';
-import { WELCOME_ANNOUNCEMENT_SESSION_KEY } from '../../../utils/tokenStorage';
+import { WELCOME_ANNOUNCEMENT_SESSION_KEY } from '../../../utils/authTokenStore';
 import './WelcomeAnnouncementModal.css';
 
 // Se muestra una vez por sesión (no en cada navegación/refresh). El flag vive en
-// sessionStorage y tokenStorage.clear() lo resetea en cada logout, así que un
+// sessionStorage y authTokenStore.clear() lo resetea en cada logout, así que un
 // logout + nuevo login cuenta como sesión nueva y puede volver a mostrarse.
 const SESSION_FLAG = WELCOME_ANNOUNCEMENT_SESSION_KEY;
 

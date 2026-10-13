@@ -2,11 +2,11 @@
  * Wrapper de fetch con interceptor de auth.
  *
  * Comportamiento:
- *  - Adjunta automáticamente el access token (Bearer) tomándolo de la sesión de
- *    Supabase, que se auto-refresca. `tokenStorage` se mantiene sincronizado para
- *    el estado de login de la UI (authStore).
- *  - Si una request protegida devuelve 401, refresca la sesión vía Supabase y
- *    reintenta una sola vez. Si el refresh falla, limpia sesión y emite `auth:logout`.
+ *  - Adjunta automáticamente el access token (Bearer) que vive solo en memoria
+ *    (authTokenStore) y lo renueva antes de que venza.
+ *  - Si una request protegida devuelve 401, renueva la sesión con la cookie httpOnly
+ *    del refresh token (`/api/auth/refresh`) y reintenta una sola vez. Si la sesión
+ *    venció de verdad, limpia sesión y emite `auth:logout`.
  *  - Cola de refresh: si llegan N requests con token expirado en paralelo,
  *    todas esperan al mismo refresh en lugar de dispararlo N veces.
  *  - Un 503 `AUTH_UNAVAILABLE` (Supabase/BD lentos) NO es un token inválido: no se
@@ -15,19 +15,14 @@
  *  - Mantiene el header `ngrok-skip-browser-warning` para túneles de ngrok.
  */
 
-import { supabase } from '../config/supabaseClient';
-import { tokenStorage } from './tokenStorage';
-
-const LOCALHOST_API = 'http://localhost:3000/api';
-const configuredBase: string = import.meta.env.VITE_API_URL_LOCAL ?? LOCALHOST_API;
-
-// Si falta la variable en un deploy, el front apuntaría a localhost del navegador del usuario sin avisar.
-if (import.meta.env.PROD && !import.meta.env.VITE_API_URL_LOCAL) {
-  console.error('VITE_API_URL_LOCAL no está definida: las llamadas al backend irán a localhost.');
-}
+import { API_BASE_URL, LOCALHOST_API } from '../config/apiBaseUrl';
+import { authTokenStore } from './authTokenStore';
+import { getValidAccessToken, refreshSession } from '../services/sessionRefresh';
 
 /** URL base del backend propio. Única fuente de verdad para services y componentes. */
-export const API_BASE_URL = configuredBase;
+export { API_BASE_URL };
+
+const configuredBase = API_BASE_URL;
 
 export const AUTH_LOGOUT_EVENT = 'auth:logout';
 
@@ -43,57 +38,19 @@ export const authHeaders = (token: string): Record<string, string> => ({
 });
 
 const dispatchLogout = (reason: string) => {
-  tokenStorage.clear();
+  authTokenStore.clear();
   try {
     window.dispatchEvent(new CustomEvent(AUTH_LOGOUT_EVENT, { detail: { reason } }));
   } catch { /* noop */ }
 };
 
-// Sincroniza tokenStorage con la sesión de Supabase (para el estado de login de la UI).
-const syncSessionToStorage = (session: { access_token: string; refresh_token: string } | null) => {
-  if (session) tokenStorage.setTokens(session.access_token, session.refresh_token);
-};
-
-// Devuelve un access token fresco desde Supabase (auto-refresca si expiró).
-// Fallback a tokenStorage por si la sesión de Supabase no está disponible.
-const getFreshAccessToken = async (): Promise<string | null> => {
-  try {
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.access_token) {
-      syncSessionToStorage(data.session);
-      return data.session.access_token;
-    }
-  } catch {
-    /* fall through al fallback */
-  }
-  return tokenStorage.getAccessToken();
-};
-
-// ─── Cola de refresh (evita refresh múltiples concurrentes) ───
-let refreshInflight: Promise<string | null> | null = null;
-
-const performRefresh = async (): Promise<string | null> => {
-  try {
-    const { data, error } = await supabase.auth.refreshSession();
-    if (error || !data.session) {
-      dispatchLogout('refresh_failed');
-      return null;
-    }
-    syncSessionToStorage(data.session);
-    return data.session.access_token;
-  } catch {
-    // Error de red durante refresh: no limpiamos sesión, dejamos que reintente más tarde
-    return null;
-  }
-};
-
-const refreshAccessToken = (): Promise<string | null> => {
-  if (!refreshInflight) {
-    refreshInflight = performRefresh().finally(() => {
-      refreshInflight = null;
-    });
-  }
-  return refreshInflight;
+// Renueva vía backend (cookie httpOnly). Solo una sesión realmente vencida cierra
+// la sesión; un backend lento o la red caída dejan al usuario como está.
+const refreshAccessToken = async (): Promise<string | null> => {
+  const result = await refreshSession();
+  if (result.status === 'ok') return result.accessToken;
+  if (result.status === 'expired') dispatchLogout('refresh_failed');
+  return null;
 };
 
 // ─── 503 AUTH_UNAVAILABLE ───
@@ -164,7 +121,7 @@ export const apiFetch = async (input: RequestInfo | URL, init?: ApiFetchOptions)
     return fetch(input, { ...init, headers });
   };
 
-  const accessToken = init?.skipAuth ? null : await getFreshAccessToken();
+  const accessToken = init?.skipAuth ? null : await getValidAccessToken();
 
   let response: Response;
   try {
@@ -189,7 +146,7 @@ export const apiFetch = async (input: RequestInfo | URL, init?: ApiFetchOptions)
     return retryIfUnavailable(response, () => doFetch(accessToken));
   }
 
-  // Token rechazado: refrescar vía Supabase (con cola) y reintentar 1 vez.
+  // Token rechazado: refrescar vía backend (con cola) y reintentar 1 vez.
   const newToken = await refreshAccessToken();
   if (!newToken) return response;
 

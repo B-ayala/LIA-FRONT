@@ -8,6 +8,8 @@ import { useAuthStore } from '../../../../store/authStore';
 import { changePassword } from '../../../../services/userService';
 import { validatePassword, validatePasswordMatch } from '../../../../utils/validation';
 import { extractErrorMessage } from '../../../../utils/errorMessage';
+import TurnstileWidget from '../../../../components/common/Turnstile/TurnstileWidget';
+import { useCaptcha, CAPTCHA_REQUIRED_MESSAGE } from '../../../../hooks/useCaptcha';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ interface ChangePasswordModalProps {
 
 const ChangePasswordModalContent = ({ isOpen, onClose }: ChangePasswordModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const captcha = useCaptcha();
   const [feedbackMessage, setFeedbackMessage] = useState<{
     type: 'success' | 'error';
     text: string;
@@ -55,10 +58,15 @@ const ChangePasswordModalContent = ({ isOpen, onClose }: ChangePasswordModalProp
       return;
     }
 
+    if (captcha.isCaptchaMissing) {
+      setFeedbackMessage({ type: 'error', text: CAPTCHA_REQUIRED_MESSAGE });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await changePassword(currentPassword, newPassword);
-      // changePassword() ya invalida la sesión (signOut + tokenStorage.clear) para forzar
+      await changePassword(currentPassword, newPassword, captcha.captchaToken);
+      // changePassword() ya invalida la sesión (logout + authTokenStore.clear) para forzar
       // re-login con la contraseña nueva; el store de auth no se entera solo, así que el
       // header quedaría mostrando al usuario logueado hasta un refresh sin este reset.
       useAuthStore.setState({ isAuthenticated: false, currentUser: null });
@@ -75,6 +83,7 @@ const ChangePasswordModalContent = ({ isOpen, onClose }: ChangePasswordModalProp
         text: extractErrorMessage(error, 'Error al cambiar la contraseña'),
       });
     } finally {
+      captcha.resetCaptcha();
       setIsLoading(false);
     }
   };
@@ -142,6 +151,8 @@ const ChangePasswordModalContent = ({ isOpen, onClose }: ChangePasswordModalProp
             '& .MuiInputLabel-root': { fontSize: '0.95rem' },
           }}
         />
+
+        <TurnstileWidget {...captcha.widgetProps} />
 
         {/* Buttons */}
         <div

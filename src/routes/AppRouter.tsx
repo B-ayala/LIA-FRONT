@@ -24,8 +24,7 @@ import Home from '../users/pages/home/Home';
 import ProductDetail from '../users/pages/producDetail/ProductDetail';
 
 // Redirige a /admin si hay una sesión de admin activa.
-// Usa isAuthenticated que ya está hidratado sincrónicamente desde localStorage,
-// así que el redirect es instantáneo sin esperar initializeAuth.
+// isAuthenticated se completa cuando initializeAuth recupera la sesión (cookie httpOnly).
 const AdminRedirect = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   if (isAuthenticated) return <Navigate to="/admin" replace />;

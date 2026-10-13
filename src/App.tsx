@@ -22,7 +22,6 @@ const AppContent = () => {
   const isAdminSession = useAuthStore((state) => state.isAuthenticated);
   const showPublicChrome = !isAdmin && !isAdminSession;
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
-  const setUserFromStorage = useAuthStore((state) => state.setUserFromStorage);
   const logout = useAuthStore((state) => state.logout);
   const { completeTask, isInitialLoading } = useInitialLoad();
 
@@ -30,15 +29,11 @@ const AppContent = () => {
   useCartTabSync();
 
   useEffect(() => {
-    // Hidratación rápida y sincrónica desde localStorage: ya deja el estado de
-    // auth correcto para el primer render (login vs. avatar, redirect de admin).
-    setUserFromStorage();
+    // La sesión vive solo en memoria: se recupera en segundo plano con la cookie
+    // httpOnly del backend. No bloquea el splash (un backend lento no debe frenar
+    // el Home público); las rutas que dependen de la sesión esperan `authInitialized`.
     completeTask('auth');
 
-    // Validación contra backend en segundo plano (apiFetch refresca el access
-    // token si hace falta). No bloquea el splash: es una revalidación, no una
-    // condición para mostrar el Home — si falla o tarda, AUTH_LOGOUT_EVENT ya
-    // se encarga de expulsar al usuario cuando corresponda.
     void initializeAuth();
 
     // Cuando apiFetch detecta token inválido o refresh fallido, dispara este evento.
@@ -47,7 +42,7 @@ const AppContent = () => {
     };
     window.addEventListener(AUTH_LOGOUT_EVENT, onForcedLogout);
     return () => window.removeEventListener(AUTH_LOGOUT_EVENT, onForcedLogout);
-  }, [completeTask, initializeAuth, setUserFromStorage, logout]);
+  }, [completeTask, initializeAuth, logout]);
 
   useEffect(() => {
     if (isAdmin || isAuthRoute) {

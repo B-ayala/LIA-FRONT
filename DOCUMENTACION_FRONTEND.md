@@ -87,7 +87,7 @@ src/
 │
 ├── utils/                      # utilidades transversales
 │   ├── apiFetch.ts             # wrapper fetch: Bearer token + refresh automático + cola + fallback ngrok
-│   ├── tokenStorage.ts         # tokens/usuario en localStorage (access/refresh/user)
+│   ├── authTokenStore.ts       # sesión SOLO en memoria (access token + usuario) y purga de claves viejas de localStorage
 │   ├── auth.ts                 # helpers de auth
 │   ├── theme.ts                # tema MUI
 │   ├── SeasonThemeProvider.tsx # tema estacional dinámico
@@ -199,10 +199,9 @@ va por **Supabase directo** (lectura pública) o por la **API Express** (escritu
 - **`authStore`** — sesión. Distingue dos flags:
   - `currentUser`: cualquier usuario autenticado (admin o user).
   - `isAuthenticated`: **solo admin validado** (es el gate de `AdminProtectedRoute`).
-  - Hidrata sincrónicamente desde `localStorage` en el primer render (evita que `/admin` + F5
-    redirija por un render temprano con sesión vacía). `initializeAuth()` valida contra
-    `supabase.auth.getSession()`; ante error de red transitorio mantiene el estado hidratado en
-    vez de expulsar al admin.
+  - Arranca vacío: la sesión vive solo en memoria. `initializeAuth()` la recupera con la cookie
+    httpOnly del refresh token (`POST /api/auth/refresh`) y marca `authInitialized`;
+    `AdminProtectedRoute` y el checkout esperan ese flag antes de decidir.
 - **`cartStore`** — carrito persistido (`zustand/persist`, key `damiana-bella-cart`). Maneja
   `items[]` (carrito) y un `item` de checkout (puede venir del carrito o de compra directa).
   Toda mutación pasa por sanitización: clamp de cantidad a stock, validación de variantes por
@@ -247,27 +246,33 @@ guards quedan **eager** (son wrappers siempre presentes).
 
 ## 6. Flujos principales
 
-### 6.1 Autenticación (Supabase Auth desde el cliente)
-La sesión la maneja **Supabase Auth**; el backend Express no expone endpoints `/auth/*`, solo
-**verifica** el access token que se le adjunta. Todo pasa por `services/authService.ts`.
+### 6.1 Autenticación (backend `/api/auth/*` + Supabase Auth)
+Login, refresh y logout pasan por el backend Express; el **refresh token vive en una cookie
+httpOnly** (JS nunca lo lee) y el **access token solo en memoria** ([authTokenStore.ts](src/utils/authTokenStore.ts)).
+Nada de tokens en `localStorage`/`sessionStorage`. Todo pasa por `services/authService.ts`.
 
-1. **Login** (`AuthModal` → `authStore.login` → `authService.login`): `supabase.auth.signInWithPassword`.
-   El perfil y el rol se leen de `profiles`; `tokenStorage` (localStorage) queda sincronizado
-   solo para el estado de login de la UI.
-2. **Sesión persistente**: `authStore` hidrata sincrónicamente desde localStorage en el primer
-   render (evita que `/admin` + F5 rebote) y luego confirma contra `supabase.auth.getSession()`.
-   `onAuthStateChange` mantiene el store al día.
-3. **Refresh automático**: lo hace el SDK de Supabase. [apiFetch.ts](src/utils/apiFetch.ts) toma
-   el token de la sesión en cada request; ante un `401` refresca vía Supabase y **reintenta una
-   vez**, con cola para no disparar N refreshes en paralelo. Si el refresh falla → limpia sesión
-   y emite el evento global `auth:logout`.
+1. **Login** (`AuthModal` → `authStore.login` → `authService.login`): `POST /api/auth/login` con
+   `credentials: 'include'`. El backend aplica rate limit y bloqueo por fuerza bruta, valida contra
+   Supabase y responde usuario + access token; setea la cookie del refresh token.
+2. **Sesión al recargar**: `authStore.initializeAuth` → `POST /api/auth/refresh` (cookie) devuelve un
+   access token nuevo. Sin cookie válida, la app arranca sin sesión.
+3. **Refresh automático**: [sessionRefresh.ts](src/services/sessionRefresh.ts) renueva 60 s antes del
+   vencimiento, con una sola request en vuelo. `apiFetch` y el cliente de Supabase
+   ([supabaseClient.ts](src/config/supabaseClient.ts), que inyecta el token en las consultas `/rest/v1/`
+   para que RLS vea al usuario) piden el token a ese módulo. Ante un `401` `apiFetch` renueva y
+   **reintenta una vez**; si la sesión venció de verdad → limpia y emite `auth:logout`. Un backend
+   caído o lento no cierra la sesión.
 4. **Registro**: `supabase.auth.signUp` con confirmación de email; el link vuelve a
    `EmailConfirmation.tsx`, que valida con `supabase.auth.verifyOtp`. Reenvío con
    `supabase.auth.resend`.
 5. **Recuperación**: `supabase.auth.resetPasswordForEmail` → link → `ResetPassword.tsx` →
    `supabase.auth.updateUser`; al terminar se cierra sesión y se fuerza re-login.
-6. **Cambio de password** (logueado): re-autentica con la password actual antes de
-   `updateUser`, y luego `signOut`.
+6. **Cambio de password** (logueado): re-autentica con la password actual por `/api/auth/login`
+   (con su bloqueo por fuerza bruta), cambia la clave con `PUT /auth/v1/user` y cierra sesión.
+7. **Captcha (Cloudflare Turnstile)**: si `VITE_TURNSTILE_SITE_KEY` está definida, login, registro,
+   recuperación, reenvío de confirmación y cambio de password muestran el widget y mandan el
+   `captchaToken` (el backend lo reenvía a Supabase, que lo valida si CAPTCHA está activo en su panel).
+   Sin la variable queda apagado.
 
 > El backend usa estos tokens en `authMiddleware` (los verifica contra Supabase). Detalle en
 > `../../BACK/lia-store/DOCUMENTACION_BACKEND.md` §6.
@@ -513,15 +518,14 @@ Tablas que el frontend toca directamente con la `anon key`:
 ## 10. Patrones y buenas prácticas detectadas
 
 - **Frontera de datos en `services/`**: los componentes no hablan directo con Supabase/fetch.
-- **`apiFetch` centraliza auth**: Bearer token tomado de la sesión de Supabase, refresh con cola
-  anti-stampede, reintento único y evento global de logout forzado.
-- **Rotación de tokens delegada a Supabase Auth**: el SDK refresca solo; `tokenStorage` es
-  espejo para la UI, no la fuente de verdad (mitigación de XSS documentada ahí, con plan de
-  migración a httpOnly cookie si se endurece).
+- **`apiFetch` centraliza auth**: Bearer token en memoria, refresh con cola anti-stampede vía
+  cookie httpOnly, reintento único y evento global de logout forzado.
+- **Sin tokens en el almacenamiento del navegador**: un XSS no puede leer la sesión. La CSP
+  (en `vercel.json`) es la segunda capa.
 - **Sanitización del carrito**: clamp a stock + validación de variantes en cada mutación y
   al rehidratar desde localStorage (no confía en el estado persistido).
 - **Code-splitting por ruta y por vendor**: el bundle público no arrastra el admin.
-- **Hidratación sincrónica de auth**: evita flicker/redirect en `/admin` al refrescar.
+- **`authInitialized`**: las rutas que dependen de la sesión esperan a que se recupere, para no rebotar en `/admin` al refrescar.
 - **Tokens de diseño centralizados**: `COLOR_PALETTE`/`COLOR_MAP` + tema MUI; sin hex sueltos.
 - **Estados de UI explícitos**: providers de carga inicial y de navegación, `Suspense` fallback.
 - **Errores en lenguaje humano**: `errorMessage.ts` y normalizadores en los services.
