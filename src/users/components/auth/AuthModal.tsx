@@ -916,20 +916,6 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               O continuar con
             </Box>
           </Box>
-
-          {/* Google button */}
-          <Button
-            type="button"
-            variant="outlined"
-            fullWidth
-            disabled={isGoogleLoading}
-            onClick={handleGoogleLogin}
-            startIcon={<FcGoogle style={{ fontSize: '1.25rem', flexShrink: 0 }} />}
-            endIcon={<FiArrowRight size={16} />}
-            sx={googleBtnSx}
-          >
-            {isGoogleLoading ? 'Conectando con Google...' : 'Continuar con Google'}
-          </Button>
           </Box>
         </Box>
       </Box>
