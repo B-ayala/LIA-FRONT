@@ -37,9 +37,9 @@ async function fetchOnce(deviceType: DeviceType): Promise<CarouselData> {
 
   const items = images.flatMap((image): CarouselItem[] => {
     if (image.kind === 'banner') {
-      return image.design ? [{ kind: 'banner', design: image.design }] : [];
+      return image.design ? [{ kind: 'banner', design: image.design, navbarColor: image.navbarColor }] : [];
     }
-    return [{ kind: 'image', url: image.url }];
+    return [{ kind: 'image', url: image.url, navbarColor: image.navbarColor }];
   });
 
   return { items, layout: layout ?? 'collage' };

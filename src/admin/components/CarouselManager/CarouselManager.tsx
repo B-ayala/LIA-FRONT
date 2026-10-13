@@ -20,6 +20,7 @@ import CarouselListItem, { type SlidePosition } from './CarouselListItem';
 import './CarouselManager.css';
 
 const BannerEditor = lazy(() => import('../BannerEditor/BannerEditor'));
+const NavbarColorDialog = lazy(() => import('../NavbarColor/NavbarColorDialog'));
 const ConfirmationModal = lazy(() => import('../../../components/common/Modal/ConfirmationModal'));
 
 type DeviceView = 'desktop' | 'mobile';
@@ -27,7 +28,7 @@ type EditorState = { mode: 'new' } | { mode: 'edit'; image: CarouselImage } | nu
 
 const MISSING_MIGRATION_CODE = 'PGRST204';
 const MISSING_MIGRATION_MESSAGE =
-    'La base todavía no tiene la migración de banners (2026-10-15_add_carousel_banner_slides.sql). Aplicala en Supabase y reintentá.';
+    'La base todavía no tiene las migraciones del carrusel (2026-10-15_add_carousel_banner_slides.sql y 2026-10-16_add_navbar_color_to_carousel_images.sql). Aplicalas en Supabase y reintentá.';
 
 const isMissingColumnError = (error: unknown): boolean =>
     typeof error === 'object' && error !== null && (error as { code?: string }).code === MISSING_MIGRATION_CODE;
@@ -47,6 +48,7 @@ const CarouselManager = () => {
     const [savingLayout, setSavingLayout] = useState(false);
     const [editor, setEditor] = useState<EditorState>(null);
     const [bannerToDelete, setBannerToDelete] = useState<CarouselImage | null>(null);
+    const [navbarTarget, setNavbarTarget] = useState<CarouselImage | null>(null);
 
     useEffect(() => {
         fetchAllCarouselImages()
@@ -120,21 +122,32 @@ const CarouselManager = () => {
         }
     };
 
-    const handleSaveBanner = async (design: BannerDesign) => {
+    const handleSaveBanner = async (design: BannerDesign, navbarColor: string | null) => {
         if (!editor) return;
         try {
             if (editor.mode === 'edit') {
-                await updateCarouselImageDb(editor.image.id, { design });
-                updateCarouselImage(editor.image.id, { design });
+                await updateCarouselImageDb(editor.image.id, { design, navbar_color: navbarColor });
+                updateCarouselImage(editor.image.id, { design, navbarColor });
             } else {
                 const nextOrder = Math.max(0, ...filteredImages.map(img => img.order)) + 1;
-                const created = await insertCarouselBanner(design, nextOrder, viewMode);
+                const created = await insertCarouselBanner(design, nextOrder, viewMode, navbarColor);
                 setCarouselImages([...carouselImages, created]);
             }
         } catch (saveError) {
             throw toBannerSaveError(saveError);
         }
         setEditor(null);
+    };
+
+    const handleSaveNavbarColor = async (color: string | null) => {
+        if (!navbarTarget) return;
+        try {
+            await updateCarouselImageDb(navbarTarget.id, { navbar_color: color });
+        } catch (saveError) {
+            throw toBannerSaveError(saveError);
+        }
+        updateCarouselImage(navbarTarget.id, { navbarColor: color });
+        setNavbarTarget(null);
     };
 
     const handleReorder = async (newOrder: CarouselImage[]) => {
@@ -306,6 +319,7 @@ const CarouselManager = () => {
                                 onDelete={handleDelete}
                                 onCopy={handleCopy}
                                 onEditBanner={(image) => setEditor({ mode: 'edit', image })}
+                                onEditNavbar={setNavbarTarget}
                             />
                         ))}
                     </Reorder.Group>
@@ -326,6 +340,7 @@ const CarouselManager = () => {
                         device={viewMode}
                         isNew={editor.mode === 'new'}
                         initialDesign={editor.mode === 'edit' && editor.image.design ? editor.image.design : createStarterDesign(viewMode)}
+                        initialNavbarColor={editor.mode === 'edit' ? editor.image.navbarColor : null}
                         onSave={handleSaveBanner}
                         onClose={() => setEditor(null)}
                     />
@@ -333,6 +348,15 @@ const CarouselManager = () => {
             )}
 
             <Suspense fallback={null}>
+                {navbarTarget && (
+                    <NavbarColorDialog
+                        key={navbarTarget.id}
+                        image={navbarTarget}
+                        isCollageSlide={navbarTarget.kind === 'image' && currentLayout === 'collage'}
+                        onSave={handleSaveNavbarColor}
+                        onClose={() => setNavbarTarget(null)}
+                    />
+                )}
                 {bannerToDelete && (
                     <ConfirmationModal
                         isOpen

@@ -2002,3 +2002,20 @@ ID: TC-BAN-13 — Caso: autoplay/flechas/puntos con un banner en el medio y prec
 ID: TC-BAN-14 — Caso: eliminar un banner. Tipo: failure. Esperado: pide confirmación; "Cancelar" no borra. Resultado: no probado.
 ID: TC-BAN-15 — Caso: sin migración aplicada. Tipo: failure. Esperado: el carrusel público y la lista siguen mostrando fotos; guardar un banner muestra el mensaje de migración. Resultado: no probado.
 ID: TC-BAN-16 — Caso: build/lint/tipos. Tipo: regresión. Resultado (2026-10-15): `tsc -b` y `vite build` ok (editor en chunk propio de ~18 kB); ESLint de los archivos nuevos/tocados sin errores; persisten 2 errores preexistentes en `MyPurchasesModal.tsx` y `NavBar.tsx`.
+
+## Casos — Color del menú por slide (2026-10-16)
+
+Verificado con un arnés temporal (Vite + Chromium headless; Supabase y las imágenes simulados con `page.route`; el arnés se borró): Home con `NavBar` + `Carousel` reales y dos slides (foto oscura con menú blanco, banner claro con menú gris oscuro), el diálogo de color y el editor de banner. NO probado: base real (migración sin aplicar), fotos reales de Cloudinary (CORS del muestreo), Safari iOS / Android.
+
+ID: TC-NAV-01 — Caso: el menú cambia de color con el slide. Tipo: happy. Pasos: dos slides con colores distintos; esperar el pase o tocar la flecha. Esperado: los links/íconos del menú toman el color del slide visible, con transición suave. Resultado: ok (arnés: blanco en slide 1, rgb(51,51,51) en slide 2).
+ID: TC-NAV-02 — Caso: slide sin color propio. Tipo: edge. Esperado: usa el color de Config. del sitio (comportamiento anterior). Resultado: no probado.
+ID: TC-NAV-03 — Caso: scroll con el menú ya sólido. Tipo: edge. Esperado: el menú sólido sigue con su color por defecto (no queda texto blanco sobre fondo blanco). Resultado: no probado (la regla `isAtTop && color` no se modificó).
+ID: TC-NAV-04 — Caso: diálogo "Menú" de una foto. Tipo: happy. Esperado: vista previa con el menú sobre la foto, "Elegir el más legible" elige blanco/oscuro según la franja superior y muestra la razón de contraste; "Guardar color" persiste. Resultado: ok con imagen simulada (16,9:1, guardado #ffffff); con foto real de Cloudinary no probado.
+ID: TC-NAV-05 — Caso: imagen que no se puede analizar (CORS/red). Tipo: failure. Esperado: aviso "No pudimos analizar la imagen", el auto-elegir queda deshabilitado, se puede elegir a mano. Resultado: no probado.
+ID: TC-NAV-06 — Caso: color en el editor de banner. Tipo: happy. Esperado: la maqueta del menú se ve sobre el lienzo, "Elegir el más legible" usa el fondo del banner, y "Guardar banner" envía el color. Resultado: ok (arnés: #333333 sobre fondo hueso, 11,0:1).
+ID: TC-NAV-07 — Caso: contraste malo. Tipo: edge. Pasos: elegir blanco sobre un banner blanco. Esperado: aviso en rojo "Casi no se lee". Resultado: no probado (lógica de niveles 4,5 / 3).
+ID: TC-NAV-08 — Caso: collage. Tipo: edge. Esperado: el botón "Menú" aparece solo en la primera foto de cada slide, con aviso de que vale la primera. Resultado: no probado.
+ID: TC-NAV-09 — Caso: "Usar el del sitio". Tipo: happy. Esperado: borra el color propio (NULL). Resultado: no probado.
+ID: TC-NAV-10 — Caso: sin migración 2026-10-16. Tipo: failure. Esperado: el carrusel público sigue igual; guardar un color muestra el mensaje que nombra las migraciones. Resultado: no probado.
+ID: TC-NAV-11 — Caso: seguridad. Tipo: security. Esperado: un `navbar_color` que no sea `#rrggbb` se descarta al leer (y la base lo rechaza por CHECK). Resultado: ok el saneado en front (`parseNavbarColor`, solo hex de 6 dígitos); CHECK en base no probado.
+ID: TC-NAV-12 — Caso: build/tipos. Tipo: regresión. Resultado (2026-10-16): `tsc -b` y `vite build` ok; ESLint sin errores nuevos.

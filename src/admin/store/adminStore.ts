@@ -49,6 +49,7 @@ export interface CarouselImage {
   deviceType: 'desktop' | 'mobile';
   kind: 'image' | 'banner';
   design: BannerDesign | null;
+  navbarColor: string | null;
 }
 
 export interface AboutInfo {
@@ -113,7 +114,7 @@ export const useAdminStore = create<AdminState>((set) => ({
   },
   setCarouselImages: (images) => set({ carouselImages: images }),
   addCarouselImage: (url, deviceType = 'desktop') => set((state) => ({
-    carouselImages: [...state.carouselImages, { id: Date.now().toString(), url, order: state.carouselImages.length + 1, isActive: true, deviceType, kind: 'image', design: null }]
+    carouselImages: [...state.carouselImages, { id: Date.now().toString(), url, order: state.carouselImages.length + 1, isActive: true, deviceType, kind: 'image', design: null, navbarColor: null }]
   })),
   updateCarouselImage: (id, data) => set((state) => ({
     carouselImages: state.carouselImages.map(img => img.id === id ? { ...img, ...data } : img)

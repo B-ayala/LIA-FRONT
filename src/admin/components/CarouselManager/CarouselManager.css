@@ -481,3 +481,41 @@
     justify-content: center;
     background: rgba(241, 245, 249, 0.9);
 }
+
+/* Acceso al color del menú de cada slide: el punto muestra el color vigente. */
+.carousel-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 36px;
+    padding: 0 0.6rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.carousel-nav-btn:hover {
+    border-color: #000;
+}
+
+.carousel-nav-btn:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.carousel-nav-btn__dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(15, 23, 42, 0.35);
+}
+
+/* Sin color propio: se usa el del sitio. */
+.carousel-nav-btn__dot.is-default {
+    border-style: dashed;
+    background: transparent;
+}

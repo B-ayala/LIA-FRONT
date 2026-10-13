@@ -1,0 +1,329 @@
+/* Color del menú por slide: control, maqueta del navbar y diálogo. Mobile first. */
+
+/* ── Maqueta del navbar sobre el slide ────────────────────────────────── */
+
+.nc-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #c4c0c0;
+  container-type: inline-size;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.18);
+}
+
+.nc-preview--desktop {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+}
+
+.nc-preview--mobile {
+  aspect-ratio: 1 / 2;
+  width: min(100%, 220px);
+  margin: 0 auto;
+}
+
+.nc-preview__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nc-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 11%;
+  min-height: 3.2cqw;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  padding: 0 4cqw;
+  font-size: 1.5cqw;
+  font-weight: 600;
+  pointer-events: none;
+  transition: color 150ms ease;
+}
+
+.nc-bar__logo {
+  padding: 0.6cqw 1.4cqw;
+  border-radius: 0.8cqw;
+  background: #fff;
+  color: #111;
+  font-family: Georgia, serif;
+  font-weight: 700;
+  font-size: 2cqw;
+}
+
+.nc-bar__links,
+.nc-bar__icons {
+  display: flex;
+  align-items: center;
+  gap: 2.4cqw;
+}
+
+.nc-bar__links {
+  flex: 1;
+  margin-left: 3cqw;
+}
+
+.nc-bar__icon {
+  width: 1.8cqw;
+  height: 1.8cqw;
+  border: 0.25cqw solid currentColor;
+  border-radius: 50%;
+}
+
+.nc-bar__icon--cart {
+  border-radius: 0.4cqw;
+}
+
+.nc-bar__pill {
+  padding: 0.8cqw 1.8cqw;
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+}
+
+@container (max-width: 300px) {
+  .nc-bar__links,
+  .nc-bar__pill {
+    display: none;
+  }
+}
+
+/* ── Control ──────────────────────────────────────────────────────────── */
+
+.nc-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.nc-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.nc-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nc-swatch {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.nc-swatch.is-active {
+  border-color: #000;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+}
+
+.nc-swatch--custom {
+  display: inline-flex;
+  overflow: hidden;
+  background: conic-gradient(#f87171, #fbbf24, #4ade80, #38bdf8, #a78bfa, #f87171);
+}
+
+.nc-swatch--custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.nc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nc-btn,
+.nc-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.nc-btn:hover:not(:disabled),
+.nc-icon-btn:hover:not(:disabled) {
+  border-color: #000;
+}
+
+.nc-btn:disabled,
+.nc-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.nc-btn--primary {
+  background: #000;
+  border-color: #000;
+  color: #fff;
+  font-weight: 600;
+}
+
+.nc-icon-btn {
+  width: 44px;
+  padding: 0;
+  border-color: transparent;
+}
+
+.nc-btn:focus-visible,
+.nc-icon-btn:focus-visible,
+.nc-swatch:focus-visible,
+.nc-swatch--custom:focus-within {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.nc-note {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.nc-note--good { color: #15803d; }
+.nc-note--fair { color: #b45309; }
+.nc-note--poor { color: #b91c1c; font-weight: 600; }
+
+.nc-error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #b91c1c;
+}
+
+.nc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── Diálogo ──────────────────────────────────────────────────────────── */
+
+.nc-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.55);
+  outline: none;
+}
+
+.nc-dialog__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 100dvh;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+}
+
+.nc-dialog__header,
+.nc-dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.nc-dialog__header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.nc-dialog__header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.nc-dialog__footer {
+  justify-content: flex-end;
+  border-top: 1px solid #e2e8f0;
+}
+
+.nc-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.nc-dialog__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 900px) {
+  .nc-dialog {
+    align-items: center;
+  }
+
+  .nc-dialog__panel {
+    width: min(920px, 94vw);
+    max-height: 90dvh;
+    border-radius: 16px;
+  }
+
+  .nc-dialog__body {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .nc-dialog__body > .nc-preview {
+    flex: 1 1 60%;
+  }
+
+  .nc-dialog__body > .nc-preview--mobile {
+    flex: 0 0 220px;
+  }
+
+  .nc-dialog__controls {
+    flex: 1 1 40%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nc-btn,
+  .nc-icon-btn,
+  .nc-bar {
+    transition: none;
+  }
+}

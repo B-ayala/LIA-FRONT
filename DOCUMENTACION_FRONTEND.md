@@ -389,6 +389,13 @@ La sesión la maneja **Supabase Auth**; el backend Express no expone endpoints `
   escalan con el ancho. El editor es un chunk lazy con deshacer/rehacer (`useBannerHistory`).
   `groupBySlide` (`utils/carouselSlides.ts`) agrupa las fotos según el layout y deja cada banner
   como slide propio; lo usan el carrusel y el admin para numerar igual.
+- **Color del menú por slide**: el navbar es transparente sobre el carrusel en el Home y su color
+  de texto sale del slide visible. `Carousel` publica `navbarColor` del slide actual en
+  `store/navbarToneStore.ts` y `NavBar` lo aplica (`slideColor ?? navbarStyle.overlayTextColor`;
+  el estado sólido tras hacer scroll no cambia). En collage vale el de la primera foto del slide.
+  El admin lo edita con `NavbarColorDialog` (botón "Menú" de cada slide) o desde el editor de
+  banners; `utils/navbarColor.ts` (contraste WCAG, color legible) y `utils/sampleTopStrip.ts`
+  (promedio de la franja superior de la foto; requiere CORS de Cloudinary, si falla se elige a mano).
 - `CloudinaryManager`: explora carpetas/imágenes, uso de almacenamiento, sube/borra.
 
 ---
@@ -490,7 +497,7 @@ Tablas que el frontend toca directamente con la `anon key`:
 |---|---|---|
 | `productos` | read (público: `status='active'`; admin: todos) | mapeada a `Product` por `mapDbRowToProduct`. Campos snake_case: `image_url`, `original_price`, `free_shipping`, `return_policy`, `featured`, `status`. |
 | `categories` | read/write | árbol por `parent_id` + `level`; con fallback a categorías derivadas de `productos`. |
-| `carousel_images` | read/write | filtrable por `device_type` (`desktop`/`mobile`), `is_active`, `order`. `kind` = `image` (usa `url`) o `banner` (usa `design` jsonb, `url` = `''`). |
+| `carousel_images` | read/write | filtrable por `device_type` (`desktop`/`mobile`), `is_active`, `order`. `kind` = `image` (usa `url`) o `banner` (usa `design` jsonb, `url` = `''`). `navbar_color` (hex o NULL) = color del menú sobre ese slide. |
 | `site_content` | read/write/delete | clave-valor (`key`/`value` JSON) para about, footer, banner, temas. Requiere UNIQUE en `key`. |
 | `ventas` | solo lectura (panel admin) | las altas van por el backend (RLS bloquea el insert con anon key — BUG-001); también la escribe el backend (MP, stock, despachos). Campos: `buyer_*`, `product_*`, `quantity`, `unit_price`, `total_price`, `units_config`, `payment_method`, `payment_status`, `shipping_method`, `dispatch_status`. |
 | `contact_messages` | insert | mensajes del formulario de contacto. |

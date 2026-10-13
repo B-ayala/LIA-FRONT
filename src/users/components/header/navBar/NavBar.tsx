@@ -14,6 +14,7 @@ import { fetchCategoriesTree, searchProducts, type Category, type ProductSearchR
 import { getProductPricing } from '../../../../utils/pricing';
 import { buildCloudinaryUrl } from '../../../../utils/cloudinary';
 import { useCartStore } from '../../../../store/cartStore';
+import { useNavbarToneStore } from '../../../../store/navbarToneStore';
 import { useInitialLoadTask } from '../../../../components/common/InitialLoad/InitialLoadProvider';
 import LiaLoader from '../../../../components/common/LiaLoader/LiaLoader';
 import './NavBar.css';
@@ -78,7 +79,10 @@ const NavBar = () => {
   // aplicado sólo mientras el navbar está transparente sobre el carrusel:
   // el estado sólido siempre usa el color por defecto, así nunca queda
   // texto invisible sobre el fondo blanco al hacer scroll.
-  const [overlayTextColor, setOverlayTextColor] = useState<string | null>(null);
+  const [siteOverlayTextColor, setOverlayTextColor] = useState<string | null>(null);
+  // El slide visible del carrusel puede traer su propio color; si no, vale el del sitio.
+  const slideNavbarColor = useNavbarToneStore((state) => state.slideColor);
+  const overlayTextColor = slideNavbarColor ?? siteOverlayTextColor;
 
   useEffect(() => {
     let isMounted = true;

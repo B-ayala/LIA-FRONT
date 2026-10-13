@@ -3,6 +3,11 @@ import { ArrowLeft, ImagePlus, Minus, MousePointerClick, Monitor, Redo2, Save, S
 import BannerCanvas from '../../../components/common/BannerCanvas/BannerCanvas';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import CloudinaryImagePicker from '../CloudinaryImagePicker/CloudinaryImagePicker';
+import NavbarColorControl from '../NavbarColor/NavbarColorControl';
+import NavbarPreviewBar from '../NavbarColor/NavbarPreviewBar';
+import { useBannerBackdrop } from '../NavbarColor/useBannerBackdrop';
+import { pickReadableTextColor } from '../../../utils/navbarColor';
+import { DEFAULT_NAVBAR_STYLE } from '../../../services/siteContentService';
 import {
   BANNER_LIMITS,
   BANNER_REFERENCE_WIDTH,
@@ -16,6 +21,7 @@ import {
   type BannerElementType,
 } from '../../../utils/carouselBanner';
 import BannerBackgroundPanel from './BannerBackgroundPanel';
+import { ToggleField } from './controls';
 import BannerInspector from './BannerInspector';
 import { useBannerGestures } from './useBannerGestures';
 import { useBannerHistory } from './useBannerHistory';
@@ -26,9 +32,11 @@ const ConfirmationModal = lazy(() => import('../../../components/common/Modal/Co
 interface BannerEditorProps {
   device: BannerDevice;
   initialDesign: BannerDesign;
+  // Color del texto del menú sobre este banner; null = el global del sitio.
+  initialNavbarColor: string | null;
   // Un banner recién creado ya trae el diseño de partida: se puede guardar sin tocarlo.
   isNew: boolean;
-  onSave: (design: BannerDesign) => Promise<void>;
+  onSave: (design: BannerDesign, navbarColor: string | null) => Promise<void>;
   onClose: () => void;
 }
 
@@ -69,9 +77,11 @@ const patchElementIn = (design: BannerDesign, id: string, patch: Partial<BannerE
   elements: design.elements.map((element) => (element.id === id ? ({ ...element, ...patch } as BannerElement) : element)),
 });
 
-const BannerEditor = ({ device, initialDesign, isNew, onSave, onClose }: BannerEditorProps) => {
+const BannerEditor = ({ device, initialDesign, initialNavbarColor, isNew, onSave, onClose }: BannerEditorProps) => {
   const { design, update, undo, redo, canUndo, canRedo } = useBannerHistory(initialDesign);
   const [initialJson] = useState(() => JSON.stringify(initialDesign));
+  const [navbarColor, setNavbarColor] = useState<string | null>(initialNavbarColor);
+  const [showNavbarPreview, setShowNavbarPreview] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
   const [saving, setSaving] = useState(false);
@@ -80,7 +90,11 @@ const BannerEditor = ({ device, initialDesign, isNew, onSave, onClose }: BannerE
   const canvasRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const isDirty = useMemo(() => JSON.stringify(design) !== initialJson, [design, initialJson]);
+  const backdrop = useBannerBackdrop(design);
+  const isDirty = useMemo(
+    () => JSON.stringify(design) !== initialJson || navbarColor !== initialNavbarColor,
+    [design, initialJson, navbarColor, initialNavbarColor],
+  );
   const selectedElement = design.elements.find((element) => element.id === selectedId) ?? null;
   const referenceWidth = BANNER_REFERENCE_WIDTH[device];
 
@@ -174,7 +188,7 @@ const BannerEditor = ({ device, initialDesign, isNew, onSave, onClose }: BannerE
     setSaving(true);
     setError(null);
     try {
-      await onSave(design);
+      await onSave(design, navbarColor);
     } catch (saveError) {
       setError(saveError instanceof Error && saveError.message ? saveError.message : SAVE_ERROR);
       setSaving(false);
@@ -217,6 +231,10 @@ const BannerEditor = ({ device, initialDesign, isNew, onSave, onClose }: BannerE
           Editor de banner <span className="be-badge"><DeviceIcon size={14} /> {DEVICE_LABEL[device]}</span>
         </h2>
         <div className="be-bar__actions">
+          <button type="button" className="be-btn be-btn--outline" onClick={() => setSelectedId(null)} title="Color del menú sobre este banner">
+            <span className={`be-nav-dot${navbarColor ? '' : ' is-default'}`} style={navbarColor ? { background: navbarColor } : undefined} />
+            Menú
+          </button>
           <button type="button" className="be-icon-btn" onClick={undo} disabled={!canUndo || saving} aria-label="Deshacer" title="Deshacer (Ctrl+Z)">
             <Undo2 size={18} />
           </button>
@@ -244,6 +262,11 @@ const BannerEditor = ({ device, initialDesign, isNew, onSave, onClose }: BannerE
         <main className="be-stage">
           <div className="be-frame" style={{ aspectRatio: CANVAS_ASPECT[device], ['--be-ratio' as string]: CANVAS_ASPECT[device] }}>
             <BannerCanvas design={design} referenceWidth={referenceWidth} editing={gestures} canvasRef={canvasRef} />
+            {showNavbarPreview && (
+              <div className="be-navbar-overlay">
+                <NavbarPreviewBar color={navbarColor ?? DEFAULT_NAVBAR_STYLE.overlayTextColor} />
+              </div>
+            )}
           </div>
           <p className="be-stage__hint">
             Así se ve en {DEVICE_LABEL[device]}. Los textos se achican o agrandan solos según el ancho de la pantalla.
@@ -261,7 +284,20 @@ const BannerEditor = ({ device, initialDesign, isNew, onSave, onClose }: BannerE
               onLayer={moveSelectedLayer}
             />
           ) : (
-            <BannerBackgroundPanel design={design} onPatch={patchDesign} onPickBackgroundImage={() => setPickerTarget('background')} />
+            <>
+              <BannerBackgroundPanel design={design} onPatch={patchDesign} onPickBackgroundImage={() => setPickerTarget('background')} />
+              <div className="be-panel__section be-panel__section--divided">
+                <div className="be-panel__heading"><h3>Menú de la tienda</h3></div>
+                <p className="be-field__hint">El menú se superpone arriba del banner. Elegí el color con el que se lee bien sobre este fondo.</p>
+                <NavbarColorControl
+                  value={navbarColor}
+                  onChange={setNavbarColor}
+                  backdrop={backdrop}
+                  onAutoPick={() => backdrop.rgb && setNavbarColor(pickReadableTextColor(backdrop.rgb))}
+                />
+                <ToggleField label="Mostrar el menú sobre el lienzo" checked={showNavbarPreview} onChange={setShowNavbarPreview} />
+              </div>
+            </>
           )}
         </aside>
       </div>

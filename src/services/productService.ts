@@ -8,6 +8,7 @@ import { extractCloudinaryPublicId } from '../utils/cloudinary';
 import { cleanText, normalizeCategory } from '../utils/formatters';
 import { createCachedFetcher } from '../utils/createCachedFetcher';
 import { parseBannerDesign, type BannerDesign } from '../utils/carouselBanner';
+import { parseNavbarColor } from '../utils/navbarColor';
 
 // Datos de configuración que el admin cambia muy de vez en cuando (categorías,
 // opciones de card) pero que el público pide en cada mount. Las mutadoras
@@ -633,6 +634,8 @@ export interface CarouselImageRow {
   deviceType: 'desktop' | 'mobile';
   kind: 'image' | 'banner';
   design: BannerDesign | null;
+  // Color del menú sobre este slide; null = el global de Config. del sitio.
+  navbarColor: string | null;
 }
 
 // Si la migración de banners aún no corrió, `kind` no existe y toda fila es una
@@ -646,6 +649,7 @@ const mapCarouselRow = (row: Record<string, unknown>): CarouselImageRow => ({
   deviceType: (row.device_type as 'desktop' | 'mobile') ?? 'desktop',
   kind: row.kind === 'banner' ? 'banner' : 'image',
   design: row.kind === 'banner' ? parseBannerDesign(row.design) : null,
+  navbarColor: parseNavbarColor(row.navbar_color),
 });
 
 // Fetch active images (user-facing) — filterable by deviceType
@@ -689,11 +693,12 @@ export const insertCarouselImage = async (
 export const insertCarouselBanner = async (
   design: BannerDesign,
   order: number,
-  deviceType: 'desktop' | 'mobile'
+  deviceType: 'desktop' | 'mobile',
+  navbarColor: string | null
 ): Promise<CarouselImageRow> => {
   const { data, error } = await supabase
     .from('carousel_images')
-    .insert([{ url: '', order, is_active: true, device_type: deviceType, kind: 'banner', design }])
+    .insert([{ url: '', order, is_active: true, device_type: deviceType, kind: 'banner', design, navbar_color: navbarColor }])
     .select()
     .single();
   if (error) throw error;
@@ -702,7 +707,7 @@ export const insertCarouselBanner = async (
 
 export const updateCarouselImageDb = async (
   id: string,
-  changes: { url?: string; order?: number; is_active?: boolean; design?: BannerDesign }
+  changes: { url?: string; order?: number; is_active?: boolean; design?: BannerDesign; navbar_color?: string | null }
 ): Promise<void> => {
   const { error } = await supabase
     .from('carousel_images')

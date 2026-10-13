@@ -4,8 +4,8 @@ import type { BannerDesign } from './carouselBanner';
 export type CarouselItemKind = 'image' | 'banner';
 
 export type CarouselItem =
-  | { kind: 'image'; url: string }
-  | { kind: 'banner'; design: BannerDesign };
+  | { kind: 'image'; url: string; navbarColor: string | null }
+  | { kind: 'banner'; design: BannerDesign; navbarColor: string | null };
 
 const IMAGES_PER_SLIDE = { single: 1, collageMobile: 2, collageDesktop: 3 } as const;
 

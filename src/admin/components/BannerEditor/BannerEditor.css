@@ -214,6 +214,33 @@
   background: #fff;
 }
 
+/* El menú real queda encima del banner: la maqueta no debe tapar los clicks del lienzo. */
+.be-frame {
+  position: relative;
+}
+
+.be-navbar-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  container-type: inline-size;
+}
+
+.be-nav-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(15, 23, 42, 0.35);
+}
+
+.be-nav-dot.is-default {
+  border-style: dashed;
+}
+
+.be-panel__section--divided {
+  border-top: 1px solid #e2e8f0;
+}
+
 .be-stage__hint {
   margin: 0;
   max-width: 60ch;

@@ -8,15 +8,18 @@ import { BANNER_REFERENCE_WIDTH, bannerImageUrls, type BannerDesign } from '../.
 import { buildCarouselImageUrl, type CarouselViewport } from '../../../utils/carouselImageUrl';
 import { readCachedFirstImage, writeCachedFirstImage } from '../../../utils/carouselImageCache';
 import { preloadImage, preloadImages } from '../../../utils/preloadImage';
+import { useNavbarToneStore } from '../../../store/navbarToneStore';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import BannerCanvas from '../../../components/common/BannerCanvas/BannerCanvas';
 import CarouselSlideImages, { CAROUSEL_LOADING_LABEL } from './CarouselSlideImages';
 import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
 
+// `navbarColor` es el del primer elemento del slide: en un collage el menú
+// cruza varias fotos y no puede tener un color por cada una.
 type Slide =
-  | { kind: 'images'; images: string[] }
-  | { kind: 'banner'; design: BannerDesign };
+  | { kind: 'images'; images: string[]; navbarColor: string | null }
+  | { kind: 'banner'; design: BannerDesign; navbarColor: string | null };
 
 type DeviceType = 'desktop' | 'mobile';
 
@@ -54,9 +57,13 @@ const readViewport = (): CarouselViewport => ({ width: window.innerWidth, height
 const toSlide = (group: CarouselItem[]): Slide => {
   const [first] = group;
   if (first.kind === 'banner') {
-    return { kind: 'banner', design: first.design };
+    return { kind: 'banner', design: first.design, navbarColor: first.navbarColor };
   }
-  return { kind: 'images', images: group.flatMap((item) => (item.kind === 'image' ? [item.url] : [])) };
+  return {
+    kind: 'images',
+    images: group.flatMap((item) => (item.kind === 'image' ? [item.url] : [])),
+    navbarColor: first.navbarColor,
+  };
 };
 
 const groupIntoSlides = (items: CarouselItem[], layout: CarouselLayout, isMobile: boolean): Slide[] =>
@@ -137,6 +144,14 @@ const Carousel = () => {
       cancelled = true;
     };
   }, [deviceType]);
+
+  // El navbar (transparente sobre el carrusel) toma el color del slide visible.
+  const setSlideNavbarColor = useNavbarToneStore((state) => state.setSlideColor);
+  const visibleNavbarColor = slides[currentSlide]?.navbarColor ?? null;
+  useEffect(() => {
+    setSlideNavbarColor(visibleNavbarColor);
+  }, [visibleNavbarColor, setSlideNavbarColor]);
+  useEffect(() => () => setSlideNavbarColor(null), [setSlideNavbarColor]);
 
   const goToSlide = (index: number, nextDirection: number) => {
     setDirection(nextDirection);

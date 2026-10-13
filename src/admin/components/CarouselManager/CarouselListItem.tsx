@@ -18,9 +18,10 @@ interface CarouselListItemProps {
     onDelete: (image: CarouselImage) => void;
     onCopy: (url: string) => void;
     onEditBanner: (image: CarouselImage) => void;
+    onEditNavbar: (image: CarouselImage) => void;
 }
 
-const CarouselListItem = ({ image, position, onToggle, onDelete, onCopy, onEditBanner }: CarouselListItemProps) => {
+const CarouselListItem = ({ image, position, onToggle, onDelete, onCopy, onEditBanner, onEditNavbar }: CarouselListItemProps) => {
     const { slideNumber, positionInSlide, slideSize, isFirstInSlide } = position;
     const bannerDesign = image.kind === 'banner' ? image.design : null;
     const isBanner = bannerDesign !== null;
@@ -65,6 +66,21 @@ const CarouselListItem = ({ image, position, onToggle, onDelete, onCopy, onEditB
                 </button>
             </div>
             <div className="carousel-item-actions">
+                {isFirstInSlide && (
+                    <button
+                        type="button"
+                        className="carousel-nav-btn"
+                        onClick={() => onEditNavbar(image)}
+                        title="Color del menú sobre este slide"
+                        aria-label={`Color del menú del slide ${slideNumber}${image.navbarColor ? `: ${image.navbarColor}` : ': el del sitio'}`}
+                    >
+                        <span
+                            className={`carousel-nav-btn__dot${image.navbarColor ? '' : ' is-default'}`}
+                            style={image.navbarColor ? { background: image.navbarColor } : undefined}
+                        />
+                        Menú
+                    </button>
+                )}
                 {isBanner ? (
                     <button
                         type="button"
