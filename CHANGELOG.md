@@ -61,6 +61,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Admin: el modal de producto autocorrige mayúsculas/minúsculas mientras se escribe (títulos en nombre, categoría, variantes y especificaciones; oraciones en descripción, características, garantía, devolución y FAQ) y las vuelve a normalizar al guardar (`utils/textCase.ts`).
 
 ### Fixed
+- Home en 3G / sin caché: el carrusel ya no queda en el skeleton hasta bajar la imagen a pantalla completa; aparece apenas llegan los datos con una miniatura borrosa y la imagen real entra con fade. Antes la espera no tenía tope.
+- Carrusel: el pase automático espera a que el slide siguiente esté precargado (y no avanza si la red no lo entregó), y las imágenes ya no son `lazy`; se acabó el fondo negro al cambiar de slide.
+- Carrusel: el fetch de imágenes y de layout tiene timeout de 12 s y un reintento con jitter (antes el layout no tenía timeout y 8 s daban por vacío un carrusel que solo estaba lento); el resultado se reusa 2 min al volver al Home.
+- Carrusel: las URLs de Cloudinary usan anchos/altos por escalones (en vez del tamaño exacto del viewport) para compartir versiones en el CDN entre visitantes, y bajan a DPR 1 y calidad 60 con conexión lenta o ahorro de datos. Cambiar el alto en móvil (barra del navegador) ya no recarga las imágenes.
+
 - Admin Productos: editar un producto sin stock por talle mandaba `stock: 0` y borraba su stock; ahora no se envía `stock` y el formulario muestra el stock actual en solo lectura.
 - Checkout: volver con Atrás desde Mercado Pago (bfcache) dejaba "Redirigiendo a Mercado Pago..." deshabilitado para siempre; ahora se reinicia al restaurar la página (`pageshow`) y hay un tope de 15 s en la redirección.
 - Checkout (transferencia): Safari iOS/Firefox bloqueaban WhatsApp porque la ventana se abría después de un `await`; ahora se abre en el click y recibe la URL al crear la orden.

@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { fetchCarouselImages, fetchCarouselLayout, type CarouselLayout } from '../../../services/productService';
-import { buildCloudinaryUrl } from '../../../utils/cloudinary';
-import { withTimeout } from '../../../utils/withTimeout';
+import type { CarouselLayout } from '../../../services/productService';
+import { loadCarouselData } from '../../../utils/carouselData';
+import { buildCarouselImageUrl, buildCarouselPlaceholderUrl, type CarouselViewport } from '../../../utils/carouselImageUrl';
 import { readCachedFirstImage, writeCachedFirstImage } from '../../../utils/carouselImageCache';
+import { preloadImage, preloadImages } from '../../../utils/preloadImage';
+import CarouselImage from './CarouselImage';
 import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
 
@@ -12,9 +14,19 @@ interface Slide {
   images: string[];
 }
 
-interface CarouselProps {
-  onReady?: () => void;
+type DeviceType = 'desktop' | 'mobile';
+
+interface LoadedCarousel {
+  deviceType: DeviceType;
+  slides: Slide[];
+  layout: CarouselLayout;
+  hasError: boolean;
 }
+
+const NO_SLIDES: Slide[] = [];
+const MOBILE_MAX_WIDTH = 768;
+const AUTOPLAY_INTERVAL_MS = 5000;
+const IMAGES_PER_SLIDE = { single: 1, collageMobile: 2, collageDesktop: 3 } as const;
 
 // Transición de empuje puro, sin fade. Dos razones, las dos sobre no dejar ver
 // el fondo del contenedor (que toma el color del tema del admin):
@@ -34,213 +46,131 @@ const slideVariants = {
   })
 };
 
-// El carrusel ocupa toda la altura de la pantalla en ambos layouts; el navbar
-// se superpone (no reserva espacio), así la portada se ve completa al tope.
-function getCarouselHeight(): number {
-  return window.innerHeight;
+const readViewport = (): CarouselViewport => ({ width: window.innerWidth, height: window.innerHeight });
+
+function groupIntoSlides(imageUrls: string[], layout: CarouselLayout, isMobile: boolean): Slide[] {
+  let imagesPerSlide: number = IMAGES_PER_SLIDE.collageDesktop;
+  if (layout === 'single') {
+    imagesPerSlide = IMAGES_PER_SLIDE.single;
+  } else if (isMobile) {
+    imagesPerSlide = IMAGES_PER_SLIDE.collageMobile;
+  }
+
+  const slides: Slide[] = [];
+  for (let i = 0; i < imageUrls.length; i += imagesPerSlide) {
+    slides.push({ images: imageUrls.slice(i, i + imagesPerSlide) });
+  }
+  return slides;
 }
 
-// Cuánto pedirle de más a Cloudinary para que se vea nítido en pantallas
-// retina/4K (si no, el navegador estira la imagen y se ve borrosa).
-const MAX_DPR = 2;
+const getSlideImageUrls = (slide: Slide, viewport: CarouselViewport): string[] =>
+  slide.images.map((url) => buildCarouselImageUrl(url, viewport, slide.images.length));
 
-// `imageCount` es la cantidad de imágenes que realmente comparten el slide
-// (el último grupo puede tener menos que el máximo por dispositivo), ya que
-// cada una ocupa 1/imageCount del ancho vía flexbox.
-function getSlotSize(viewportWidth: number, imageCount: number): { width: number; height: number } {
-  const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
-  return {
-    width: Math.round((viewportWidth / Math.max(imageCount, 1)) * dpr),
-    height: Math.round(getCarouselHeight() * dpr)
-  };
-}
-
-const Carousel = ({ onReady }: CarouselProps) => {
-  const [slides, setSlides] = useState<Slide[]>([]);
+const Carousel = () => {
+  const [loaded, setLoaded] = useState<LoadedCarousel | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState(0);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
-  const [layout, setLayout] = useState<CarouselLayout>('collage');
-  const hasReportedReady = useRef(false);
-  const onReadyRef = useRef(onReady);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= MOBILE_MAX_WIDTH);
+  const [viewport, setViewport] = useState<CarouselViewport>(readViewport);
+  const deviceType: DeviceType = isMobile ? 'mobile' : 'desktop';
+  // El resultado queda atado al dispositivo con el que se pidió: al cruzar el
+  // breakpoint se vuelve a mostrar el skeleton hasta que llegue el del nuevo.
+  const isLoading = loaded === null || loaded.deviceType !== deviceType;
+  const slides = isLoading ? NO_SLIDES : loaded.slides;
+  const layout = isLoading ? 'collage' : loaded.layout;
+  const hasError = !isLoading && loaded.hasError;
 
-  useEffect(() => {
-    onReadyRef.current = onReady;
-  }, [onReady]);
-
-  const notifyReady = useCallback(() => {
-    if (hasReportedReady.current) {
-      return;
-    }
-
-    hasReportedReady.current = true;
-    onReadyRef.current?.();
-  }, []);
-
-  // Detect mobile/desktop based on window width
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-      setViewportWidth(window.innerWidth);
+      setIsMobile(window.innerWidth <= MOBILE_MAX_WIDTH);
+      // Solo cuenta un cambio de ancho (rotación, redimensionar): en móvil la
+      // barra del navegador cambia el alto al scrollear, y eso no debe
+      // cambiar las URLs de las imágenes ya en pantalla.
+      setViewport((previous) => (previous.width === window.innerWidth ? previous : readViewport()));
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch carousel images and group them based on device type + layout
+  // Precarga especulativa: si la visita anterior dejó registrada cuál era la
+  // primera imagen de portada para este dispositivo, arrancamos su descarga ya
+  // mismo, en paralelo con el fetch de abajo. Si el admin cambió el carrusel,
+  // esa descarga de más se descarta sola, sin ningún efecto visible.
   useEffect(() => {
-    const deviceType = isMobile ? 'mobile' : 'desktop';
-    let cancelled = false;
-    hasReportedReady.current = false;
-    setIsLoading(true);
-    setHasError(false);
-    setImagesLoaded(false);
-
-    // Precarga especulativa: si la visita anterior dejó registrada cuál era
-    // la primera imagen de portada para este dispositivo, arrancamos su
-    // descarga ya mismo, en paralelo con el fetch real de abajo — así, si la
-    // URL sigue vigente, el <Image> real de más abajo la encuentra tibia en
-    // la cache HTTP del browser en vez de pagar el round-trip completo de
-    // nuevo. No cambia qué se muestra ni cuándo: solo evita el segundo
-    // network hop cuando la pista acierta. Si el admin cambió el carrusel,
-    // esta descarga de más se descarta sola, sin ningún efecto visible.
-    const cachedHint = readCachedFirstImage(deviceType);
-    if (cachedHint) {
-      const hintSize = getSlotSize(window.innerWidth, cachedHint.imageCount);
-      const hintUrl = buildCloudinaryUrl(cachedHint.url, {
-        ...hintSize,
-        quality: 'auto',
-        format: 'auto',
-        gravity: 'auto',
-      });
-      new Image().src = hintUrl;
+    const hint = readCachedFirstImage(deviceType);
+    if (hint) {
+      void preloadImage(buildCarouselImageUrl(hint.url, viewport, hint.imageCount));
     }
+  }, [deviceType, viewport]);
 
-    Promise.all([
-      // withTimeout evita que un fetch colgado (red inestable, request sin
-      // respuesta) deje el banner de home en skeleton para siempre.
-      withTimeout(fetchCarouselImages(deviceType)),
-      // Si la tabla de configuración todavía no existe (script SQL no aplicado
-      // en este entorno) o falla la lectura, no debe romper el carrusel: se
-      // sigue viendo el collage de siempre.
-      fetchCarouselLayout(deviceType).catch(() => 'collage' as CarouselLayout)
-    ])
-      .then(([timedOutImages, layoutSetting]) => {
+  useEffect(() => {
+    let cancelled = false;
+
+    loadCarouselData(deviceType)
+      .then(({ imageUrls, layout: loadedLayout }) => {
         if (cancelled) return;
 
-        const images = timedOutImages ?? [];
-        setLayout(layoutSetting);
-        const imgsPerSlide = layoutSetting === 'single' ? 1 : (isMobile ? 2 : 3);
-        const grouped: Slide[] = [];
-        for (let i = 0; i < images.length; i += imgsPerSlide) {
-          grouped.push({ images: images.slice(i, i + imgsPerSlide).map(img => img.url) });
-        }
-        // El tamaño real del slot depende de cuántas imágenes comparten el
-        // primer slide (el último grupo puede tener menos que `imgsPerSlide`),
-        // así que guardamos ese número real — no el máximo teórico — para que
-        // la próxima visita arme la URL especulativa con el mismo ancho
-        // exacto que va a pedir el flujo real más abajo.
-        if (grouped[0]?.images[0]) {
+        const grouped = groupIntoSlides(imageUrls, loadedLayout, deviceType === 'mobile');
+        // Se guarda la cantidad real de imágenes del primer slide (el último
+        // grupo puede tener menos que el máximo): determina el ancho exacto
+        // que pide el flujo real, y la pista tiene que coincidir con él.
+        if (grouped[0]) {
           writeCachedFirstImage(deviceType, {
-            url: images[0].url,
-            layout: layoutSetting,
+            url: grouped[0].images[0],
+            layout: loadedLayout,
             imageCount: grouped[0].images.length,
           });
         }
-        setSlides(grouped);
+        setLoaded({ deviceType, slides: grouped, layout: loadedLayout, hasError: false });
         setCurrentSlide(0);
-        if (grouped.length === 0) {
-          // No hay imágenes cargadas para este dispositivo: no es un estado de carga, es vacío.
-          setImagesLoaded(true);
-          notifyReady();
-        }
+        setDirection(0);
       })
       .catch((error) => {
         if (cancelled) return;
         console.error(error);
-        setSlides([]);
-        setHasError(true);
-        setImagesLoaded(true);
-        notifyReady();
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        setLoaded({ deviceType, slides: NO_SLIDES, layout: 'collage', hasError: true });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isMobile, notifyReady]);
+  }, [deviceType]);
 
-  useEffect(() => {
-    if (slides.length === 0) {
-      return;
-    }
-
-    const firstImg = slides[0]?.images[0];
-    if (!firstImg) {
-      setImagesLoaded(true);
-      notifyReady();
-      return;
-    }
-
-    const firstSlideSize = getSlotSize(window.innerWidth, slides[0].images.length);
-    const optimizedUrl = buildCloudinaryUrl(firstImg, {
-      width: firstSlideSize.width,
-      height: firstSlideSize.height,
-      quality: 'auto',
-      format: 'auto',
-      gravity: 'auto'
-    });
-
-    const image = new Image();
-    image.src = optimizedUrl;
-
-    if (image.complete) {
-      setImagesLoaded(true);
-      notifyReady();
-      return;
-    }
-
-    const handleLoad = () => { setImagesLoaded(true); notifyReady(); };
-    image.onload = handleLoad;
-    image.onerror = handleLoad;
-
-    return () => {
-      image.onload = null;
-      image.onerror = null;
-      image.src = '';
-    };
-  }, [slides, notifyReady]);
-
-  const nextSlide = () => {
-    setDirection(1);
-    setCurrentSlide(prev => (prev + 1) % slides.length);
-  };
-
-  const prevSlide = () => {
-    setDirection(-1);
-    setCurrentSlide(prev => (prev - 1 + slides.length) % slides.length);
-  };
-
-  const goToSlide = (index: number) => {
-    setDirection(index > currentSlide ? 1 : -1);
+  const goToSlide = (index: number, nextDirection: number) => {
+    setDirection(nextDirection);
     setCurrentSlide(index);
   };
 
+  // El avance automático espera a que el slide actual esté bajado y a que el
+  // siguiente esté precargado: sin esto el slide entra con las imágenes aún en
+  // camino y deja ver el fondo oscuro del carrusel (el "negro" en 3G).
   useEffect(() => {
-    if (slides.length === 0) return;
-    const timer = setInterval(nextSlide, 5000);
-    return () => clearInterval(timer);
-  }, [currentSlide, slides.length]);
+    if (slides.length < 2) return;
+
+    let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | undefined;
+    const nextIndex = (currentSlide + 1) % slides.length;
+
+    preloadImages(getSlideImageUrls(slides[currentSlide], viewport))
+      .then(() => Promise.all([
+        new Promise<void>((resolve) => { timerId = setTimeout(resolve, AUTOPLAY_INTERVAL_MS); }),
+        preloadImages(getSlideImageUrls(slides[nextIndex], viewport)),
+      ]))
+      .then(() => {
+        if (cancelled) return;
+        setDirection(1);
+        setCurrentSlide(nextIndex);
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timerId);
+    };
+  }, [currentSlide, slides, viewport]);
 
   const layoutClass = layout === 'single' ? 'carousel--single' : '';
 
-  if (isLoading || (slides.length > 0 && !imagesLoaded)) {
+  if (isLoading) {
     return (
       <div className={`carousel carousel--skeleton ${layoutClass}`} role="status" aria-live="polite" aria-label="Cargando carrusel">
         <span className="carousel-pulse-dot" aria-hidden="true" />
@@ -255,6 +185,8 @@ const Carousel = ({ onReady }: CarouselProps) => {
       </div>
     );
   }
+
+  const visibleSlide = slides[currentSlide];
 
   return (
     <div className={`carousel ${layoutClass}`}>
@@ -272,20 +204,12 @@ const Carousel = ({ onReady }: CarouselProps) => {
           className="carousel-slide"
         >
           <div className="carousel-images-container">
-            {slides[currentSlide].images.map((img, idx) => (
-              <img
-                key={idx}
-                src={buildCloudinaryUrl(img, {
-                  ...getSlotSize(viewportWidth, slides[currentSlide].images.length),
-                  quality: 'auto',
-                  format: 'auto',
-                  gravity: 'auto'
-                })}
-                alt=""
-                className="carousel-image"
-                fetchPriority={idx === 0 && currentSlide === 0 ? 'high' : 'low'}
-                loading={idx === 0 && currentSlide === 0 ? 'eager' : 'lazy'}
-                decoding={idx === 0 && currentSlide === 0 ? 'sync' : 'async'}
+            {visibleSlide.images.map((url, idx) => (
+              <CarouselImage
+                key={url}
+                src={buildCarouselImageUrl(url, viewport, visibleSlide.images.length)}
+                placeholderSrc={buildCarouselPlaceholderUrl(url)}
+                isPriority={idx === 0 && currentSlide === 0}
               />
             ))}
             <div className="carousel-overlay" />
@@ -295,10 +219,18 @@ const Carousel = ({ onReady }: CarouselProps) => {
 
       {slides.length > 1 && (
         <>
-          <button className="carousel-arrow carousel-arrow-left" onClick={prevSlide} aria-label="Anterior">
+          <button
+            className="carousel-arrow carousel-arrow-left"
+            onClick={() => goToSlide((currentSlide - 1 + slides.length) % slides.length, -1)}
+            aria-label="Anterior"
+          >
             <FiChevronLeft />
           </button>
-          <button className="carousel-arrow carousel-arrow-right" onClick={nextSlide} aria-label="Siguiente">
+          <button
+            className="carousel-arrow carousel-arrow-right"
+            onClick={() => goToSlide((currentSlide + 1) % slides.length, 1)}
+            aria-label="Siguiente"
+          >
             <FiChevronRight />
           </button>
         </>
@@ -309,7 +241,7 @@ const Carousel = ({ onReady }: CarouselProps) => {
           <button
             key={index}
             className={`carousel-dot ${index === currentSlide ? 'active' : ''}`}
-            onClick={() => goToSlide(index)}
+            onClick={() => goToSlide(index, index > currentSlide ? 1 : -1)}
             aria-label={`Ir al slide ${index + 1}`}
             aria-current={index === currentSlide ? 'true' : undefined}
           />
