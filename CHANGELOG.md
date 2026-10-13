@@ -61,8 +61,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Admin: el modal de producto autocorrige mayúsculas/minúsculas mientras se escribe (títulos en nombre, categoría, variantes y especificaciones; oraciones en descripción, características, garantía, devolución y FAQ) y las vuelve a normalizar al guardar (`utils/textCase.ts`).
 
 ### Fixed
-- Home en 3G / sin caché: el carrusel ya no queda en el skeleton hasta bajar la imagen a pantalla completa; aparece apenas llegan los datos con una miniatura borrosa y la imagen real entra con fade. Antes la espera no tenía tope.
-- Carrusel: el pase automático espera a que el slide siguiente esté precargado (y no avanza si la red no lo entregó), y las imágenes ya no son `lazy`; se acabó el fondo negro al cambiar de slide.
+- Home en 3G / sin caché: el carrusel ya no queda en el skeleton hasta bajar la imagen a pantalla completa; aparece apenas llegan los datos y mientras bajan las imágenes muestra el loader de marca con "Preparando la mejor moda para vos" sobre fondo claro; la imagen entra con fade. Antes la espera no tenía tope.
+- Carrusel: el pase automático espera a que el slide siguiente esté precargado (y no avanza si la red no lo entregó), y las imágenes ya no son `lazy`; el degradado oscuro solo aparece con las imágenes ya cargadas: se acabó el fondo negro al cambiar de slide.
 - Carrusel: el fetch de imágenes y de layout tiene timeout de 12 s y un reintento con jitter (antes el layout no tenía timeout y 8 s daban por vacío un carrusel que solo estaba lento); el resultado se reusa 2 min al volver al Home.
 - Carrusel: las URLs de Cloudinary usan anchos/altos por escalones (en vez del tamaño exacto del viewport) para compartir versiones en el CDN entre visitantes, y bajan a DPR 1 y calidad 60 con conexión lenta o ahorro de datos. Cambiar el alto en móvil (barra del navegador) ya no recarga las imágenes.
 

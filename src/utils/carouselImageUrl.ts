@@ -20,12 +20,6 @@ const HEIGHT_BUCKETS = [480, 640, 800, 1024, 1280, 1600, 2000] as const;
 const SLOW_CONNECTION_TYPES = new Set(['slow-2g', '2g', '3g']);
 const SLOW_CONNECTION_QUALITY = 60;
 
-// Miniatura para el placeholder borroso: pesa ~1 kB y llega en el primer
-// round-trip, antes de que la imagen real termine de bajar.
-const PLACEHOLDER_WIDTH = 40;
-const PLACEHOLDER_HEIGHT = 64;
-const PLACEHOLDER_QUALITY = 30;
-
 interface NetworkInformationLike {
   effectiveType?: string;
   saveData?: boolean;
@@ -52,16 +46,6 @@ export function buildCarouselImageUrl(url: string, viewport: CarouselViewport, i
     width: roundUpToBucket(Math.round(slotWidth), WIDTH_BUCKETS),
     height: roundUpToBucket(Math.round(viewport.height * dpr), HEIGHT_BUCKETS),
     quality: IS_SLOW_CONNECTION ? SLOW_CONNECTION_QUALITY : 'auto',
-    format: 'auto',
-    gravity: 'auto',
-  });
-}
-
-export function buildCarouselPlaceholderUrl(url: string): string {
-  return buildCloudinaryUrl(url, {
-    width: PLACEHOLDER_WIDTH,
-    height: PLACEHOLDER_HEIGHT,
-    quality: PLACEHOLDER_QUALITY,
     format: 'auto',
     gravity: 'auto',
   });

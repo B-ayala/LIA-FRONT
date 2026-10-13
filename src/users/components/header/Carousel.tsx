@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import type { CarouselLayout } from '../../../services/productService';
 import { loadCarouselData } from '../../../utils/carouselData';
-import { buildCarouselImageUrl, buildCarouselPlaceholderUrl, type CarouselViewport } from '../../../utils/carouselImageUrl';
+import { buildCarouselImageUrl, type CarouselViewport } from '../../../utils/carouselImageUrl';
 import { readCachedFirstImage, writeCachedFirstImage } from '../../../utils/carouselImageCache';
 import { preloadImage, preloadImages } from '../../../utils/preloadImage';
-import CarouselImage from './CarouselImage';
+import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import CarouselSlideImages, { CAROUSEL_LOADING_LABEL } from './CarouselSlideImages';
 import logoImg from '../../../assets/img/logo.jpeg';
 import './Carousel.css';
 
@@ -172,8 +173,8 @@ const Carousel = () => {
 
   if (isLoading) {
     return (
-      <div className={`carousel carousel--skeleton ${layoutClass}`} role="status" aria-live="polite" aria-label="Cargando carrusel">
-        <span className="carousel-pulse-dot" aria-hidden="true" />
+      <div className={`carousel carousel--skeleton ${layoutClass}`}>
+        <LiaLoader size="lg" variant="section" label={CAROUSEL_LOADING_LABEL} />
       </div>
     );
   }
@@ -203,17 +204,10 @@ const Carousel = () => {
           }}
           className="carousel-slide"
         >
-          <div className="carousel-images-container">
-            {visibleSlide.images.map((url, idx) => (
-              <CarouselImage
-                key={url}
-                src={buildCarouselImageUrl(url, viewport, visibleSlide.images.length)}
-                placeholderSrc={buildCarouselPlaceholderUrl(url)}
-                isPriority={idx === 0 && currentSlide === 0}
-              />
-            ))}
-            <div className="carousel-overlay" />
-          </div>
+          <CarouselSlideImages
+            sources={visibleSlide.images.map((url) => buildCarouselImageUrl(url, viewport, visibleSlide.images.length))}
+            isFirstSlide={currentSlide === 0}
+          />
         </motion.div>
       </AnimatePresence>
 
