@@ -904,17 +904,6 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               },
             }}
           >
-            <Box
-              component="span"
-              sx={{
-                px: '1.25rem',
-                background: 'linear-gradient(145deg, #ffffff 0%, #fafafa 100%)',
-                borderRadius: '20px',
-                mx: '0.5rem',
-              }}
-            >
-              O continuar con
-            </Box>
           </Box>
           </Box>
         </Box>
