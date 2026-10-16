@@ -17,6 +17,11 @@ interface ContactFormData {
   message: string;
 }
 
+// Mismos topes que el CHECK contact_messages_lengths de la base: si se cambian, cambiar ambos.
+const MAX_NAME_LENGTH = 120;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_MESSAGE_LENGTH = 5000;
+
 const Contact = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [footerInfo, setFooterInfo] = useState<FooterInfo | null>(null);
@@ -263,6 +268,7 @@ const Contact = () => {
                     id="name"
                     name="name"
                     placeholder="Tu nombre"
+                    maxLength={MAX_NAME_LENGTH}
                     value={formData.name}
                     onChange={handleInputChange}
                     disabled={isSubmitting}
@@ -277,6 +283,7 @@ const Contact = () => {
                     id="email"
                     name="email"
                     placeholder="tu@email.com"
+                    maxLength={MAX_EMAIL_LENGTH}
                     value={formData.email}
                     onChange={handleInputChange}
                     disabled={isSubmitting}
@@ -309,11 +316,16 @@ const Contact = () => {
                     name="message"
                     rows={4}
                     placeholder="¿En qué podemos ayudarte?"
+                    maxLength={MAX_MESSAGE_LENGTH}
+                    aria-describedby="message-counter"
                     value={formData.message}
                     onChange={handleInputChange}
                     disabled={isSubmitting}
                     required
                   />
+                  <span id="message-counter" className="form-char-counter">
+                    {formData.message.length} / {MAX_MESSAGE_LENGTH}
+                  </span>
                 </div>
 
                 <button

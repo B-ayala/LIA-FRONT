@@ -175,6 +175,14 @@
   color: #444;
 }
 
+.contact-form .form-char-counter {
+  display: block;
+  margin-top: 0.25rem;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--color-ink-muted);
+}
+
 .submit-btn {
   margin-top: 0.5rem;
   background-color: #B8A5C8;
