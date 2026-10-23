@@ -5,12 +5,17 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Security
+- Alta, recuperación y cambio de contraseña: contraseña de 8 a 64 caracteres con letra, número y símbolo (antes mínimo 6 sin más reglas); se rechaza lo que superaría 72 bytes en vez de truncarlo en silencio. Nombre de 2 a 60 caracteres (solo letras, espacios, apóstrofes, puntos y guiones), email hasta 254 y celular de 7 a 20. Los formularios muestran el límite como ayuda y frenan la escritura al llegar al máximo. Reglas en `utils/validation.ts`.
+
 ### Changed
+- Panel de usuarios: nombres y emails largos se cortan con elipsis (valor completo en el tooltip) en vez de desbordar la tabla.
 - Realtime: los cambios de `site_content` (banner, navbar, tema, tipografía) comparten un único canal (`services/siteContentRealtime.ts`) en vez de abrir 4 por visitante.
 - Sesión: al cargar la app no se pide `POST /api/auth/refresh` si este navegador ya sabe que no tiene sesión (marca `lia:auth-no-session`, sin tokens); la primera visita lo intenta una vez como siempre.
 - Imágenes: detalle de producto (principal con `srcset`, miniaturas y modal), "Mis compras", resumen del checkout y resultado de pago se piden a Cloudinary redimensionadas, no en tamaño original.
 
 ### Added
+- Cloudflare Web Analytics (Core Web Vitals reales, sin cookies): `utils/webAnalytics.ts` carga el beacon solo si `VITE_CF_ANALYTICS_TOKEN` está definida y fuera de `/admin`; CSP de `vercel.json` ampliada para `static.cloudflareinsights.com` y `cloudflareinsights.com`.
 - `AppErrorBoundary`: un error de render muestra "Algo salió mal" con botón para recargar, en vez de pantalla en blanco.
 
 ### Security

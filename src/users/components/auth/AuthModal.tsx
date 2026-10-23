@@ -11,7 +11,10 @@ import {
   FiEye, FiEyeOff, FiPhone,
 } from 'react-icons/fi';
 import { useAuthStore } from '../../../store/authStore';
-import { isValidEmail, validatePassword, validatePasswordMatch, validatePhone } from '../../../utils/validation';
+import {
+  isValidEmail, validateEmail, validateName, normalizeName, validatePassword, validatePasswordMatch, validatePhone,
+  MAX_EMAIL_LENGTH, NAME_MAX_LENGTH, NAME_HINT, PASSWORD_MAX_LENGTH, PASSWORD_HINT, PHONE_MAX_LENGTH, PHONE_HINT,
+} from '../../../utils/validation';
 import { extractErrorMessage } from '../../../utils/errorMessage';
 import { createUser, resendConfirmationEmail, requestPasswordReset } from '../../../services/userService';
 import Modal from '../../../components/common/Modal/Modal';
@@ -321,10 +324,11 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
 
   const validateRegister = () => {
     const newErrors: Record<string, string> = {};
-    if (!registerName.trim()) newErrors.registerName = 'El nombre es requerido';
+    const nameError = validateName(registerName);
+    if (nameError) newErrors.registerName = nameError;
 
-    if (!registerEmail.trim()) newErrors.registerEmail = 'El correo electrónico es requerido';
-    else if (!isValidEmail(registerEmail)) newErrors.registerEmail = 'Ingresa un correo válido';
+    const emailError = validateEmail(registerEmail);
+    if (emailError) newErrors.registerEmail = emailError;
 
     const phoneError = validatePhone(registerPhone);
     if (phoneError) newErrors.registerPhone = phoneError;
@@ -421,7 +425,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     setIsLoading(true);
     try {
       await createUser({
-        name: registerName.trim(),
+        name: normalizeName(registerName),
         email: registerEmail.trim(),
         phone: registerPhone.trim(),
         password: registerPassword,
@@ -698,10 +702,11 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   value={registerName}
                   onChange={(e) => setRegisterName(e.target.value)}
                   error={!!errors.registerName}
-                  helperText={fieldError(errors.registerName)}
+                  helperText={fieldError(errors.registerName) ?? NAME_HINT}
                   variant="outlined"
                   fullWidth
                   sx={inputSx}
+                  slotProps={{ htmlInput: { maxLength: NAME_MAX_LENGTH } }}
                 />
               </Stack>
 
@@ -720,6 +725,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   variant="outlined"
                   fullWidth
                   sx={inputSx}
+                  slotProps={{ htmlInput: { maxLength: MAX_EMAIL_LENGTH } }}
                 />
               </Stack>
 
@@ -734,11 +740,12 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   value={registerPhone}
                   onChange={(e) => setRegisterPhone(e.target.value)}
                   error={!!errors.registerPhone}
-                  helperText={fieldError(errors.registerPhone)}
+                  helperText={fieldError(errors.registerPhone) ?? PHONE_HINT}
                   variant="outlined"
                   fullWidth
                   sx={inputSx}
                   slotProps={{
+                    htmlInput: { maxLength: PHONE_MAX_LENGTH },
                     input: {
                       startAdornment: (
                         <InputAdornment position="start">
@@ -761,11 +768,12 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
                   error={!!errors.registerPassword}
-                  helperText={fieldError(errors.registerPassword)}
+                  helperText={fieldError(errors.registerPassword) ?? PASSWORD_HINT}
                   variant="outlined"
                   fullWidth
                   sx={inputSx}
                   slotProps={{
+                    htmlInput: { maxLength: PASSWORD_MAX_LENGTH },
                     input: {
                       endAdornment: (
                         <InputAdornment position="end">
@@ -800,6 +808,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   fullWidth
                   sx={inputSx}
                   slotProps={{
+                    htmlInput: { maxLength: PASSWORD_MAX_LENGTH },
                     input: {
                       endAdornment: (
                         <InputAdornment position="end">

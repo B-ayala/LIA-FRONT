@@ -11,6 +11,7 @@ import { hasActiveSession, onPasswordRecovery } from '../../../services/authServ
 import { useAuthStore } from '../../../store/authStore';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import { validatePassword, PASSWORD_MAX_LENGTH, PASSWORD_HINT } from '../../../utils/validation';
 
 const cardSx = {
   background: '#fff',
@@ -137,8 +138,8 @@ const ResetPasswordContent = () => {
   const validate = () => {
     const errs: Record<string, string> = {};
     if (status === 'change' && !currentPassword) errs.currentPassword = 'Ingresá tu contraseña actual';
-    if (!newPassword) errs.newPassword = 'La nueva contraseña es requerida';
-    else if (newPassword.length < 6) errs.newPassword = 'Debe tener al menos 6 caracteres';
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) errs.newPassword = passwordError;
     else if (status === 'change' && newPassword === currentPassword) errs.newPassword = 'La nueva contraseña debe ser diferente a la actual';
     if (newPassword !== confirmPassword) errs.confirmPassword = 'Las contraseñas no coinciden';
     setErrors(errs);
@@ -338,11 +339,12 @@ const ResetPasswordContent = () => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 error={!!errors.newPassword}
-                helperText={fieldError(errors.newPassword)}
+                helperText={fieldError(errors.newPassword) ?? PASSWORD_HINT}
                 variant="outlined"
                 fullWidth
                 sx={inputSx}
                 slotProps={{
+                  htmlInput: { maxLength: PASSWORD_MAX_LENGTH },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
@@ -372,6 +374,7 @@ const ResetPasswordContent = () => {
                 fullWidth
                 sx={inputSx}
                 slotProps={{
+                  htmlInput: { maxLength: PASSWORD_MAX_LENGTH },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">

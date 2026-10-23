@@ -418,6 +418,7 @@ Copiar `.env.example` a `.env.local` en la raíz del repo. **Nunca commitearlo.*
 | `VITE_SUPABASE_URL` | ✅ | URL del proyecto Supabase. Sin ella, `supabaseClient` lanza error en el arranque. |
 | `VITE_SUPABASE_ANON_KEY` | ✅ | Anon key (pública) de Supabase. |
 | `VITE_API_URL_LOCAL` | ✅ (recomendada) | Base URL de la API Express, **con el sufijo `/api`**. Pese al nombre `_LOCAL`, es la URL del backend en **todos** los entornos (en Vercel también). Si falta, cae a `http://localhost:3000/api`. Soporta túneles ngrok (manda el header `ngrok-skip-browser-warning`). |
+| `VITE_CF_ANALYTICS_TOKEN` | opcional | Token público de Cloudflare Web Analytics (Core Web Vitals). Vacía = sin medición. Se carga con `utils/webAnalytics.ts`, fuera de `/admin`. |
 
 > `import.meta.env.BASE_URL` se usa para resolver assets según el `base` de despliegue.
 

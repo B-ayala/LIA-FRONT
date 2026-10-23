@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import AppErrorBoundary from './components/common/ErrorBoundary/AppErrorBoundary'
 import { purgeLegacyStoredSession } from './utils/authTokenStore'
+import { loadWebAnalytics } from './utils/webAnalytics'
 
 // Versiones anteriores guardaban tokens en localStorage: se borran para que no queden legibles por JS.
 purgeLegacyStoredSession()
@@ -16,6 +17,8 @@ if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 window.scrollTo(0, 0);
+
+loadWebAnalytics()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

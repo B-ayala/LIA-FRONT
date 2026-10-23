@@ -6,7 +6,7 @@ import Modal from '../../../../components/common/Modal/Modal';
 import LiaLoader from '../../../../components/common/LiaLoader/LiaLoader';
 import { useAuthStore } from '../../../../store/authStore';
 import { changePassword } from '../../../../services/userService';
-import { validatePassword, validatePasswordMatch } from '../../../../utils/validation';
+import { validatePassword, validatePasswordMatch, PASSWORD_MAX_LENGTH, PASSWORD_HINT } from '../../../../utils/validation';
 import { extractErrorMessage } from '../../../../utils/errorMessage';
 import TurnstileWidget from '../../../../components/common/Turnstile/TurnstileWidget';
 import { useCaptcha, CAPTCHA_REQUIRED_MESSAGE } from '../../../../hooks/useCaptcha';
@@ -131,6 +131,9 @@ const ChangePasswordModalContent = ({ isOpen, onClose }: ChangePasswordModalProp
           onChange={(e) => setNewPassword(e.target.value)}
           disabled={isLoading}
           size="small"
+          autoComplete="new-password"
+          helperText={PASSWORD_HINT}
+          slotProps={{ htmlInput: { maxLength: PASSWORD_MAX_LENGTH } }}
           sx={{
             '& .MuiOutlinedInput-root': { fontSize: '0.95rem' },
             '& .MuiInputLabel-root': { fontSize: '0.95rem' },
@@ -146,6 +149,8 @@ const ChangePasswordModalContent = ({ isOpen, onClose }: ChangePasswordModalProp
           onChange={(e) => setConfirmPassword(e.target.value)}
           disabled={isLoading}
           size="small"
+          autoComplete="new-password"
+          slotProps={{ htmlInput: { maxLength: PASSWORD_MAX_LENGTH } }}
           sx={{
             '& .MuiOutlinedInput-root': { fontSize: '0.95rem' },
             '& .MuiInputLabel-root': { fontSize: '0.95rem' },

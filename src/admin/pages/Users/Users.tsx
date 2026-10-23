@@ -292,8 +292,8 @@ const Users = () => {
                                                     : `Cambiar a ${user.role === 'admin' ? 'usuario' : 'admin'}`;
                                         return (
                                             <tr key={user.id}>
-                                                <td className="font-medium">{user.name || '—'}</td>
-                                                <td>{user.email || '—'}</td>
+                                                <td className="font-medium"><span className="user-cell-text" title={user.name || undefined}>{user.name || '—'}</span></td>
+                                                <td><span className="user-cell-text" title={user.email || undefined}>{user.email || '—'}</span></td>
                                                 <td>{user.phone || '—'}</td>
                                                 <td>
                                                     <span className={`role-badge ${user.role}`}>

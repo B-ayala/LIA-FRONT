@@ -49,6 +49,15 @@
     border-bottom: none;
 }
 
+/* Texto largo (cuentas viejas con nombres/emails enormes): una línea con elipsis, el valor completo en el title. */
+.admin-users-page .user-cell-text {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Name */
 .admin-users-page .admin-table td:nth-child(1) {
     width: 100%;
@@ -195,6 +204,10 @@
     .admin-users-page .admin-table td:nth-child(2) {
         width: auto;
         font-size: 0.875rem;
+    }
+
+    .admin-users-page .user-cell-text {
+        max-width: 18rem;
     }
 
     .users-toolbar {
