@@ -662,6 +662,120 @@ Esperado: `fetchProductCardOptions()` responde con las opciones activas (políti
 Resultado: no probado (mismo bloqueo que TC-CARDOPT-09: falta aplicar el script SQL).
 ```
 
+### Opciones de card por producto (2026-10-23)
+
+> Requiere la columna `productos.card_options` (jsonb) y el soporte del backend en POST/PUT `/products` (`cardOptions`).
+> Contrato: `null` = usar opciones globales; `[]` = sin sellos; array de `{ label, icon, isActive }` (máx 10, el orden es el de display).
+
+```
+ID: TC-CARDOPT-11
+Caso: Crear producto con opciones propias
+Tipo: happy
+Pre-condición: admin logueado; existen opciones globales activas.
+Pasos:
+  1. Productos > Nuevo producto > pestaña Promociones.
+  2. Desactivar "Usar opciones globales".
+  3. Añadir "Retiro gratis" (ícono store) y "3 cuotas" (ícono credit-card).
+  4. Completar datos básicos > Ver vista previa > Confirmar.
+Esperado: la Vista Card y el catálogo público muestran SOLO esos dos sellos, en ese orden; no aparecen los globales.
+Resultado: no probado
+```
+
+```
+ID: TC-CARDOPT-12
+Caso: Editar las opciones propias (texto, ícono, activar/desactivar, orden, eliminar)
+Tipo: happy
+Pre-condición: producto con 3 opciones propias.
+Pasos:
+  1. Editar el producto > Promociones.
+  2. Editar el texto y el ícono de una opción (lápiz > tilde).
+  3. Desactivar otra; reordenar arrastrando y con los botones Subir/Bajar; eliminar la tercera.
+  4. Ver vista previa > Confirmar.
+Esperado: la card muestra solo las activas, en el nuevo orden; al reabrir el modal se cargan tal cual se guardaron (incluidas las inactivas).
+Resultado: no probado
+```
+
+```
+ID: TC-CARDOPT-13
+Caso: Volver a opciones globales
+Tipo: happy
+Pre-condición: producto con opciones propias.
+Pasos:
+  1. Editar > Promociones > activar "Usar opciones globales".
+  2. En el diálogo elegir "Descartar y usar globales" (probar también "Conservar mis opciones").
+  3. Ver vista previa > Confirmar.
+Esperado: "Conservar" deja el toggle apagado y la lista intacta; "Descartar" oculta el editor; al guardar se envía `cardOptions: null` explícito, la columna queda NULL y la card vuelve a mostrar las globales (incluso si cambian después).
+Resultado: no probado
+```
+
+```
+ID: TC-CARDOPT-14
+Caso: Producto con lista vacía [] no muestra sellos
+Tipo: edge
+Pasos:
+  1. Editar > Promociones > desactivar "Usar opciones globales" sin añadir ninguna opción.
+  2. Guardar (o dejar todas las propias inactivas).
+Esperado: el editor muestra el estado vacío con CTA; la card NO muestra sellos ni espacio reservado, aunque existan globales activas.
+Resultado: no probado
+```
+
+```
+ID: TC-CARDOPT-15
+Caso: Límite de 10 opciones
+Tipo: edge
+Pasos:
+  1. Añadir 10 opciones propias.
+  2. Intentar añadir la 11.
+Esperado: el input y "Añadir opción" quedan deshabilitados y se lee "Llegaste al máximo de 10 opciones"; al eliminar una se vuelve a habilitar.
+Resultado: no probado
+```
+
+```
+ID: TC-CARDOPT-16
+Caso: Validación del texto (vacío, solo espacios, duplicado, 40+, emoji)
+Tipo: edge
+Pasos:
+  1. Pulsar "Añadir opción" con el campo vacío y con solo espacios.
+  2. Añadir "Envío gratis" y luego " envío GRATIS ".
+  3. Pegar un texto de 60 caracteres.
+  4. Añadir "Oferta 🔥" y editar una opción dejándola vacía o igual a otra.
+Esperado: (1) error inline "Escribí el texto de la opción." sin agregar; (2) "Ya existe una opción con ese texto."; (3) el campo corta en 40 y el contador muestra 40/40; (4) el emoji se guarda y se muestra en la card; la edición inválida muestra el error y no se guarda.
+Resultado: no probado
+```
+
+```
+ID: TC-CARDOPT-17
+Caso: Doble click / doble submit
+Tipo: edge
+Pasos:
+  1. Escribir un texto y pulsar "Añadir opción" (o Enter) dos veces rápido.
+  2. Pulsar dos veces "Confirmar" en la vista previa.
+Esperado: la segunda alta del mismo texto se rechaza por duplicado (queda una sola); "Confirmar" no crea dos productos (comportamiento existente).
+Resultado: no probado
+```
+
+```
+ID: TC-CARDOPT-18
+Caso: Editor en mobile 320/375px
+Tipo: a11y / responsive
+Pasos:
+  1. Viewport 375×812 (y 320) > admin > editar producto > Promociones.
+  2. Operar el editor solo con teclado (Tab, Enter, Espacio, Esc en edición).
+Esperado: sin scroll horizontal; botones de al menos 36px; foco visible en toggle, input, íconos y acciones; cada botón tiene aria-label; Esc cancela la edición inline; los errores se anuncian (role="alert").
+Resultado: no probado
+```
+
+```
+ID: TC-CARDOPT-19
+Caso: Anónimo ve solo las opciones activas del producto
+Tipo: security / happy
+Pre-condición: producto A con propias (una inactiva), producto B con null.
+Pasos:
+  1. Sin sesión, abrir Home y /products.
+Esperado: A muestra solo sus activas en su orden; B muestra las globales; el detalle del producto no cambia. Un `card_options` malformado en la base se trata como null (globales).
+Resultado: no probado
+```
+
 ## Casos — Mobile 375px
 
 > Probado con Playwright en viewport 375×812 el 2026-06-19.

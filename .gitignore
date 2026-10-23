@@ -98,4 +98,15 @@ test-results/
 playwright-report/
 
 .vercel
-.env*
+
+# Todo .env queda fuera salvo el ejemplo (la excepción va DESPUÉS del patrón)
+.env.*
+!.env.example
+
+# Claves y certificados
+*.pem
+*.key
+
+# Herramientas de agentes / QA local
+.playwright-mcp/
+.claude/settings.local.json

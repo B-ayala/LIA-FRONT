@@ -1,3 +1,5 @@
+import type { ProductCardOptionsValue } from './productCardOption';
+
 export interface Variant {
   name: string;
   options: string[];
@@ -50,6 +52,8 @@ export interface Product {
   condition?: 'new' | 'used';
   freeShipping?: boolean;
   hoverImageEnabled?: boolean;
+  /** null/undefined = opciones globales de la card. */
+  cardOptions?: ProductCardOptionsValue;
   rating?: number;
   reviewCount?: number;
   variants?: Variant[];

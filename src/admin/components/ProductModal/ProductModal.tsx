@@ -16,6 +16,8 @@ import { Folder, FolderOpen, Dot, Plus, X, Images, CircleHelp } from 'lucide-rea
 import { useVariantsTutorial } from '../VariantsTutorial/useVariantsTutorial';
 import VariantsTutorialModal from '../VariantsTutorial/VariantsTutorialModal';
 import CloudinaryImagePicker from '../CloudinaryImagePicker/CloudinaryImagePicker';
+import ProductCardOptionsEditor from '../ProductCardOptionsEditor/ProductCardOptionsEditor';
+import type { ProductCardOptionsValue } from '../../../types/productCardOption';
 import './ProductModal.css';
 import './ProductModalStylesExtension.css';
 
@@ -66,6 +68,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
     const [images, setImages] = useState<string[]>([]);
     const [pickerOpen, setPickerOpen] = useState(false);
     const [hoverImageEnabled, setHoverImageEnabled] = useState(true);
+    const [cardOptions, setCardOptions] = useState<ProductCardOptionsValue>(null);
 
     // Promociones
     const [originalPrice, setOriginalPrice] = useState('');
@@ -265,6 +268,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                 setDiscountTouched(false);
                 setFreeShipping(formSource.freeShipping || false);
                 setHoverImageEnabled(formSource.hoverImageEnabled ?? true);
+                setCardOptions(formSource.cardOptions ?? null);
                 setDescription(formSource.description || '');
                 setFeaturesText((formSource.features || []).join('\n'));
                 setWarranty(formSource.warranty || '');
@@ -309,6 +313,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
         setDiscountTouched(false);
         setFreeShipping(false);
         setHoverImageEnabled(true);
+        setCardOptions(null);
         setDescription('');
         setFeaturesText('');
         setWarranty('');
@@ -354,6 +359,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
             discount: discount ? parseFloat(discount) : undefined,
             freeShipping,
             hoverImageEnabled,
+            cardOptions,
             variants: builtVariants,
             specifications: specifications.map(spec => ({ label: toTitleCase(spec.label.trim()), value: toSentenceCase(spec.value.trim()) })),
             features: toSentenceCase(featuresText).split('\n').map(f => f.trim()).filter(Boolean),
@@ -1571,6 +1577,10 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                         />
                                         Activar envío gratis
                                     </label>
+                                </div>
+                                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                    <label>Opciones de la card</label>
+                                    <ProductCardOptionsEditor value={cardOptions} onChange={setCardOptions} />
                                 </div>
                             </div>
                         </div>

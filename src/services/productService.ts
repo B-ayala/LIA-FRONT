@@ -8,6 +8,7 @@ import { extractCloudinaryPublicId } from '../utils/cloudinary';
 import { cleanText, normalizeCategory } from '../utils/formatters';
 import { createCachedFetcher } from '../utils/createCachedFetcher';
 import { parseBannerDesign, type BannerDesign } from '../utils/carouselBanner';
+import { parseProductCardOptions } from '../utils/productCardOptions';
 import { parseNavbarColor } from '../utils/navbarColor';
 
 // Datos de configuración que el admin cambia muy de vez en cuando (categorías,
@@ -38,6 +39,7 @@ export const mapDbRowToProduct = (row: any): Product => {
     condition: row.condition,
     freeShipping: row.free_shipping,
     hoverImageEnabled: row.hover_image_enabled ?? true,
+    cardOptions: parseProductCardOptions(row.card_options),
     variants,
     specifications: row.specifications,
     features: row.features,
@@ -262,7 +264,7 @@ export const fetchCategories = async (): Promise<string[]> => {
 export const fetchFeaturedProducts = async (limit?: number) => {
   let query = supabase
     .from('productos')
-    .select('id, name, price, original_price, image_url, images, discount, stock, hover_image_enabled, variants')
+    .select('id, name, price, original_price, image_url, images, discount, stock, hover_image_enabled, card_options, variants')
     .eq('featured', true)
     .eq('status', 'active')
     .order('created_at', { ascending: false });
@@ -302,7 +304,7 @@ export const toggleProductFeatured = async (id: string, featured: boolean) => {
 // lista es casi completa. Quedan afuera las de uso interno (public_id, created_at).
 // `updated_at` viaja para el control de concurrencia al editar (expectedUpdatedAt).
 const ADMIN_LIST_COLUMNS =
-  'id, name, price, original_price, stock, category, image_url, images, description, discount, condition, free_shipping, hover_image_enabled, variants, specifications, features, faqs, warranty, return_policy, size_guide, status, featured, updated_at';
+  'id, name, price, original_price, stock, category, image_url, images, description, discount, condition, free_shipping, hover_image_enabled, card_options, variants, specifications, features, faqs, warranty, return_policy, size_guide, status, featured, updated_at';
 
 // Fetch products from Supabase. Pass activeOnly=false for admin (includes inactive).
 export const fetchProducts = async (activeOnly = true) => {
@@ -375,7 +377,7 @@ export const fetchCatalogProductsPage = async (options: CatalogPageOptions = {})
 
   let query = supabase
     .from('productos')
-    .select('id, name, price, original_price, image_url, images, category, discount, stock, hover_image_enabled, variants')
+    .select('id, name, price, original_price, image_url, images, category, discount, stock, hover_image_enabled, card_options, variants')
     .eq('status', 'active')
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -519,6 +521,7 @@ const buildProductBody = (product: Partial<AdminProduct>) => ({
   condition: product.condition,
   freeShipping: product.freeShipping,
   hoverImageEnabled: product.hoverImageEnabled,
+  cardOptions: product.cardOptions,
   variants: product.variants,
   specifications: product.specifications,
   features: product.features,
@@ -591,7 +594,7 @@ export const updateProduct = async (
     // Sin `stock` en el body el backend no toca esa columna (productos sin stock por talle).
     body: JSON.stringify({
       ...buildProductBody(product),
-      ...nullWhenPresent(product, ['discount', 'originalPrice', 'sizeGuide']),
+      ...nullWhenPresent(product, ['discount', 'originalPrice', 'sizeGuide', 'cardOptions']),
       ...(options.expectedUpdatedAt ? { expectedUpdatedAt: options.expectedUpdatedAt } : {}),
     }),
   });

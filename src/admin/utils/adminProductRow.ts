@@ -1,5 +1,6 @@
 import type { AdminProduct } from '../store/adminStore';
 import { getProductStockFromVariants } from '../../utils/productVariants';
+import { parseProductCardOptions } from '../../utils/productCardOptions';
 import { cleanText, normalizeCategory } from '../../utils/formatters';
 
 /** Fila de `productos` (Supabase) → modelo del admin. Compartido por el listado y la edición. */
@@ -20,6 +21,7 @@ export const mapAdminProductRow = (p: Record<string, unknown>): AdminProduct => 
   condition: (p.condition as 'new' | 'used') || 'new',
   freeShipping: (p.free_shipping as boolean) || false,
   hoverImageEnabled: (p.hover_image_enabled as boolean) ?? true,
+  cardOptions: parseProductCardOptions(p.card_options),
   variants: (p.variants as AdminProduct['variants']) || undefined,
   specifications: (p.specifications as AdminProduct['specifications']) || undefined,
   features: (p.features as string[]) || undefined,

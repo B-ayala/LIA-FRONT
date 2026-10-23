@@ -5,6 +5,7 @@ import type { ProductCardOption } from '../../../types/productCardOption';
 import { getProductPricing } from '../../../utils/pricing';
 import { productImageSrc } from '../../../utils/cloudinary';
 import { getCardOptionIcon } from '../../../utils/cardOptionIcons';
+import { resolveCardOptions } from '../../../utils/productCardOptions';
 import './ProductCard.css';
 
 const HOVER_CAPABLE_QUERY = '(hover: hover)';
@@ -32,6 +33,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
   const isOutOfStock = (product.stock ?? 0) <= 0;
 
   const hoverImageEnabled = product.hoverImageEnabled ?? true;
+  const badges = resolveCardOptions(product.cardOptions, cardOptions);
   const rotationImages = (product.images && product.images.length > 0
     ? product.images
     : [product.image]
@@ -126,12 +128,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
           </p>
         </div>
         
-        {cardOptions.length > 0 && (
+        {badges.length > 0 && (
           <ul className="product-card__badges">
-            {cardOptions.map((option) => {
+            {badges.map((option) => {
               const Icon = getCardOptionIcon(option.icon);
               return (
-                <li key={option.id} className="product-card__badge" title={option.label}>
+                <li key={`${option.icon}-${option.label}`} className="product-card__badge" title={option.label}>
                   <Icon size={13} className="product-card__badge-icon" aria-hidden="true" />
                   <span className="product-card__badge-label">{option.label}</span>
                 </li>

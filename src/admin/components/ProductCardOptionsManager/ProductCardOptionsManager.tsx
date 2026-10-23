@@ -9,30 +9,10 @@ import {
     reorderProductCardOptions,
 } from '../../../services/productService';
 import type { ProductCardOption } from '../../../types/productCardOption';
-import { CARD_OPTION_ICON_KEYS, DEFAULT_CARD_OPTION_ICON, getCardOptionIcon } from '../../../utils/cardOptionIcons';
+import { DEFAULT_CARD_OPTION_ICON, getCardOptionIcon } from '../../../utils/cardOptionIcons';
+import CardOptionIconPicker from '../CardOptionIconPicker/CardOptionIconPicker';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './ProductCardOptionsManager.css';
-
-const IconPicker = ({ value, onChange }: { value: string; onChange: (icon: string) => void }) => (
-    <div className="card-option-icon-picker" role="radiogroup" aria-label="Ícono">
-        {CARD_OPTION_ICON_KEYS.map((key) => {
-            const Icon = getCardOptionIcon(key);
-            return (
-                <button
-                    key={key}
-                    type="button"
-                    role="radio"
-                    aria-checked={value === key}
-                    className={`card-option-icon-btn ${value === key ? 'active' : ''}`}
-                    onClick={() => onChange(key)}
-                    title={key}
-                >
-                    <Icon size={16} />
-                </button>
-            );
-        })}
-    </div>
-);
 
 const ProductCardOptionsManager = () => {
     const [options, setOptions] = useState<ProductCardOption[]>([]);
@@ -130,6 +110,7 @@ const ProductCardOptionsManager = () => {
             <h2 className="admin-card-title">Opciones de la card de producto</h2>
             <p className="admin-card-desc">
                 Sellos que se muestran abajo de cada card en los listados (Mercado Pago, cuotas, envío gratis, etc.).
+                Son los valores por defecto: se usan en los productos que no definen sus propias opciones.
                 No afecta el detalle del producto.
             </p>
 
@@ -147,7 +128,7 @@ const ProductCardOptionsManager = () => {
                     required
                     disabled={saving}
                 />
-                <IconPicker value={newIcon} onChange={setNewIcon} />
+                <CardOptionIconPicker value={newIcon} onChange={setNewIcon} />
                 <button type="submit" className="admin-btn-primary" disabled={saving}>
                     {saving ? 'Guardando...' : 'Añadir opción'}
                 </button>
@@ -180,7 +161,7 @@ const ProductCardOptionsManager = () => {
                                             maxLength={40}
                                             autoFocus
                                         />
-                                        <IconPicker value={editIcon} onChange={setEditIcon} />
+                                        <CardOptionIconPicker value={editIcon} onChange={setEditIcon} />
                                     </div>
                                 ) : (
                                     <div className="card-option-preview">

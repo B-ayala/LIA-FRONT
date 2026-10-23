@@ -45,6 +45,7 @@ const draftToProduct = (draft: ProductDraft, productId: string | null) =>
     condition: draft.condition,
     free_shipping: draft.freeShipping,
     hover_image_enabled: draft.hoverImageEnabled,
+    card_options: draft.cardOptions,
     variants: draft.variants,
     specifications: draft.specifications,
     features: draft.features,

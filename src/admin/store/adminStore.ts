@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Variant, Specification, FAQ, SizeGuide } from '../../types/product';
+import type { ProductCardOptionsValue } from '../../types/productCardOption';
 import type { BannerDesign } from '../../utils/carouselBanner';
 
 // Auth (login/logout/currentUser/isAuthenticated) vive en `src/store/authStore.ts`
@@ -20,6 +21,8 @@ export interface AdminProduct {
   condition?: 'new' | 'used';
   freeShipping?: boolean;
   hoverImageEnabled?: boolean;
+  // null = usar opciones globales: en PUT es el sentinel de "volver a globales".
+  cardOptions?: ProductCardOptionsValue;
   variants?: Variant[];
   specifications?: Specification[];
   features?: string[];

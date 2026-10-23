@@ -1,0 +1,93 @@
+/* Mobile-first. Reutiliza las clases .card-options-list / .card-option-* del manager global. */
+
+.card-options-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.card-options-editor__toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.card-options-editor__toggle input:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.card-options-editor__hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-ink-muted);
+}
+
+.card-options-editor__add {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.card-options-editor__add input {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    min-height: 44px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.card-options-editor__add input:focus-visible,
+.card-option-edit input:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+}
+
+.card-options-editor__add input[aria-invalid='true'],
+.card-option-edit input[aria-invalid='true'] {
+    border-color: var(--color-danger);
+}
+
+.card-options-editor__counter {
+    align-self: flex-end;
+    font-size: 0.75rem;
+    color: var(--color-ink-subtle);
+}
+
+.card-options-editor__error {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-danger);
+}
+
+.card-option-preview.is-inactive {
+    opacity: 0.55;
+}
+
+.card-option-item .drag-handle {
+    touch-action: none;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    color: var(--color-ink-subtle);
+}
+
+.card-option-edit input {
+    width: 100%;
+}
+
+.admin-action-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.admin-action-btn:focus-visible,
+.status-toggle:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+}
