@@ -15,7 +15,7 @@ import {
   type ThemeMode,
 } from './seasonThemes';
 import { getSiteContent } from '../services/siteContentService';
-import { supabase } from '../config/supabaseClient';
+import { subscribeToSiteContent } from '../services/siteContentRealtime';
 
 const REMOTE_THEME_KEY = 'season_theme';
 
@@ -228,23 +228,11 @@ export const SeasonThemeProvider = ({ children }: SeasonThemeProviderProps) => {
 
     applyRemote();
 
-    const channel = supabase
-      .channel('public:site_content:season_theme')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'site_content',
-          filter: `key=eq.${REMOTE_THEME_KEY}`,
-        },
-        () => applyRemote(),
-      )
-      .subscribe();
+    const unsubscribe = subscribeToSiteContent(REMOTE_THEME_KEY, applyRemote);
 
     return () => {
       cancelled = true;
-      void supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, []);
 

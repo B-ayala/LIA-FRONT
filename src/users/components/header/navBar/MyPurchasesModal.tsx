@@ -150,7 +150,7 @@ const PurchaseProductDetail = ({
           {images.length > 0 && (
             <div style={{ position: 'relative' }}>
               <img
-                src={images[currentImageIndex]}
+                src={buildCloudinaryUrl(images[currentImageIndex], { width: 680, crop: 'limit' })}
                 alt={product?.name ?? purchase.product_name}
                 style={{
                   width: '100%',

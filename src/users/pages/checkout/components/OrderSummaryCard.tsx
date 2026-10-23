@@ -1,3 +1,4 @@
+import { buildCloudinaryUrl } from '../../../../utils/cloudinary';
 import { useId, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { CheckoutItem } from '../../../../store/cartStore';
@@ -10,7 +11,7 @@ const THUMB_SIZE = 64;
 const SummaryItem = ({ item, hasIssue }: { item: CheckoutItem; hasIssue: boolean }) => (
   <li className={`order-summary__item${hasIssue ? ' order-summary__item--issue' : ''}`}>
     <img
-      src={item.product.image}
+      src={buildCloudinaryUrl(item.product.image, { width: THUMB_SIZE * 2, crop: 'limit' })}
       alt=""
       width={THUMB_SIZE}
       height={THUMB_SIZE}

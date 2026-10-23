@@ -12,7 +12,7 @@ import type { User, EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../config/supabaseClient';
 import { API_BASE_URL } from '../config/apiBaseUrl';
 import { authTokenStore, type AuthUser } from '../utils/authTokenStore';
-import { getValidAccessToken, refreshSession, storeSessionPayload } from './sessionRefresh';
+import { getValidAccessToken, hasNoSessionHint, markSignedOut, refreshSession, storeSessionPayload } from './sessionRefresh';
 
 export type { AuthUser };
 
@@ -147,12 +147,14 @@ export const logout = async (): Promise<void> => {
     /* no bloqueamos el logout local si el backend o la red fallan */
   } finally {
     authTokenStore.clear();
+    markSignedOut();
   }
 };
 
 // ─── Restauración de sesión ───
 // Se llama al cargar la app con la cookie del backend. `null` = sin sesión (o backend no disponible).
 export const restoreSession = async (): Promise<AuthUser | null> => {
+  if (hasNoSessionHint()) return null;
   const result = await refreshSession();
   return result.status === 'ok' ? result.user : null;
 };

@@ -10,6 +10,12 @@ import { API_BASE_URL } from '../config/apiBaseUrl';
 import { authTokenStore, type AuthUser } from '../utils/authTokenStore';
 
 const EXPIRY_MARGIN_MS = 60_000;
+
+// Marca (no sensible, sin token) de que este navegador no tiene sesión: el backend ya
+// respondió 401/403 al refresh o el usuario cerró sesión. Mientras exista, la carga
+// de la app no pide un refresh que sabemos que va a fallar. Si falta (primera visita
+// o usuario con sesión previa a este cambio) se intenta una vez, como siempre.
+const NO_SESSION_HINT_KEY = 'lia:auth-no-session';
 const HTTP_UNAUTHORIZED = 401;
 const HTTP_FORBIDDEN = 403;
 
@@ -24,10 +30,31 @@ interface SessionPayload {
   expiresIn: number;
 }
 
+const writeNoSessionHint = (value: boolean): void => {
+  try {
+    if (value) window.localStorage.setItem(NO_SESSION_HINT_KEY, '1');
+    else window.localStorage.removeItem(NO_SESSION_HINT_KEY);
+  } catch {
+    /* localStorage deshabilitado: se pierde la optimización, no la sesión */
+  }
+};
+
+export const hasNoSessionHint = (): boolean => {
+  try {
+    return window.localStorage.getItem(NO_SESSION_HINT_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/** Marca este navegador como sin sesión (logout) para que la próxima carga no pida refresh. */
+export const markSignedOut = (): void => writeNoSessionHint(true);
+
 export const storeSessionPayload = (payload: SessionPayload): AuthUser => {
   // Un login/refresh exitoso del backend implica cuenta confirmada.
   const user: AuthUser = { ...payload.user, emailConfirmed: true };
   authTokenStore.setSession(payload.accessToken, payload.expiresIn, user);
+  writeNoSessionHint(false);
   return user;
 };
 
@@ -39,6 +66,7 @@ const requestRefresh = async (): Promise<RefreshResult> => {
     });
     if (response.status === HTTP_UNAUTHORIZED || response.status === HTTP_FORBIDDEN) {
       authTokenStore.clear();
+      writeNoSessionHint(true);
       return { status: 'expired' };
     }
     if (!response.ok) return { status: 'unavailable' };

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../../../config/supabaseClient';
 import { getSiteContent, normalizeBannerInfo } from '../../../../services/siteContentService';
+import { subscribeToSiteContent } from '../../../../services/siteContentRealtime';
 import type { BannerInfo } from '../../../../services/siteContentService';
 import './TopNavBar.css';
 
@@ -71,25 +71,11 @@ const TopNavBar = () => {
 
     loadBanner();
 
-    const channel = supabase
-      .channel('public:site_content:banner')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'site_content',
-          filter: 'key=eq.banner',
-        },
-        () => {
-          void loadBanner();
-        }
-      )
-      .subscribe();
+    const unsubscribe = subscribeToSiteContent('banner', () => { void loadBanner(); });
 
     return () => {
       isMounted = false;
-      void supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, []);
 

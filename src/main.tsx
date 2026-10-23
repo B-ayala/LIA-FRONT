@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import AppErrorBoundary from './components/common/ErrorBoundary/AppErrorBoundary'
 import { purgeLegacyStoredSession } from './utils/authTokenStore'
 
 // Versiones anteriores guardaban tokens en localStorage: se borran para que no queden legibles por JS.
@@ -18,6 +19,8 @@ window.scrollTo(0, 0);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </StrictMode>,
 )

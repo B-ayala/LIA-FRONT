@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { getSiteContent, saveSiteContent } from '../services/siteContentService';
-import { supabase } from '../config/supabaseClient';
+import { subscribeToSiteContent } from '../services/siteContentRealtime';
 
 // ─── Font catalog ─────────────────────────────────────────────────────────────
 
@@ -186,23 +186,11 @@ export const TypographyProvider = ({ children }: { children: ReactNode }) => {
 
     applyRemote();
 
-    const channel = supabase
-      .channel('public:site_content:typography')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'site_content',
-          filter: `key=eq.${REMOTE_KEY}`,
-        },
-        () => applyRemote(),
-      )
-      .subscribe();
+    const unsubscribe = subscribeToSiteContent(REMOTE_KEY, applyRemote);
 
     return () => {
       cancelled = true;
-      void supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, []);
 

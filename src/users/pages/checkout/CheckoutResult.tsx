@@ -1,3 +1,4 @@
+import { buildCloudinaryUrl } from '../../../utils/cloudinary';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import SEO from '../../../components/common/SEO/SEO';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
@@ -19,7 +20,7 @@ const OrderDetail = ({ order }: { order: LastOrder }) => (
     <div className="checkout-result-products">
         {order.items.map((orderItem, index) => (
             <div key={`${orderItem.productName}-${index}`} className="checkout-result-product">
-                <img src={orderItem.productImage} alt={orderItem.productName} className="checkout-result-product-img" />
+                <img src={buildCloudinaryUrl(orderItem.productImage, { width: 128, crop: 'limit' })} alt={orderItem.productName} className="checkout-result-product-img" />
                 <div className="checkout-result-product-info">
                     <p className="checkout-result-product-name">{orderItem.productName}</p>
                     <p className="checkout-result-product-qty">Cantidad: {orderItem.quantity}</p>

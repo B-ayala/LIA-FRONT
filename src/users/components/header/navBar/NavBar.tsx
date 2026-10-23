@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FiSearch, FiChevronRight, FiArrowLeft, FiX, FiShoppingCart, FiChevronDown, FiUser, FiLogOut, FiLock, FiShoppingBag } from 'react-icons/fi';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useBodyScrollLock } from '../../../../hooks/useBodyScrollLock';
 import { useClickOutside } from '../../../../hooks/useClickOutside';
-import { supabase } from '../../../../config/supabaseClient';
 import { runWhenIdle } from '../../../../utils/runWhenIdle';
+import { subscribeToSiteContent } from '../../../../services/siteContentRealtime';
 import { getSiteContent, normalizeNavbarStyleInfo } from '../../../../services/siteContentService';
 // @ts-ignore - vite-imagetools query param
 import logoImg from '../../../../assets/img/Adaptaciones3.jpg.jpeg?w=160&format=webp&quality=90';
@@ -34,8 +33,6 @@ const MyPurchasesModal = lazy(() => import('./MyPurchasesModal'));
 // que estático volvía a meter MUI en el bundle crítico por la puerta de atrás.
 const CartDrawer = lazy(() => import('../../cart/CartDrawer'));
 
-// Margen para que el WebSocket de Realtime no compita con el primer render.
-const REALTIME_SUBSCRIBE_DELAY_MS = 2000;
 // Igual, para precalentar los chunks de los modales (MUI incluido).
 const MODAL_PREFETCH_DELAY_MS = 2500;
 
@@ -99,29 +96,13 @@ const NavBar = () => {
 
     loadNavbarStyle();
 
-    // El canal de Realtime abre un WebSocket aparte — otro handshake además de
-    // los requests del primer render, que en mobile compite con el contenido
-    // crítico. Solo cubre el caso de que el admin cambie el color mientras
-    // alguien tiene la pestaña abierta, así que se suscribe cuando el hilo
-    // principal queda libre: se mantiene la actualización en vivo, pero fuera
-    // del camino crítico.
-    let channel: RealtimeChannel | null = null;
-    const cancelIdleSubscribe = runWhenIdle(() => {
-      if (!isMounted) return;
-      channel = supabase
-        .channel('public:site_content:navbarStyle')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'site_content', filter: 'key=eq.navbarStyle' },
-          () => { void loadNavbarStyle(); }
-        )
-        .subscribe();
-    }, REALTIME_SUBSCRIBE_DELAY_MS);
+    // Cubre el caso de que el admin cambie el color mientras alguien tiene la
+    // pestaña abierta. El canal de Realtime es uno solo para todo `site_content`.
+    const unsubscribe = subscribeToSiteContent('navbarStyle', () => { void loadNavbarStyle(); });
 
     return () => {
       isMounted = false;
-      cancelIdleSubscribe();
-      if (channel) void supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, []);
 

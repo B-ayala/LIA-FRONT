@@ -1,3 +1,4 @@
+import { buildCloudinaryUrl } from '../../../utils/cloudinary';
 import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../../types/product';
@@ -60,6 +61,7 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
 
   const images = product.images || (product.image ? [product.image] : []);
   const currentImage = images[currentImageIndex] || '';
+  const mainImageSrc = (width: number) => buildCloudinaryUrl(currentImage, { width, crop: 'limit' });
   const isMainImageReady = currentImage === '' || loadedImageSrc === currentImage;
 
   // Id propio (distinto de 'route', que cierra el padre al llegar el producto): si
@@ -238,7 +240,9 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
                 </button>
               )}
               <img
-                src={currentImage}
+                src={mainImageSrc(800)}
+                srcSet={[600, 800, 1200].map((w) => `${mainImageSrc(w)} ${w}w`).join(', ')}
+                sizes="(min-width: 1024px) 600px, 100vw"
                 alt={product.name}
                 className="gallery__image"
                 onClick={() => setIsImageModalOpen(true)}
@@ -265,7 +269,7 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
               {images.map((img, index) => (
                 <img
                   key={index}
-                  src={img}
+                  src={buildCloudinaryUrl(img, { width: 160, crop: 'limit' })}
                   alt={`${product.name} ${index + 1}`}
                   className={`thumbnail ${index === currentImageIndex ? 'thumbnail--active' : ''}`}
                   onClick={() => setCurrentImageIndex(index)}
@@ -598,7 +602,7 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
             <button className="image-modal__close" onClick={() => setIsImageModalOpen(false)}>
               ✕
             </button>
-            <img src={currentImage} alt={product.name} />
+            <img src={mainImageSrc(1600)} alt={product.name} />
           </div>
         </div>
       )}

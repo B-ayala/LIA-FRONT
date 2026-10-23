@@ -5,6 +5,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Changed
+- Realtime: los cambios de `site_content` (banner, navbar, tema, tipografía) comparten un único canal (`services/siteContentRealtime.ts`) en vez de abrir 4 por visitante.
+- Sesión: al cargar la app no se pide `POST /api/auth/refresh` si este navegador ya sabe que no tiene sesión (marca `lia:auth-no-session`, sin tokens); la primera visita lo intenta una vez como siempre.
+- Imágenes: detalle de producto (principal con `srcset`, miniaturas y modal), "Mis compras", resumen del checkout y resultado de pago se piden a Cloudinary redimensionadas, no en tamaño original.
+
+### Added
+- `AppErrorBoundary`: un error de render muestra "Algo salió mal" con botón para recargar, en vez de pantalla en blanco.
+
 ### Security
 - `npm audit fix`: `react-router`/`react-router-dom` (open redirect, XSS, DoS), `ws` y `yaml` actualizados. 0 vulnerabilidades en dependencias de producción.
 - Auth: la sesión ya no se guarda en `localStorage`. El login pasa por `POST /api/auth/login`: el refresh token queda en cookie httpOnly y el access token solo en memoria (se recupera al recargar con `/api/auth/refresh`). Se purgan las claves viejas (`db_*`, `sb-*-auth-token`).
