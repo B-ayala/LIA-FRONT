@@ -42,7 +42,7 @@ export const PASSWORD_MAX_LENGTH = 64;
 const PASSWORD_MAX_BYTES = 72;
 // Mismo juego de símbolos que reconoce Supabase en "Password requirements".
 const PASSWORD_SPECIAL_REGEX = /[!@#$%^&*()_+\-=[\]{};':"|<>?,./`~\\]/;
-export const PASSWORD_HINT = `${PASSWORD_MIN_LENGTH} a ${PASSWORD_MAX_LENGTH} caracteres, con letras, números y al menos un símbolo (por ejemplo ! @ # $ %).`;
+export const PASSWORD_HINT = `${PASSWORD_MIN_LENGTH} a ${PASSWORD_MAX_LENGTH} caracteres, con mayúsculas, minúsculas, números y al menos un símbolo (por ejemplo ! @ # $ %).`;
 
 export const validatePassword = (password: string): string | null => {
   if (!password) return 'La contraseña es requerida';
@@ -50,7 +50,9 @@ export const validatePassword = (password: string): string | null => {
     return `La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`;
   if (password.length > PASSWORD_MAX_LENGTH || new TextEncoder().encode(password).length > PASSWORD_MAX_BYTES)
     return `La contraseña no puede tener más de ${PASSWORD_MAX_LENGTH} caracteres`;
-  if (!/\p{L}/u.test(password)) return 'La contraseña debe incluir al menos una letra';
+  // Supabase evalúa mayúscula/minúscula sobre ASCII: una "ñ" sola no cuenta, así que se replica igual.
+  if (!/[a-z]/.test(password)) return 'La contraseña debe incluir al menos una letra minúscula';
+  if (!/[A-Z]/.test(password)) return 'La contraseña debe incluir al menos una letra mayúscula';
   if (!/\d/.test(password)) return 'La contraseña debe incluir al menos un número';
   if (!PASSWORD_SPECIAL_REGEX.test(password)) return 'La contraseña debe incluir al menos un símbolo (por ejemplo ! @ # $ %)';
   return null;
