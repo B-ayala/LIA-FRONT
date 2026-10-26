@@ -191,6 +191,7 @@ test.describe('guía de talles', () => {
     const noMeasures: Variant = { name: 'Talle', options: ['S'] };
     expect(resolveSizeGuide(noMeasures, legacy, catalog).kind).toBe('legacy');
     expect(resolveSizeGuide(noMeasures, { rows: [] }, catalog).kind).toBe('none');
+    expect(resolveSizeGuide(noMeasures, { rows: [{ label: '', values: {} }, { label: ' ', values: { S: '' } }] }, catalog).kind).toBe('none');
     expect(resolveSizeGuide(undefined, undefined, catalog).kind).toBe('none');
   });
 

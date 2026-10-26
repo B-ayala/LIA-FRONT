@@ -25,7 +25,8 @@ const toErrorMessage = async (response: Response, fallback: string): Promise<str
 };
 
 const fetchSizes = async (): Promise<Size[]> => {
-  const response = await apiFetch(SIZES_URL, { skipAuth: true });
+  // El backend cachea el GET 30 s en el navegador: sin revalidar, tras editar o desactivar se vería la lista vieja.
+  const response = await apiFetch(SIZES_URL, { skipAuth: true, cache: 'no-cache' });
   if (!response.ok) throw new Error(await toErrorMessage(response, 'No pudimos cargar los talles.'));
   const body = (await response.json()) as { data?: Size[] };
   return body.data ?? [];

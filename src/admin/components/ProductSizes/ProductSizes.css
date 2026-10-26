@@ -115,7 +115,8 @@
     border-radius: var(--radius-sm);
     font-size: 0.68rem;
     font-weight: 600;
-    white-space: nowrap;
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .product-sizes__tag--global {

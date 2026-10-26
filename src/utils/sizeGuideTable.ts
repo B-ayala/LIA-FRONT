@@ -45,6 +45,10 @@ export type ResolvedSizeGuide =
   | { kind: 'legacy'; guide: SizeGuide; sizes: string[] }
   | { kind: 'none' };
 
+// El editor anterior guardaba filas vacías aunque nadie cargara medidas: mostrarlas daría una tabla de guiones.
+const hasLegacyGuideContent = (guide: SizeGuide): boolean =>
+  guide.rows.some((row) => row.label.trim() !== '' || Object.values(row.values).some((value) => value.trim() !== ''));
+
 /**
  * Qué guía mostrar: la armada con las medidas de los talles del producto; si ninguno tiene
  * medidas, la guía legacy (`size_guide`) mientras exista; si no hay nada, `none`.
@@ -57,7 +61,7 @@ export const resolveSizeGuide = (
   const options = sizeVariant?.options ?? [];
   const table = buildSizeMeasurementTable(options, sizeVariant?.optionMeta, catalogById);
   if (table.columns.length > 0) return { kind: 'table', table };
-  if (legacyGuide && legacyGuide.rows.length > 0) return { kind: 'legacy', guide: legacyGuide, sizes: options };
+  if (legacyGuide && hasLegacyGuideContent(legacyGuide)) return { kind: 'legacy', guide: legacyGuide, sizes: options };
   return { kind: 'none' };
 };
 

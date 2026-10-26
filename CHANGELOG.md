@@ -17,6 +17,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Sesión: al cargar la app no se pide `POST /api/auth/refresh` si este navegador ya sabe que no tiene sesión (marca `lia:auth-no-session`, sin tokens); la primera visita lo intenta una vez como siempre.
 - Imágenes: detalle de producto (principal con `srcset`, miniaturas y modal), "Mis compras", resumen del checkout y resultado de pago se piden a Cloudinary redimensionadas, no en tamaño original.
 
+### Fixed
+- Admin Talles: tras desactivar, activar o editar un talle la tabla seguía mostrando el estado anterior hasta 30 s, porque el navegador reutilizaba el `GET /api/sizes` cacheado por el backend; el catálogo ahora revalida siempre contra el servidor (`cache: 'no-cache'` en `sizeService`).
+- Detalle de producto: "Ver guía de talles" ya no aparece con la guía anterior cuando sus filas están vacías (el editor viejo las guardaba en blanco); antes mostraba una tabla de guiones sin información.
+- Admin Productos > Variantes > Talle: la etiqueta de origen ("Global · Camisa") ya no queda cortada ni tapada por el campo de stock en pantallas angostas.
+
 ### Added
 - Admin Talles: campo opcional **Prenda** en los talles globales (ej: Camisa, Saco), para distinguir medidas de una misma talla según la prenda. El formulario ahora ordena Tipo, Prenda y Nombre del talle (con ayuda de qué va en cada uno), sugiere prendas ya usadas, y la lista suma columna y filtro por prenda. En el producto, los talles globales se agrupan por prenda ("M · Camisa") y no se pueden elegir dos con el mismo nombre. Requiere `garment` en `/api/sizes` del backend.
 - Admin: sección **Talles** (`/admin/sizes`) con el catálogo global de talles: crear, editar (nombre, tipo, medidas), activar/desactivar con confirmación, y filtros por tipo y estado. No se asigna a ningún producto automáticamente. Requiere `/api/sizes` del backend (`services/sizeService.ts`, `types/size.ts`) y el campo opcional `variants[].optionMeta` de los productos.
