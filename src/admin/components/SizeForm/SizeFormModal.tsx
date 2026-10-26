@@ -10,6 +10,7 @@ import {
     toSizeKey,
     type MeasurementRow,
 } from '../../../utils/sizeOptionMeta';
+import { normalizeGarment } from '../../../utils/sizeGarment';
 import MeasurementsEditor from './MeasurementsEditor';
 import './SizeFormModal.css';
 
@@ -19,6 +20,8 @@ interface SizeFormModalProps {
     /** null = crear un talle nuevo. */
     size: Size | null;
     onSaved: (saved: Size) => void;
+    /** Prendas ya usadas en el catálogo, para reutilizar la escritura. */
+    garmentSuggestions: string[];
 }
 
 const TYPE_OPTIONS: { value: SizeType; label: string }[] = [
@@ -30,11 +33,13 @@ interface SizeFormBodyProps {
     size: Size | null;
     onClose: () => void;
     onSaved: (saved: Size) => void;
+    garmentSuggestions: string[];
 }
 
 // Se monta al abrir el modal (MUI desmonta el contenido al cerrar), así el estado arranca limpio.
-const SizeFormBody = ({ size, onClose, onSaved }: SizeFormBodyProps) => {
+const SizeFormBody = ({ size, onClose, onSaved, garmentSuggestions }: SizeFormBodyProps) => {
     const [name, setName] = useState(size?.name ?? '');
+    const [garment, setGarment] = useState(size?.garment ?? '');
     const [type, setType] = useState<SizeType>(size?.type ?? 'indumentaria');
     const [rows, setRows] = useState<MeasurementRow[]>(() => measurementsToRows(size?.measurements));
     const [nameError, setNameError] = useState('');
@@ -60,7 +65,7 @@ const SizeFormBody = ({ size, onClose, onSaved }: SizeFormBodyProps) => {
         setNameError('');
         setFormError('');
         try {
-            const payload = { name: normalizedName, type, measurements: rowsToMeasurements(rows) };
+            const payload = { name: normalizedName, type, garment: normalizeGarment(garment), measurements: rowsToMeasurements(rows) };
             const saved = size ? await updateSize(size.id, payload) : await createSize(payload);
             onSaved(saved);
         } catch (err) {
@@ -72,28 +77,47 @@ const SizeFormBody = ({ size, onClose, onSaved }: SizeFormBodyProps) => {
     return (
         <form className="size-form" onSubmit={handleSubmit} noValidate>
             <div className="size-form__field">
-                <label htmlFor="size-form-name">Nombre del talle</label>
-                <input
-                    id="size-form-name"
-                    type="text"
-                    autoFocus
-                    value={name}
-                    maxLength={SIZE_LIMITS.maxNameLength}
-                    placeholder="Ej: XL o 38"
-                    aria-invalid={Boolean(nameError)}
-                    aria-describedby={nameError ? 'size-form-name-error' : undefined}
-                    onChange={(e) => { setName(e.target.value); setNameError(''); }}
-                />
-                {nameError && <p id="size-form-name-error" className="size-form__error" role="alert">{nameError}</p>}
-            </div>
-
-            <div className="size-form__field">
                 <label htmlFor="size-form-type">Tipo</label>
-                <select id="size-form-type" value={type} onChange={(e) => setType(e.target.value as SizeType)}>
+                <select id="size-form-type" autoFocus value={type} onChange={(e) => setType(e.target.value as SizeType)}>
                     {TYPE_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                 </select>
+            </div>
+
+            <div className="size-form__field">
+                <label htmlFor="size-form-garment">Prenda (opcional)</label>
+                <input
+                    id="size-form-garment"
+                    type="text"
+                    list="size-form-garment-options"
+                    value={garment}
+                    maxLength={SIZE_LIMITS.maxGarmentLength}
+                    placeholder="Ej: Camisa, Saco, Pantalón"
+                    autoComplete="off"
+                    aria-describedby="size-form-garment-hint"
+                    onChange={(e) => setGarment(e.target.value)}
+                />
+                <datalist id="size-form-garment-options">
+                    {garmentSuggestions.map((suggestion) => <option key={suggestion} value={suggestion} />)}
+                </datalist>
+                <p id="size-form-garment-hint" className="size-form__hint">Dejalo vacío si las medidas valen para cualquier prenda.</p>
+            </div>
+
+            <div className="size-form__field">
+                <label htmlFor="size-form-name">Nombre del talle</label>
+                <input
+                    id="size-form-name"
+                    type="text"
+                    value={name}
+                    maxLength={SIZE_LIMITS.maxNameLength}
+                    placeholder="Ej: XL o 38"
+                    aria-invalid={Boolean(nameError)}
+                    aria-describedby={nameError ? 'size-form-name-hint size-form-name-error' : 'size-form-name-hint'}
+                    onChange={(e) => { setName(e.target.value); setNameError(''); }}
+                />
+                <p id="size-form-name-hint" className="size-form__hint">El talle en sí: XS, M, XL, 38…</p>
+                {nameError && <p id="size-form-name-error" className="size-form__error" role="alert">{nameError}</p>}
             </div>
 
             <MeasurementsEditor rows={rows} onChange={setRows} idPrefix="size-form" disabled={saving} />
@@ -110,9 +134,9 @@ const SizeFormBody = ({ size, onClose, onSaved }: SizeFormBodyProps) => {
     );
 };
 
-const SizeFormModal = ({ isOpen, onClose, size, onSaved }: SizeFormModalProps) => (
+const SizeFormModal = ({ isOpen, onClose, size, onSaved, garmentSuggestions }: SizeFormModalProps) => (
     <Modal isOpen={isOpen} onClose={onClose} title={size ? 'Editar talle' : 'Nuevo talle'}>
-        <SizeFormBody size={size} onClose={onClose} onSaved={onSaved} />
+        <SizeFormBody size={size} onClose={onClose} onSaved={onSaved} garmentSuggestions={garmentSuggestions} />
     </Modal>
 );
 

@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react';
 import type { SizeCatalogStatus } from '../../../hooks/useSizeCatalog';
 import type { OptionMetaMap, Size, SizeType } from '../../../types/size';
 import { findOptionBySizeId } from '../../../utils/sizeOptionMeta';
+import { formatSizeLabel, groupSizesByGarment } from '../../../utils/sizeGarment';
 
 interface GlobalSizePickerProps {
     status: SizeCatalogStatus;
@@ -18,8 +19,6 @@ const TYPE_ORDER: { type: SizeType; label: string }[] = [
     { type: 'indumentaria', label: 'Indumentaria' },
     { type: 'calzado', label: 'Calzado' },
 ];
-
-const bySizeName = (a: Size, b: Size) => a.name.localeCompare(b.name, 'es', { numeric: true });
 
 const GlobalSizePicker = ({ status, sizes, error, options, optionMeta, pickerError, onToggle, onRetry }: GlobalSizePickerProps) => {
     const isAssigned = (size: Size) => findOptionBySizeId(options, optionMeta, size.id) !== undefined;
@@ -47,14 +46,14 @@ const GlobalSizePicker = ({ status, sizes, error, options, optionMeta, pickerErr
                 </p>
             );
         }
-        return TYPE_ORDER.map(({ type, label }) => {
-            const group = visible.filter((size) => size.type === type).sort(bySizeName);
-            if (group.length === 0) return null;
-            return (
-                <div className="product-sizes__group" key={type}>
-                    <span className="product-sizes__group-label">{label}</span>
+        return TYPE_ORDER.flatMap(({ type, label }) => {
+            const garmentGroups = groupSizesByGarment(visible.filter((size) => size.type === type));
+            const onlyGeneral = garmentGroups.length === 1 && garmentGroups[0].garment === null;
+            return garmentGroups.map((group) => (
+                <div className="product-sizes__group" key={`${type}-${group.label}`}>
+                    <span className="product-sizes__group-label">{onlyGeneral ? label : `${label} · ${group.label}`}</span>
                     <div className="product-sizes__checks">
-                        {group.map((size) => {
+                        {group.sizes.map((size) => {
                             const selected = isAssigned(size);
                             return (
                                 <label
@@ -66,14 +65,14 @@ const GlobalSizePicker = ({ status, sizes, error, options, optionMeta, pickerErr
                                         checked={selected}
                                         onChange={() => onToggle(size, selected)}
                                     />
-                                    <span>{size.name}</span>
+                                    <span>{formatSizeLabel(size)}</span>
                                     {!size.active && <span className="product-sizes__tag product-sizes__tag--warn">desactivado</span>}
                                 </label>
                             );
                         })}
                     </div>
                 </div>
-            );
+            ));
         });
     };
 

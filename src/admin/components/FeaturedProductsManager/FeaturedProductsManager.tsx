@@ -5,6 +5,10 @@ import { toggleProductFeatured, fetchAdminProducts } from '../../../services/pro
 import { cleanText, normalizeCategory } from '../../../utils/formatters';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './FeaturedProductsManager.css';
+import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+
+// Miniatura de listado: la imagen original pesa mucho más de lo que se ve.
+const THUMB = { width: 240, crop: 'limit' } as const;
 
 const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
     id: String(p.id),
@@ -121,7 +125,7 @@ const FeaturedProductsManager = () => {
                                     searchResults.map((prod) => (
                                         <div key={prod.id} className="search-result-item">
                                             {prod.imageUrl ? (
-                                                <img src={prod.imageUrl} alt={prod.name} />
+                                                <img src={buildCloudinaryUrl(prod.imageUrl, THUMB)} alt={prod.name} loading="lazy" decoding="async" />
                                             ) : (
                                                 <div className="placeholder-img"></div>
                                             )}
@@ -157,7 +161,7 @@ const FeaturedProductsManager = () => {
                                 <div key={prod.id} className={`featured-item ${togglingIds.has(prod.id) ? 'toggling' : ''}`}>
                                     <div className="featured-item-img-wrap">
                                         {prod.imageUrl ? (
-                                            <img src={prod.imageUrl} alt={prod.name} />
+                                            <img src={buildCloudinaryUrl(prod.imageUrl, THUMB)} alt={prod.name} loading="lazy" decoding="async" />
                                         ) : (
                                             <div className="placeholder-img"></div>
                                         )}

@@ -23,6 +23,10 @@ import {
 import CloudinaryStorageUsage from '../../components/CloudinaryStorageUsage/CloudinaryStorageUsage';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './CloudinaryManager.css';
+import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+
+// Miniatura de grilla: la imagen original pesa mucho más de lo que se ve.
+const GRID_THUMB = { width: 400, crop: 'limit' } as const;
 
 interface ImageUsage {
   products: { id: string; name: string; asMain: boolean }[];
@@ -519,7 +523,7 @@ const CloudinaryManager = () => {
                 {filteredImages.map(img => (
                   <div key={img.public_id} className="cloudinary-card">
                     <div className="cloudinary-img-wrap" onClick={() => setPreview(img)}>
-                      <img src={img.secure_url} alt={img.public_id} loading="lazy" />
+                      <img src={buildCloudinaryUrl(img.secure_url, GRID_THUMB)} alt={img.public_id} loading="lazy" decoding="async" />
                       <div className="cloudinary-img-overlay"><span>Ver</span></div>
                     </div>
                     <div className="cloudinary-card-info">

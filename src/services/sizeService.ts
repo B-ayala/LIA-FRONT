@@ -17,7 +17,10 @@ interface ApiErrorBody {
 
 const toErrorMessage = async (response: Response, fallback: string): Promise<string> => {
   const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-  if (response.status === HTTP_CONFLICT && body.code === SIZE_DUPLICATE_CODE) return SIZE_DUPLICATE_MESSAGE;
+  if (response.status === HTTP_CONFLICT && body.code === SIZE_DUPLICATE_CODE) {
+    // El backend distingue "con prenda" / "sin prenda" en su mensaje; el fijo es solo respaldo.
+    return body.message || SIZE_DUPLICATE_MESSAGE;
+  }
   return body.message || fallback;
 };
 

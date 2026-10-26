@@ -8,18 +8,23 @@ import { useSizeCatalog } from '../../../hooks/useSizeCatalog';
 import { updateSize } from '../../../services/sizeService';
 import { filterSelectSlotProps } from '../../../utils/labels';
 import { extractErrorMessage } from '../../../utils/errorMessage';
+import { listGarments, matchesGarmentFilter, normalizeGarment, NO_GARMENT_FILTER } from '../../../utils/sizeGarment';
 import type { Size, SizeType } from '../../../types/size';
 import './Sizes.css';
 
 const TYPE_LABELS: Record<SizeType, string> = { indumentaria: 'Indumentaria', calzado: 'Calzado' };
 
 const compareSizes = (a: Size, b: Size): number =>
-    a.type.localeCompare(b.type) || a.name.localeCompare(b.name, 'es', { numeric: true });
+    a.type.localeCompare(b.type)
+    || (normalizeGarment(a.garment) ?? '').localeCompare(normalizeGarment(b.garment) ?? '', 'es')
+    || a.name.localeCompare(b.name, 'es', { numeric: true });
 
 const formatMeasurements = (size: Size): string => {
     const entries = Object.entries(size.measurements);
     return entries.length === 0 ? '—' : entries.map(([key, value]) => `${key}: ${value || '—'}`).join(' · ');
 };
+
+const garmentLabel = (size: Size): string => normalizeGarment(size.garment) ?? '—';
 
 const StatusPill = ({ active }: { active: boolean }) => (
     <span className={`sizes-pill ${active ? 'sizes-pill--active' : 'sizes-pill--inactive'}`}>
@@ -32,17 +37,20 @@ type FormTarget = { size: Size | null } | null;
 const Sizes = () => {
     const catalog = useSizeCatalog();
     const [filterType, setFilterType] = useState('');
+    const [filterGarment, setFilterGarment] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [formTarget, setFormTarget] = useState<FormTarget>(null);
     const [deactivateTarget, setDeactivateTarget] = useState<Size | null>(null);
     const [busyId, setBusyId] = useState<string | null>(null);
     const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
-    const hasFilters = Boolean(filterType || filterStatus);
+    const hasFilters = Boolean(filterType || filterGarment || filterStatus);
     const rows = useMemo(() => catalog.sizes
         .filter((size) => !filterType || size.type === filterType)
+        .filter((size) => matchesGarmentFilter(size, filterGarment))
         .filter((size) => !filterStatus || (filterStatus === 'active') === size.active)
-        .sort(compareSizes), [catalog.sizes, filterType, filterStatus]);
+        .sort(compareSizes), [catalog.sizes, filterType, filterGarment, filterStatus]);
+    const garments = useMemo(() => listGarments(catalog.sizes), [catalog.sizes]);
 
     const setActive = async (size: Size, active: boolean) => {
         setBusyId(size.id);
@@ -134,7 +142,7 @@ const Sizes = () => {
                         <li className="sizes-card" key={size.id}>
                             <div className="sizes-card__head">
                                 <strong className="sizes-card__name">{size.name}</strong>
-                                <span className="sizes-card__type">{TYPE_LABELS[size.type]}</span>
+                                <span className="sizes-card__type">{TYPE_LABELS[size.type]} · Prenda: {garmentLabel(size)}</span>
                                 <StatusPill active={size.active} />
                             </div>
                             <p className="sizes-card__measurements">{formatMeasurements(size)}</p>
@@ -147,6 +155,7 @@ const Sizes = () => {
                         <tr>
                             <th scope="col">Talle</th>
                             <th scope="col">Tipo</th>
+                            <th scope="col">Prenda</th>
                             <th scope="col">Medidas</th>
                             <th scope="col">Estado</th>
                             <th scope="col">Acciones</th>
@@ -157,6 +166,7 @@ const Sizes = () => {
                             <tr key={size.id}>
                                 <td className="font-medium">{size.name}</td>
                                 <td>{TYPE_LABELS[size.type]}</td>
+                                <td>{garmentLabel(size)}</td>
                                 <td className="sizes-table__measurements">{formatMeasurements(size)}</td>
                                 <td><StatusPill active={size.active} /></td>
                                 <td>{renderActions(size)}</td>
@@ -188,6 +198,11 @@ const Sizes = () => {
                     <MenuItem value="indumentaria">Indumentaria</MenuItem>
                     <MenuItem value="calzado">Calzado</MenuItem>
                 </TextField>
+                <TextField select className="filter-select" aria-label="Filtrar por prenda" value={filterGarment} onChange={(e) => setFilterGarment(e.target.value)} size="small" slotProps={filterSelectSlotProps}>
+                    <MenuItem value="">Todas las prendas</MenuItem>
+                    <MenuItem value={NO_GARMENT_FILTER}>Sin prenda</MenuItem>
+                    {garments.map((garment) => <MenuItem key={garment} value={garment}>{garment}</MenuItem>)}
+                </TextField>
                 <TextField select className="filter-select" aria-label="Filtrar por estado" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} size="small" slotProps={filterSelectSlotProps}>
                     <MenuItem value="">Todos los estados</MenuItem>
                     <MenuItem value="active">Activos</MenuItem>
@@ -208,6 +223,7 @@ const Sizes = () => {
                 onClose={() => setFormTarget(null)}
                 size={formTarget?.size ?? null}
                 onSaved={handleSaved}
+                garmentSuggestions={garments}
             />
 
             <ConfirmationModal

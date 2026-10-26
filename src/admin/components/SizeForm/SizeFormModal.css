@@ -38,6 +38,12 @@
     border-color: var(--color-danger);
 }
 
+.size-form__hint {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+}
+
 .size-form__error {
     margin: 0;
     font-size: 0.8rem;

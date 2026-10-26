@@ -3,6 +3,10 @@ import { fetchAdminProducts, deleteProduct } from '../../../services/productServ
 import { getAuthToken } from '../../../utils/auth';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './ProductGallery.css';
+import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+
+// Miniatura de listado: la imagen original pesa mucho más de lo que se ve.
+const THUMB = { width: 240, crop: 'limit' } as const;
 
 interface Product {
   id: string;
@@ -91,7 +95,7 @@ const ProductGallery = ({ onProductSelect, refreshTrigger }: ProductGalleryProps
             >
               {product.image_url && (
                 <div className="item-image">
-                  <img src={product.image_url} alt={product.name} />
+                  <img src={buildCloudinaryUrl(product.image_url, THUMB)} alt={product.name} loading="lazy" decoding="async" />
                   <div className="item-overlay">
                     <button className="item-edit-btn">Editar</button>
                   </div>

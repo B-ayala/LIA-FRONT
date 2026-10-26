@@ -81,7 +81,7 @@ export const addGlobalSize = (selection: SizeSelection, size: Size): SizeChangeR
   const existing = findOptionByName(selection.options, size.name);
   if (existing) {
     return fail(isGlobalOption(selection.optionMeta, existing)
-      ? `El talle ${existing} ya está en este producto.`
+      ? `Este producto ya tiene el talle ${existing}.`
       : `Ya cargaste un talle propio "${existing}" en este producto. Quitalo si querés usar el talle global.`);
   }
 

@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import type { OptionMetaMap, Size } from '../../../types/size';
+import { normalizeGarment } from '../../../utils/sizeGarment';
 import { getOptionSource } from '../../../utils/sizeOptionMeta';
 
 interface ProductSizeListProps {
@@ -26,14 +27,16 @@ const ProductSizeList = ({ options, optionMeta, stockByOption, catalogById, onSt
                 {options.map((option) => {
                     const isGlobal = getOptionSource(optionMeta, option) === 'global';
                     const sizeId = optionMeta?.[option]?.sizeId;
-                    const isDisabledGlobal = isGlobal && sizeId !== undefined && catalogById.get(sizeId)?.active === false;
+                    const catalogSize = isGlobal && sizeId !== undefined ? catalogById.get(sizeId) : undefined;
+                    const isDisabledGlobal = catalogSize?.active === false;
+                    const garment = normalizeGarment(catalogSize?.garment);
                     const measurements = isGlobal ? '' : formatCustomMeasurements(optionMeta, option);
                     return (
                         <li className="product-sizes__item" key={option}>
                             <div className="product-sizes__item-main">
                                 <strong className="product-sizes__name">{option}</strong>
                                 <span className={`product-sizes__tag ${isGlobal ? 'product-sizes__tag--global' : 'product-sizes__tag--custom'}`}>
-                                    {isGlobal ? 'Global' : 'Propio'}
+                                    {isGlobal ? (garment ? `Global · ${garment}` : 'Global') : 'Propio'}
                                 </span>
                                 {isDisabledGlobal && <span className="product-sizes__tag product-sizes__tag--warn">desactivado</span>}
                                 {measurements && <span className="product-sizes__measures">{measurements}</span>}

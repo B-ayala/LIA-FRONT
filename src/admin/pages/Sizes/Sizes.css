@@ -133,6 +133,7 @@
     font-size: 0.8rem;
     color: var(--color-ink-subtle);
     margin-right: auto;
+    overflow-wrap: anywhere;
 }
 
 .sizes-card__measurements {

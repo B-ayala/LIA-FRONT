@@ -7,6 +7,10 @@ import { SHIPPING_METHOD_LABEL, filterSelectSlotProps } from '../../../utils/lab
 import { RANGE_NOT_SATISFIABLE_CODE, getPageRange, getTotalPages } from '../../../utils/serverPagination';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './Dispatches.css';
+import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+
+// Miniatura de listado: la imagen original pesa mucho más de lo que se ve.
+const THUMB = { width: 240, crop: 'limit' } as const;
 
 // Filtros, orden y paginación corren en el servidor (.range + count exact).
 const DISPATCH_COLUMNS = 'id, buyer_name, buyer_email, product_id, product_name, product_image, quantity, total_price, payment_method, payment_status, shipping_method, dispatch_status, created_at';
@@ -336,7 +340,7 @@ const Dispatches = () => {
                                         </div>
                                         <div className="dispatch-card-top">
                                             {d.product_image ? (
-                                                <img src={d.product_image} alt={d.product_name} className="dispatch-card-img" />
+                                                <img src={buildCloudinaryUrl(d.product_image, THUMB)} alt={d.product_name} className="dispatch-card-img" loading="lazy" decoding="async" />
                                             ) : (
                                                 <div className="dispatch-card-img-placeholder" />
                                             )}
@@ -423,7 +427,7 @@ const Dispatches = () => {
                                         <td>
                                             <div className="table-product-cell">
                                                 {d.product_image ? (
-                                                    <img src={d.product_image} alt={d.product_name} className="table-img" />
+                                                    <img src={buildCloudinaryUrl(d.product_image, THUMB)} alt={d.product_name} className="table-img" loading="lazy" decoding="async" />
                                                 ) : (
                                                     <div className="table-img-placeholder" />
                                                 )}

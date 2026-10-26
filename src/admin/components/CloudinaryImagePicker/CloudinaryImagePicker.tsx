@@ -11,6 +11,10 @@ import {
 } from '../../../services/productService';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './CloudinaryImagePicker.css';
+import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+
+// Miniatura de grilla: la imagen original pesa mucho más de lo que se ve.
+const GRID_THUMB = { width: 400, crop: 'limit' } as const;
 
 interface CloudinaryImagePickerProps {
   open: boolean;
@@ -240,7 +244,7 @@ const CloudinaryImagePicker = ({ open, onClose, onSelect, single = false }: Clou
                         onClick={() => toggleSelect(img.secure_url)}
                         title={img.public_id}
                       >
-                        <img src={img.secure_url} alt={img.public_id} loading="lazy" />
+                        <img src={buildCloudinaryUrl(img.secure_url, GRID_THUMB)} alt={img.public_id} loading="lazy" decoding="async" />
                         {isSelected && <div className="cip-check">✓</div>}
                       </div>
                     );

@@ -8,6 +8,10 @@ import { deleteProduct as deleteProductApi } from '../../../services/productServ
 import { getAuthToken } from '../../../utils/auth';
 import { usePagination } from '../../../hooks/usePagination';
 import './ProductTable.css';
+import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+
+// Miniatura de listado: la imagen original pesa mucho más de lo que se ve.
+const THUMB = { width: 240, crop: 'limit' } as const;
 
 interface ProductTableProps {
     onEdit: (product: AdminProduct) => void;
@@ -85,7 +89,7 @@ const ProductTable = ({ onEdit, searchTerm, filterCategory = '', filterStatus = 
                         <div className="product-card" key={product.id}>
                             <div className="product-card-top">
                                 {product.imageUrl ? (
-                                    <img src={product.imageUrl} alt={product.name} className="product-card-img" />
+                                    <img src={buildCloudinaryUrl(product.imageUrl, THUMB)} alt={product.name} className="product-card-img" loading="lazy" decoding="async" />
                                 ) : (
                                     <div className="product-card-img-placeholder"></div>
                                 )}
@@ -153,7 +157,7 @@ const ProductTable = ({ onEdit, searchTerm, filterCategory = '', filterStatus = 
                             <tr key={product.id}>
                                 <td>
                                     {product.imageUrl ? (
-                                        <img src={product.imageUrl} alt={product.name} className="table-img" />
+                                        <img src={buildCloudinaryUrl(product.imageUrl, THUMB)} alt={product.name} className="table-img" loading="lazy" decoding="async" />
                                     ) : (
                                         <div className="table-img-placeholder"></div>
                                     )}

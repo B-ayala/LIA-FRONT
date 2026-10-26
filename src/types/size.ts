@@ -8,6 +8,8 @@ export interface Size {
   id: string;
   name: string;
   type: SizeType;
+  /** Prenda a la que aplican las medidas (ej: Camisa); null = cualquier prenda. */
+  garment: string | null;
   measurements: SizeMeasurements;
   active: boolean;
   createdAt: string;
@@ -17,6 +19,8 @@ export interface Size {
 export interface SizeInput {
   name: string;
   type: SizeType;
+  /** Vacío o null ⇒ sin prenda; en una edición, null borra la prenda. */
+  garment?: string | null;
   measurements?: SizeMeasurements;
 }
 
@@ -43,4 +47,5 @@ export const SIZE_LIMITS = {
   maxMeasurementKeyLength: 30,
   maxMeasurementValueLength: 20,
   maxNameLength: 20,
+  maxGarmentLength: 30,
 } as const;
