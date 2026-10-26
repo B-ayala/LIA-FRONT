@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../../types/product';
 import SEO from '../../../components/common/SEO/SEO';
 import VariantTable from '../../../components/common/VariantTable/VariantTable';
-import { useProductSizeGuide } from '../../../hooks/useProductSizeGuide';
 import PurchaseVariantModal from '../../components/PurchaseVariantModal/PurchaseVariantModal';
 import { parseColorOption } from '../../../utils/constants';
 import { getProductPricing } from '../../../utils/pricing';
@@ -38,7 +37,6 @@ interface ProductDetailViewProps {
 
 const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps) => {
   const navigate = useNavigate();
-  const sizeGuide = useProductSizeGuide(product);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [requestedQuantity, setQuantity] = useState(1);
   const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: string }>(
@@ -415,15 +413,12 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
                     );
                   });
                 })()}
-                {sizeGuide.hasGuide && (
-                  <button
-                    type="button"
-                    className="size-guide-btn"
-                    onClick={() => setIsSizeGuideOpen(true)}
-                  >
-                    📏 Ver guía de talles
-                  </button>
-                )}
+                <button 
+                  className="size-guide-btn"
+                  onClick={() => setIsSizeGuideOpen(true)}
+                >
+                  📏 Ver guía de talles
+                </button>
               </div>
             )}
 
@@ -620,10 +615,8 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
           title="Guía de Talles"
         >
           <VariantTable
-            guide={sizeGuide.guide}
-            status={sizeGuide.status}
-            error={sizeGuide.error}
-            onRetry={sizeGuide.reload}
+            sizeGuide={product.sizeGuide}
+            sizes={product.variants?.find(v => isSizeVariant(v.name))?.options ?? []}
           />
         </Modal>
       </Suspense>

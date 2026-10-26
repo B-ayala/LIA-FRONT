@@ -26,22 +26,6 @@ export interface SizeInput {
 
 export type SizeUpdate = Partial<SizeInput> & { active?: boolean };
 
-/** Origen de un talle dentro de un producto: del catálogo o propio del producto. */
-export type SizeSource = 'global' | 'custom';
-
-/**
- * Metadatos de un talle de producto. `global` ⇒ `sizeId` y sin medidas (viven en el
- * catálogo); `custom` ⇒ sin `sizeId`, medidas opcionales guardadas en el producto.
- */
-export interface SizeOptionMeta {
-  source: SizeSource;
-  sizeId?: string;
-  measurements?: SizeMeasurements;
-}
-
-/** Clave = opción de la variante Talle en MAYÚSCULAS. */
-export type OptionMetaMap = Record<string, SizeOptionMeta>;
-
 export const SIZE_LIMITS = {
   maxMeasurements: 8,
   maxMeasurementKeyLength: 30,

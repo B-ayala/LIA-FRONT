@@ -1,6 +1,6 @@
 import { Plus, X } from 'lucide-react';
 import { SIZE_LIMITS } from '../../../types/size';
-import type { MeasurementRow } from '../../../utils/sizeOptionMeta';
+import type { MeasurementRow } from '../../../utils/sizeMeasurements';
 import './MeasurementsEditor.css';
 
 interface MeasurementsEditorProps {

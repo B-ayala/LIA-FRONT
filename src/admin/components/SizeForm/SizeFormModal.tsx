@@ -9,7 +9,7 @@ import {
     rowsToMeasurements,
     toSizeKey,
     type MeasurementRow,
-} from '../../../utils/sizeOptionMeta';
+} from '../../../utils/sizeMeasurements';
 import { normalizeGarment } from '../../../utils/sizeGarment';
 import MeasurementsEditor from './MeasurementsEditor';
 import './SizeFormModal.css';

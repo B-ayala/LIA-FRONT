@@ -1,5 +1,4 @@
 import type { Product, Variant } from '../types/product';
-import { pruneOptionMeta } from './sizeOptionMeta';
 
 export type SelectedVariants = Record<string, string>;
 
@@ -53,11 +52,8 @@ export const sanitizeVariant = (variant: Variant): Variant => {
       name,
       options,
       stockByOption: undefined,
-      optionMeta: undefined,
     };
   }
-
-  const optionMeta = pruneOptionMeta(options, variant.optionMeta);
 
   // Una variante de talle sin stock por opción (ningún valor numérico) significa
   // que el stock se controla a nivel producto (columna `stock`), no por talle.
@@ -72,7 +68,6 @@ export const sanitizeVariant = (variant: Variant): Variant => {
       name,
       options,
       stockByOption: undefined,
-      optionMeta,
     };
   }
 
@@ -87,7 +82,6 @@ export const sanitizeVariant = (variant: Variant): Variant => {
     name,
     options,
     stockByOption,
-    optionMeta,
   };
 };
 

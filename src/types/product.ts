@@ -1,13 +1,10 @@
 import type { ProductCardOptionsValue } from './productCardOption';
-import type { OptionMetaMap } from './size';
 
 export interface Variant {
   name: string;
   options: string[];
   stockByOption?: Record<string, number>;
   colorsByOption?: Record<string, string[]>;
-  /** Solo variante Talle: origen (global/propio) y medidas de cada opción. Ausente ⇒ todos propios. */
-  optionMeta?: OptionMetaMap;
 }
 
 export type SizeGuideType = 'indumentaria' | 'calzado';
@@ -21,6 +18,11 @@ export interface SizeGuide {
   type?: SizeGuideType;
   columns?: string[];
   rows: SizeGuideRow[];
+  /**
+   * Origen de las columnas (clave = nombre en MAYÚSCULAS). Presente ⇒ talle global del catálogo;
+   * ausente ⇒ talle propio de este producto. Una guía sin este campo tiene todas las columnas propias.
+   */
+  columnSources?: Record<string, { sizeId: string }>;
 }
 
 export interface Specification {

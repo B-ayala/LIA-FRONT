@@ -79,12 +79,11 @@ src/
 │   └── cartStore.ts            # carrito persistido (zustand/persist) + item de checkout
 │
 ├── types/
-│   ├── product.ts              # Product, Variant (con `optionMeta`), Specification, FAQ, Review
-│   └── size.ts                 # Size (catálogo, con prenda opcional), SizeOptionMeta (origen global/propio de un talle de producto)
+│   ├── product.ts              # Product, Variant, Specification, FAQ, Review
+│   └── size.ts                 # Size (catálogo independiente, con prenda opcional)
 │
 ├── hooks/                      # hooks reutilizables
 │   ├── useSizeCatalog.ts       # catálogo de talles con estados idle/loading/ready/error + reload
-│   ├── useProductSizeGuide.ts  # guía de talles de un producto (resuelve medidas globales desde el catálogo)
 │   ├── useBodyScrollLock.ts    # bloquea scroll del body (modales/drawers)
 │   ├── useClickOutside.ts      # cierre por click externo
 │   └── usePagination.ts        # paginación de listados
@@ -99,10 +98,10 @@ src/
 │   ├── seasons.css             # estilos estacionales
 │   ├── constants.ts            # COLOR_PALETTE, COLOR_MAP, parseColorOption
 │   ├── pricing.ts              # cálculo de precio final / descuentos
-│   ├── productVariants.ts      # validación de variantes, stock por opción, sanitización (conserva/poda `optionMeta`)
-│   ├── sizeOptionMeta.ts       # talles de producto: alta global/propia, dedupe por nombre, baja, medidas (funciones puras)
+│   ├── productVariants.ts      # validación de variantes, stock por opción y sanitización
+│   ├── sizeMeasurements.ts     # medidas de los talles del catálogo: sanitizar, filas del editor, duplicados (puras)
 │   ├── sizeGarment.ts          # prenda de los talles globales: normalizar, agrupar, filtrar y rotular "M · Camisa" (puras)
-│   ├── sizeGuideTable.ts       # arma la guía de talles (tabla por talle o guía legacy) para el detalle
+│   ├── sizeGuideColumns.ts     # columnas globales/propias de la guía de talles: agregar, quitar, precarga, columnas base, poda de columnSources (puras)
 │   ├── cloudinary.ts           # helpers de URLs/transformaciones Cloudinary
 │   ├── formatters.ts           # formateo (precios, fechas, etc.)
 │   ├── labels.ts               # labels/textos
@@ -154,7 +153,7 @@ src/
     ├── styles/adminShared.css  # estilos compartidos del admin
     ├── components/             # CarouselManager, BannerEditor, CloudinaryImagePicker, CloudinaryStorageUsage,
     │                           #   FeaturedProductsManager, ProductGallery, ProductModal, ProductTable,
-    #   ProductSizes (variante Talle: globales / del producto / propio), SizeForm (alta-edición de talles)
+    #   SizeForm (alta-edición de talles del catálogo)
     └── pages/                  # Dashboard, Products, ProductPreview, Users, Sales, Dispatches, Sizes, AboutEditor,
                                 #   FooterEditor, HomeManager, CloudinaryManager, ThemesManager
 ```
@@ -385,14 +384,24 @@ Nada de tokens en `localStorage`/`sessionStorage`. Todo pasa por `services/authS
 - `Sizes` (`/admin/sizes`): catálogo global de talles (crear, editar tipo/prenda/nombre/medidas, activar/desactivar
   con confirmación; no hay borrado; filtros por tipo, prenda y estado). La prenda es opcional (`garment`, hasta 30
   caracteres; vacío = sin prenda): una "M" de camisa mide distinto que una "M" de saco. El nombre del talle es el valor
-  (XS, M, 38), no la prenda; el backend rechaza duplicados de tipo + prenda + nombre (409 `SIZE_DUPLICATE`). Los talles globales no se asignan solos: en `ProductModal` > Variantes > Talle
-  (`ProductSizes`) cada producto elige globales activos (agrupados por prenda, chip "M · Camisa") o agrega talles propios. Dentro de un
-  producto el talle se identifica por su NOMBRE: no se pueden elegir dos globales con el mismo nombre aunque tengan
-  prendas distintas ("Este producto ya tiene el talle M."). El origen se guarda en
-  `variants[].optionMeta[OPCIÓN]` (`global` + `sizeId`, sin medidas; `custom` + medidas opcionales); sin `optionMeta`
-  el talle es propio. Las medidas de los globales se resuelven en vivo desde `GET /sizes`. La guía pública
-  ("Ver guía de talles") sale de los talles del producto; si ninguno tiene medidas cae en `size_guide` (legacy, solo
-  lectura, se conserva al guardar) y, si tampoco hay, el botón se oculta.
+  (XS, M, 38), no la prenda; el backend rechaza duplicados de tipo + prenda + nombre (409 `SIZE_DUPLICATE`). El catálogo alimenta SOLO el editor de "Guía de talles" del producto (`size_guide`), no la variante Talle, el stock ni el checkout.
+  En `ProductModal` > Variantes, la variante permanente Talle es texto libre (input + Enter o botón;
+  se normaliza a MAYÚSCULAS y no admite duplicados), con tags con X, stock por talle (el stock total es la suma) y colores por talle.
+  Más abajo está el editor de "Guía de talles" (tipo indumentaria/calzado, columnas y filas), que se guarda en `size_guide`.
+  Sus columnas (talles) pueden ser **globales** (un talle creado en `/admin/sizes`, elegido desde el bloque "Talles globales", agrupado por prenda,
+  con los activos del tipo de la guía más los desactivados que la guía ya usa) o **propias** (las creadas con "+ Agregar" en el formulario del producto:
+  no se guardan en el catálogo ni aparecen en otros productos). La procedencia se guarda en `size_guide.columnSources` (clave = nombre de la columna en
+  MAYÚSCULAS, valor `{ sizeId }`; ausente = propia; una guía sin ese campo tiene todas las columnas propias y no se migra). Al guardar se podan las
+  entradas de columnas que ya no existen y el campo no se envía si queda vacío. No se admiten duplicados por nombre dentro de la guía (sin distinguir
+  mayúsculas, globales y propias juntas). Quitar una columna solo la saca de esa guía (nunca borra el global ni toca otros productos). Al elegir un
+  global se copian sus medidas (snapshot): se crea la fila si no existe y solo se completan celdas vacías, sin pisar lo tipeado; después se edita libre y
+  los cambios del catálogo no afectan guías ya guardadas; un propio no precarga nada. Columnas base: si el catálogo tiene talles activos del tipo, la guía
+  nueva arranca sin columnas; si no, con las de siempre (XS–XXL / 35–42, como propias). Una guía nueva intacta pasa a vacía cuando el catálogo termina de
+  cargar; nunca se altera una guía editada ni una ya guardada. Si el catálogo falla se muestra "Reintentar" y se pueden seguir usando talles propios.
+  Código: `utils/sizeGuideColumns.ts` (lógica pura) y `admin/components/SizeGuideEditor/` (UI).
+  La guía pública ("📏 Ver guía de talles" en el detalle) muestra `product.sizeGuide` con `VariantTable` y, si no hay, cae en las opciones
+  de la variante Talle (el botón aparece en todo producto con variantes). El backend conserva `/api/sizes` y acepta `optionMeta` opcional en
+  `variants`, pero el front no lo usa.
 - `Sales` (`salesQueries.ts`, `SaleStatusCell`, `useSaleActions`): lee `ventas` de Supabase
   (incluye `oversold` y `review_reason`; si la columna falta, error con "Reintentar"). Estado
   efectivo: MP `pendiente` <15 min = "Pendiente", 15 min–24 h = "Pago en proceso", >24 h =

@@ -5,10 +5,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 
 ## [Unreleased]
 
+### Added
+- Admin Productos > Variantes > Guía de talles: las columnas pueden ser talles globales del catálogo (con precarga de medidas) o propios del producto, con etiqueta de origen, sin duplicados; la guía nueva arranca sin columnas si hay globales activos del tipo (`size_guide.columnSources`).
+
 ### Security
 - Alta, recuperación y cambio de contraseña: contraseña de 8 a 64 caracteres con mayúscula, minúscula, número y símbolo (coincide con "Password requirements" de Supabase) (antes mínimo 6 sin más reglas); se rechaza lo que superaría 72 bytes en vez de truncarlo en silencio. Nombre de 2 a 60 caracteres (solo letras, espacios, apóstrofes, puntos y guiones), email hasta 254 y celular de 7 a 20. Los formularios muestran el límite como ayuda y frenan la escritura al llegar al máximo. Reglas en `utils/validation.ts`.
 
 ### Changed
+- Admin Productos > Variantes > Talle y "Ver guía de talles" vuelven al flujo anterior (talle libre con stock y colores + editor manual de guía; la guía pública usa `size_guide` y, si no hay, las opciones de la variante). La sección Talles queda como catálogo independiente que por ahora no alimenta al producto.
 - Admin: las miniaturas de Productos, Destacados, Galería, Despachos y de las grillas de Cloudinary (gestor y selector) se piden a Cloudinary a 240–400 px (`buildCloudinaryUrl`) con `loading="lazy"`; antes bajaban la imagen original completa. Sin cambios visuales.
 - Admin Productos > Variantes > Talle: ahora tiene tres bloques (talles globales a elegir, talles de este producto con origen "Global"/"Propio" y stock, y "Agregar talle propio" con medidas opcionales). Quitar un talle solo lo saca del producto. Los talles ya cargados quedan como propios, sin migrar. El editor manual de "Guía de talles" por producto se eliminó: la guía anterior (`size_guide`) se conserva sin cambios y solo se muestra si ningún talle tiene medidas.
 - Detalle de producto: "Ver guía de talles" se arma con los talles del producto (una fila por talle, columnas = medidas; las de los talles globales salen del catálogo, con estados de carga y error) y se oculta si no hay medidas ni guía anterior.
