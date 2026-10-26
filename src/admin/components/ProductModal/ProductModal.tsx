@@ -6,7 +6,10 @@ import { buildMissingDataMessage, getMissingProductFields } from './productSaveW
 import type { AdminProduct } from '../../store/adminStore';
 import type { ProductDraft } from './productDraft';
 import { extractErrorMessage } from '../../../utils/errorMessage';
-import type { Specification, FAQ, SizeGuide, SizeGuideType } from '../../../types/product';
+import type { Specification, FAQ, SizeGuide } from '../../../types/product';
+import type { OptionMetaMap, Size, SizeMeasurements } from '../../../types/size';
+import { addCustomSize, pruneOptionMeta, addGlobalSize, removeSizeOption, type SizeChangeResult, type SizeSelection } from '../../../utils/sizeOptionMeta';
+import ProductSizesEditor from '../ProductSizes/ProductSizesEditor';
 import { toTitleCase, toSentenceCase } from '../../../utils/textCase';
 import { COLOR_MAP, parseColorOption } from '../../../utils/constants';
 import { calculateDiscountPercentage, getProductPricing } from '../../../utils/pricing';
@@ -34,11 +37,6 @@ interface ProductModalProps {
 
 const tabs = ['Datos Básicos', 'Variantes', 'Promociones', 'Descripción', 'Especificaciones', 'FAQ'];
 const DEFAULT_VISIBLE_VARIANT_OPTIONS = 6;
-
-const DEFAULT_SIZE_COLUMNS: Record<SizeGuideType, string[]> = {
-    indumentaria: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-    calzado: ['35', '36', '37', '38', '39', '40', '41', '42'],
-};
 
 const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: ProductModalProps) => {
 
@@ -83,9 +81,9 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
     const [returnPolicy, setReturnPolicy] = useState('');
 
     // Variantes
-    const [variants, setVariants] = useState<{ name: string; optionsText: string; stockByOption?: Record<string, number>; colorsByOption?: Record<string, string[]> }[]>([]);
-    const [sizeGuide, setSizeGuide] = useState<SizeGuide>({ type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] });
-    const [newColInput, setNewColInput] = useState('');
+    const [variants, setVariants] = useState<{ name: string; optionsText: string; stockByOption?: Record<string, number>; colorsByOption?: Record<string, string[]>; optionMeta?: OptionMetaMap }[]>([]);
+    // Guía legacy: solo lectura. Se conserva tal cual al guardar (ya no se edita por producto).
+    const [legacySizeGuide, setLegacySizeGuide] = useState<SizeGuide | undefined>(undefined);
     const [expandedVariantOptions, setExpandedVariantOptions] = useState<Record<number, boolean>>({});
     const [expandedTalleCbt, setExpandedTalleCbt] = useState<string | null>(null);
     const [customColorName, setCustomColorName] = useState('');
@@ -281,18 +279,11 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                         ? Object.fromEntries(Object.keys(v.stockByOption).map(k => [k, 0]))
                         : v.stockByOption,
                     colorsByOption: v.colorsByOption,
+                    optionMeta: v.optionMeta,
                 }));
                 // Color y Talle son permanentes: se muestran siempre; vacías = no se usan (se descartan al guardar).
                 setVariants(withPermanentVariantDrafts(savedVariants));
-                setSizeGuide(formSource.sizeGuide
-                    ? {
-                        type: formSource.sizeGuide.type ?? 'indumentaria',
-                        columns: formSource.sizeGuide.columns
-                            ?? [...DEFAULT_SIZE_COLUMNS[formSource.sizeGuide.type ?? 'indumentaria']],
-                        rows: formSource.sizeGuide.rows,
-                    }
-                    : { type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] }
-                );
+                setLegacySizeGuide(formSource.sizeGuide ?? undefined);
                 setSpecifications(formSource.specifications ? [...formSource.specifications] : []);
                 setFaqs(formSource.faqs ? [...formSource.faqs] : []);
             } else {
@@ -320,8 +311,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
         setReturnPolicy('');
         setVariants(createDefaultVariantDrafts());
         setExpandedVariantOptions({});
-        setSizeGuide({ type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] });
-        setNewColInput('');
+        setLegacySizeGuide(undefined);
         setSpecifications([]);
         setFaqs([]);
         setCustomColorName('');
@@ -337,6 +327,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                 options: variant.optionsText.split(','),
                 stockByOption: variant.stockByOption,
                 colorsByOption: variant.colorsByOption,
+                optionMeta: variant.optionMeta,
             }))
         ) ?? [];
         const sizeStock = getProductStockFromVariants(builtVariants);
@@ -366,7 +357,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
             faqs: faqs.map(faq => ({ question: toSentenceCase(faq.question.trim()), answer: toSentenceCase(faq.answer.trim()) })),
             warranty: toSentenceCase(warranty.trim()),
             returnPolicy: toSentenceCase(returnPolicy.trim()),
-            sizeGuide: sizeGuide.rows.length > 0 ? sizeGuide : undefined,
+            sizeGuide: legacySizeGuide,
             status,
         };
     };
@@ -443,7 +434,8 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
         variantName: string,
         optionsText: string,
         stockByOption?: Record<string, number>,
-        colorsByOption?: Record<string, string[]>
+        colorsByOption?: Record<string, string[]>,
+        optionMeta?: OptionMetaMap
     ) => {
         const options = getNormalizedOptionsFromText(variantName, optionsText);
         const isSizeVariantName = isSizeVariant(variantName);
@@ -471,6 +463,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                 }, {})
                 : undefined,
             colorsByOption: nextColorsByOption,
+            optionMeta: isSizeVariantName ? pruneOptionMeta(options, optionMeta) : undefined,
         };
     };
 
@@ -545,7 +538,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
 
             const nextName = field === 'name' ? value : variant.name;
             const nextOptionsText = field === 'optionsText' ? value : variant.optionsText;
-            const syncedState = syncVariantState(nextName, nextOptionsText, variant.stockByOption, variant.colorsByOption);
+            const syncedState = syncVariantState(nextName, nextOptionsText, variant.stockByOption, variant.colorsByOption, variant.optionMeta);
 
             return {
                 ...variant,
@@ -570,51 +563,34 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
         }));
     };
 
-    const changeSizeGuideType = (type: SizeGuideType) => {
-        setSizeGuide({ type, columns: [...DEFAULT_SIZE_COLUMNS[type]], rows: [] });
+    // Aplica un cambio de talles (alta global/propia o baja) sincronizando stock, colores y optionMeta.
+    // Devuelve el mensaje de error o null si se aplicó.
+    const applySizeChange = (variantIndex: number, change: (selection: SizeSelection) => SizeChangeResult): string | null => {
+        const variant = variants[variantIndex];
+        if (!variant) return null;
+        const current: SizeSelection = {
+            options: getNormalizedOptionsFromText(variant.name, variant.optionsText),
+            optionMeta: variant.optionMeta ?? {},
+        };
+        const result = change(current);
+        if (!result.ok) return result.error;
+
+        const { options, optionMeta } = result.selection;
+        setVariants(prev => prev.map((item, index) => index === variantIndex
+            ? { ...item, ...syncVariantState(item.name, options.join(', '), item.stockByOption, item.colorsByOption, optionMeta) }
+            : item));
+        return null;
     };
 
-    const addSizeGuideColumn = (col: string) => {
-        const trimmed = col.trim().toUpperCase();
-        if (!trimmed) return;
-        setSizeGuide(prev => ({
-            ...prev,
-            columns: [...(prev.columns ?? []), trimmed].filter((c, i, a) => a.findIndex(o => o.toUpperCase() === c.toUpperCase()) === i),
-        }));
-        setNewColInput('');
+    const addGlobalSizeToVariant = (variantIndex: number, size: Size) =>
+        applySizeChange(variantIndex, (selection) => addGlobalSize(selection, size));
+
+    const addCustomSizeToVariant = (variantIndex: number, name: string, measurements: SizeMeasurements) =>
+        applySizeChange(variantIndex, (selection) => addCustomSize(selection, name, measurements));
+
+    const removeSizeFromVariant = (variantIndex: number, option: string) => {
+        applySizeChange(variantIndex, (selection) => ({ ok: true, selection: removeSizeOption(selection, option) }));
     };
-
-    const removeSizeGuideColumn = (col: string) => {
-        setSizeGuide(prev => ({
-            ...prev,
-            columns: (prev.columns ?? []).filter(c => c !== col),
-            rows: prev.rows.map(row => {
-                const newValues = { ...row.values };
-                delete newValues[col];
-                return { ...row, values: newValues };
-            }),
-        }));
-    };
-
-    const addSizeGuideRow = () => setSizeGuide(prev => ({
-        ...prev,
-        rows: [...prev.rows, { label: '', values: {} }],
-    }));
-
-    const removeSizeGuideRow = (rowIdx: number) => setSizeGuide(prev => ({
-        ...prev,
-        rows: prev.rows.filter((_, i) => i !== rowIdx),
-    }));
-
-    const updateSizeGuideRowLabel = (rowIdx: number, label: string) => setSizeGuide(prev => ({
-        ...prev,
-        rows: prev.rows.map((row, i) => i === rowIdx ? { ...row, label } : row),
-    }));
-
-    const updateSizeGuideRowValue = (rowIdx: number, size: string, value: string) => setSizeGuide(prev => ({
-        ...prev,
-        rows: prev.rows.map((row, i) => i === rowIdx ? { ...row, values: { ...row.values, [size]: value } } : row),
-    }));
 
     const addSpec = () => setSpecifications([...specifications, { label: '', value: '' }]);
     const removeSpec = (i: number) => setSpecifications(specifications.filter((_, j) => j !== i));
@@ -1170,13 +1146,24 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                                         );
                                                     })()}
                                                 </div>
+                                            ) : isSizeVariant(v.name) ? (
+                                                <div className="form-group">
+                                                    <ProductSizesEditor
+                                                        options={getNormalizedOptionsFromText(v.name, v.optionsText)}
+                                                        optionMeta={v.optionMeta}
+                                                        stockByOption={v.stockByOption}
+                                                        onAddGlobal={(size) => addGlobalSizeToVariant(i, size)}
+                                                        onAddCustom={(name, measurements) => addCustomSizeToVariant(i, name, measurements)}
+                                                        onRemove={(option) => removeSizeFromVariant(i, option)}
+                                                        onStockChange={(option, rawValue) => updateVariantOptionStock(i, option, rawValue)}
+                                                    />
+                                                </div>
                                             ) : (
                                                 <div className="form-group">
                                                     <label>Opciones disponibles</label>
                                                     <div className="options-editor">
                                                         <div className="options-list">
                                                             {(() => {
-                                                                const isTalleVariant = isSizeVariant(v.name);
                                                                 const options = getNormalizedOptionsFromText(v.name, v.optionsText);
                                                                 const shouldCollapseOptions = options.length > DEFAULT_VISIBLE_VARIANT_OPTIONS;
                                                                 const isExpanded = expandedVariantOptions[i] || false;
@@ -1186,29 +1173,11 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
 
                                                                 return visibleOptions.map((option) => {
                                                                     const normalizedOption = normalizeVariantOption(v.name, option);
-                                                                    const currentStock = v.stockByOption?.[normalizedOption] ?? 0;
 
                                                                     return (
-                                                                        <div key={normalizedOption} className={`option-tag${isTalleVariant ? ' option-tag--size' : ''}`}>
+                                                                        <div key={normalizedOption} className="option-tag">
                                                                             <div className="option-tag__content">
                                                                                 <span className="option-tag__label">{option}</span>
-                                                                                {isTalleVariant && (
-                                                                                    <label className="option-tag__stock-field">
-                                                                                        <span className="option-tag__stock-label">Stock</span>
-                                                                                        <input
-                                                                                            type="text"
-                                                                                            inputMode="numeric"
-                                                                                            pattern="[0-9]*"
-                                                                                            placeholder="0"
-                                                                                            value={currentStock}
-                                                                                            onChange={(e) => {
-                                                                                                updateVariantOptionStock(i, normalizedOption, e.target.value);
-                                                                                            }}
-                                                                                            className="option-tag__stock-input"
-                                                                                            aria-label={`Stock para talle ${option}`}
-                                                                                        />
-                                                                                    </label>
-                                                                                )}
                                                                             </div>
                                                                             <button
                                                                                 type="button"
@@ -1392,132 +1361,11 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                 </button>
                             </div>
 
-                            {/* ── Guía de talles ── */}
-                            <div className="size-guide-editor">
-                                <p className="size-guide-editor__title">Guía de talles</p>
-                                <div className="size-guide-type-selector">
-                                    <button
-                                        type="button"
-                                        className={`size-guide-type-btn${sizeGuide.type === 'indumentaria' ? ' size-guide-type-btn--active' : ''}`}
-                                        onClick={() => changeSizeGuideType('indumentaria')}
-                                    >
-                                        Indumentaria
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`size-guide-type-btn${sizeGuide.type === 'calzado' ? ' size-guide-type-btn--active' : ''}`}
-                                        onClick={() => changeSizeGuideType('calzado')}
-                                    >
-                                        Calzado
-                                    </button>
-                                </div>
+                            {legacySizeGuide && legacySizeGuide.rows.length > 0 && (
                                 <p className="size-guide-editor__hint">
-                                    {sizeGuide.type === 'calzado'
-                                        ? 'Configurá las medidas por número (ej: "Largo plantilla" → 35: 22.5 cm, 36: 23 cm). El usuario la verá en el botón "Ver guía de talles".'
-                                        : 'Configurá las medidas por talle (ej: "Pecho" → S: 86 cm, M: 91 cm). El usuario la verá en el botón "Ver guía de talles".'}
+                                    Este producto conserva una guía de talles anterior. Ya no se edita acá: se muestra a los clientes solo si ningún talle tiene medidas. Cargá las medidas en el catálogo (sección Talles) o junto a cada talle propio.
                                 </p>
-
-                                <div className="size-guide-cols-manager">
-                                    <span className="size-guide-cols-label">Talles:</span>
-                                    <div className="size-guide-cols-chips">
-                                        {(sizeGuide.columns ?? []).map(col => (
-                                            <span key={col} className="size-guide-col-chip">
-                                                {col}
-                                                <button
-                                                    type="button"
-                                                    className="size-guide-col-chip__del"
-                                                    onClick={() => removeSizeGuideColumn(col)}
-                                                    title={`Quitar talle ${col}`}
-                                                >
-                                                    <X size={10} />
-                                                </button>
-                                            </span>
-                                        ))}
-                                        <div className="size-guide-col-add">
-                                            <input
-                                                type="text"
-                                                className="size-guide-col-add__input"
-                                                placeholder={sizeGuide.type === 'calzado' ? 'Ej: 43' : 'Ej: XXXL'}
-                                                value={newColInput}
-                                                onChange={e => setNewColInput(e.target.value)}
-                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSizeGuideColumn(newColInput); } }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="size-guide-col-add__btn"
-                                                onClick={() => addSizeGuideColumn(newColInput)}
-                                            >
-                                                + Agregar
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {(sizeGuide.columns ?? []).length > 0 && (
-                                    <>
-                                        <div className="size-guide-table-wrapper">
-                                            <table className="size-guide-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th className="size-guide-table__label-col">Medida</th>
-                                                        {(sizeGuide.columns ?? []).map(s => (
-                                                            <th key={s} className="size-guide-table__size-col">{s}</th>
-                                                        ))}
-                                                        <th className="size-guide-table__del-col" />
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {sizeGuide.rows.map((row, rowIdx) => (
-                                                        <tr key={rowIdx}>
-                                                            <td>
-                                                                <input
-                                                                    type="text"
-                                                                    className="size-guide-table__input"
-                                                                    placeholder={sizeGuide.type === 'calzado' ? 'Ej: Largo plantilla (cm)' : 'Ej: Pecho (cm)'}
-                                                                    value={row.label}
-                                                                    onChange={e => updateSizeGuideRowLabel(rowIdx, toSentenceCase(e.target.value))}
-                                                                />
-                                                            </td>
-                                                            {(sizeGuide.columns ?? []).map(s => (
-                                                                <td key={s}>
-                                                                    <input
-                                                                        type="text"
-                                                                        className="size-guide-table__input size-guide-table__input--value"
-                                                                        placeholder="—"
-                                                                        value={row.values[s] ?? ''}
-                                                                        onChange={e => updateSizeGuideRowValue(rowIdx, s, e.target.value)}
-                                                                    />
-                                                                </td>
-                                                            ))}
-                                                            <td>
-                                                                <button
-                                                                    type="button"
-                                                                    className="size-guide-table__del-btn"
-                                                                    onClick={() => removeSizeGuideRow(rowIdx)}
-                                                                    title="Eliminar fila"
-                                                                >
-                                                                    <X size={14} />
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {sizeGuide.rows.length === 0 && (
-                                            <p className="size-guide-editor__empty">Sin filas. Agregá una medida para empezar.</p>
-                                        )}
-                                        <button
-                                            type="button"
-                                            className="admin-btn-secondary"
-                                            style={{ marginTop: '0.5rem' }}
-                                            onClick={addSizeGuideRow}
-                                        >
-                                            + Agregar medida
-                                        </button>
-                                    </>
-                                )}
-                            </div>
+                            )}
                         </div>
                     )}
 

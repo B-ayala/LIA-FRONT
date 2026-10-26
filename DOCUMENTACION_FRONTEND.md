@@ -70,6 +70,7 @@ src/
 │   ├── authService.ts          # /auth/* (JWT propio): register, login, logout, me, refresh, etc.
 │   ├── userService.ts          # wrappers de auth para componentes + CRUD admin (/users)
 │   ├── productService.ts       # productos (read Supabase / write API), Cloudinary, categorías, carrusel
+│   ├── sizeService.ts          # catálogo de talles: /sizes (list pública con caché 5 min; create/update admin)
 │   ├── orderService.ts         # ventas: transferencia (Supabase) + Mercado Pago (API)
 │   └── siteContentService.ts   # tabla site_content (about, footer, banner, temas) get/save/delete
 │
@@ -78,9 +79,12 @@ src/
 │   └── cartStore.ts            # carrito persistido (zustand/persist) + item de checkout
 │
 ├── types/
-│   └── product.ts              # Product, Variant, Specification, FAQ, Review
+│   ├── product.ts              # Product, Variant (con `optionMeta`), Specification, FAQ, Review
+│   └── size.ts                 # Size (catálogo), SizeOptionMeta (origen global/propio de un talle de producto)
 │
 ├── hooks/                      # hooks reutilizables
+│   ├── useSizeCatalog.ts       # catálogo de talles con estados idle/loading/ready/error + reload
+│   ├── useProductSizeGuide.ts  # guía de talles de un producto (resuelve medidas globales desde el catálogo)
 │   ├── useBodyScrollLock.ts    # bloquea scroll del body (modales/drawers)
 │   ├── useClickOutside.ts      # cierre por click externo
 │   └── usePagination.ts        # paginación de listados
@@ -95,7 +99,9 @@ src/
 │   ├── seasons.css             # estilos estacionales
 │   ├── constants.ts            # COLOR_PALETTE, COLOR_MAP, parseColorOption
 │   ├── pricing.ts              # cálculo de precio final / descuentos
-│   ├── productVariants.ts      # validación de variantes, stock por opción, sanitización
+│   ├── productVariants.ts      # validación de variantes, stock por opción, sanitización (conserva/poda `optionMeta`)
+│   ├── sizeOptionMeta.ts       # talles de producto: alta global/propia, dedupe, baja, medidas (funciones puras)
+│   ├── sizeGuideTable.ts       # arma la guía de talles (tabla por talle o guía legacy) para el detalle
 │   ├── cloudinary.ts           # helpers de URLs/transformaciones Cloudinary
 │   ├── formatters.ts           # formateo (precios, fechas, etc.)
 │   ├── labels.ts               # labels/textos
@@ -146,8 +152,9 @@ src/
     ├── store/adminStore.ts     # estado del panel (products, users, carousel, about, footer)
     ├── styles/adminShared.css  # estilos compartidos del admin
     ├── components/             # CarouselManager, BannerEditor, CloudinaryImagePicker, CloudinaryStorageUsage,
-    │                           #   FeaturedProductsManager, ProductGallery, ProductModal, ProductTable
-    └── pages/                  # Dashboard, Products, ProductPreview, Users, Sales, Dispatches, AboutEditor,
+    │                           #   FeaturedProductsManager, ProductGallery, ProductModal, ProductTable,
+    #   ProductSizes (variante Talle: globales / del producto / propio), SizeForm (alta-edición de talles)
+    └── pages/                  # Dashboard, Products, ProductPreview, Users, Sales, Dispatches, Sizes, AboutEditor,
                                 #   FooterEditor, HomeManager, CloudinaryManager, ThemesManager
 ```
 
@@ -190,6 +197,7 @@ va por **Supabase directo** (lectura pública) o por la **API Express** (escritu
 | `authService` | Supabase Auth (login, signUp, verifyOtp, reset) + `profiles` | — |
 | `userService` | — | `/users` (admin) + delega en `authService` |
 | `productService` | read `productos`, `categories`, `carousel_images` | write `/products`, `/cloudinary/*` |
+| `sizeService` | — | `/sizes` (GET público; POST/PUT admin; sin DELETE) |
 | `orderService` | — | `/orders/*` (transferencia, Mercado Pago, compras, cancelaciones, nudge) |
 | `shippingService` | — | `/shipping?postalCode=` |
 | `insightsService` | — | `/admin/insights/*` (solo admin) |
@@ -235,7 +243,7 @@ guards quedan **eager** (son wrappers siempre presentes).
 | Grupo | Layout | Guard | Rutas |
 |---|---|---|---|
 | Auth | — | — | `/auth/confirm`, `/auth/reset-password` |
-| Admin | `AdminLayout` | `AdminProtectedRoute` | `/admin` (index → HomeManager), `home`, `products`, `users`, `about`, `site-config`, `cloudinary`, `themes`, `sales`, `dispatches` |
+| Admin | `AdminLayout` | `AdminProtectedRoute` | `/admin` (index → HomeManager), `home`, `products`, `stock`, `sizes`, `users`, `about`, `site-config`, `cloudinary`, `themes`, `sales`, `dispatches` |
 | Público | `UserLayout` | — | `/`, `/products`, `/product/:id`, `/checkout`, `/checkout/result`, `/contact`, `/about` |
 
 - `AdminProtectedRoute` valida `authStore.isAuthenticated` (rol admin).
@@ -373,6 +381,13 @@ Nada de tokens en `localStorage`/`sessionStorage`. Todo pasa por `services/authS
   `409 PRODUCT_CHANGED` se relee el producto, se conserva el borrador salvo el stock por talle
   (`rebaseDraftOnFresh`) y se pide confirmar de nuevo. Productos sin stock por talle: al editar no
   se envía `stock` (el formulario lo muestra en solo lectura); al crear se envía explícito.
+- `Sizes` (`/admin/sizes`): catálogo global de talles (crear, editar nombre/tipo/medidas, activar/desactivar
+  con confirmación; no hay borrado). Los talles globales no se asignan solos: en `ProductModal` > Variantes > Talle
+  (`ProductSizes`) cada producto elige globales activos o agrega talles propios. El origen se guarda en
+  `variants[].optionMeta[OPCIÓN]` (`global` + `sizeId`, sin medidas; `custom` + medidas opcionales); sin `optionMeta`
+  el talle es propio. Las medidas de los globales se resuelven en vivo desde `GET /sizes`. La guía pública
+  ("Ver guía de talles") sale de los talles del producto; si ninguno tiene medidas cae en `size_guide` (legacy, solo
+  lectura, se conserva al guardar) y, si tampoco hay, el botón se oculta.
 - `Sales` (`salesQueries.ts`, `SaleStatusCell`, `useSaleActions`): lee `ventas` de Supabase
   (incluye `oversold` y `review_reason`; si la columna falta, error con "Reintentar"). Estado
   efectivo: MP `pendiente` <15 min = "Pendiente", 15 min–24 h = "Pago en proceso", >24 h =

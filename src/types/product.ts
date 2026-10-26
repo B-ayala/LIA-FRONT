@@ -1,10 +1,13 @@
 import type { ProductCardOptionsValue } from './productCardOption';
+import type { OptionMetaMap } from './size';
 
 export interface Variant {
   name: string;
   options: string[];
   stockByOption?: Record<string, number>;
   colorsByOption?: Record<string, string[]>;
+  /** Solo variante Talle: origen (global/propio) y medidas de cada opción. Ausente ⇒ todos propios. */
+  optionMeta?: OptionMetaMap;
 }
 
 export type SizeGuideType = 'indumentaria' | 'calzado';

@@ -1266,6 +1266,7 @@ Resultado: no probado
 | Ventas (server-side) | SALES-01,SALES-03,SALES-08,SALES-14 | SALES-02,SALES-04,SALES-05,SALES-06,SALES-07,SALES-09,SALES-11,SALES-13 | SALES-10,SALES-12 | | |
 | Despachos (server-side) | DESP-02,DESP-04 | DESP-03,DESP-06 | DESP-05 | | DESP-07 |
 | Checkout: formas de entrega (sin moto) | SHIP-01,SHIP-02,SHIP-03 | SHIP-05 | SHIP-04 | | SHIP-01 |
+| Catálogo de talles | TC-SIZE-01,TC-SIZE-03,TC-SIZE-07,TC-SIZE-09,TC-SIZE-10,TC-SIZE-12,TC-SIZE-14,TC-SIZE-19 | TC-SIZE-02,TC-SIZE-05,TC-SIZE-11,TC-SIZE-13,TC-SIZE-20,TC-SIZE-22 | TC-SIZE-04,TC-SIZE-18,TC-SIZE-23 | TC-SIZE-08 | TC-SIZE-24 |
 | Checkout: rediseño por pasos (stepper) | CHKUI-01,CHKUI-02,CHKUI-07,CHKUI-12 | CHKUI-03,CHKUI-04,CHKUI-05,CHKUI-06,CHKUI-11,CHKUI-16 | CHKUI-09,CHKUI-10,CHKUI-15 | CHKUI-08 | CHKUI-02,CHKUI-04,CHKUI-13,CHKUI-14 |
 
 ## Casos — Performance de carga mobile / MUI fuera del bundle crítico (2026-10-02)
@@ -2134,6 +2135,36 @@ ID: TC-NAV-10 — Caso: sin migración 2026-10-16. Tipo: failure. Esperado: el c
 ID: TC-NAV-11 — Caso: seguridad. Tipo: security. Esperado: un `navbar_color` que no sea `#rrggbb` se descarta al leer (y la base lo rechaza por CHECK). Resultado: ok el saneado en front (`parseNavbarColor`, solo hex de 6 dígitos); CHECK en base no probado.
 ID: TC-NAV-12 — Caso: build/tipos. Tipo: regresión. Resultado (2026-10-16): `tsc -b` y `vite build` ok; ESLint sin errores nuevos.
 
+
+## Casos — Catálogo de talles (2026-10-26)
+
+> Requiere el backend con `/api/sizes` y `optionMeta`. Resultado "no probado" = implementado, falta la corrida manual con backend.
+
+ID: TC-SIZE-01 — Caso: ver la sección Talles. Tipo: happy. Pasos: entrar a /admin/sizes como admin. Esperado: ítem "Talles" en el sidebar; tabla (desktop) o tarjetas (375px) con talle, tipo, medidas y estado; solo talles globales. Resultado: no probado.
+ID: TC-SIZE-02 — Caso: estados de la lista. Tipo: edge/failure. Pasos: abrir con catálogo vacío; con la red caída; con filtros sin resultados. Esperado: vacío con CTA "Crear el primer talle"; error con "Reintentar"; mensaje "No hay talles que coincidan" sin CTA. Resultado: no probado.
+ID: TC-SIZE-03 — Caso: crear talle. Tipo: happy. Pasos: "Nuevo talle", nombre `xl`, tipo Indumentaria, medida Pecho = 96 cm, Guardar. Esperado: aparece como `XL`, activo, con sus medidas; aviso "Talle XL guardado." Resultado: no probado.
+ID: TC-SIZE-04 — Caso: duplicado. Tipo: failure. Pasos: crear `xl` otra vez en Indumentaria; crear `38` en Calzado y en Indumentaria. Esperado: el primero muestra "Ya existe un talle con ese nombre en esa categoría."; el mismo nombre en otra categoría se permite. Resultado: no probado.
+ID: TC-SIZE-05 — Caso: validaciones del formulario. Tipo: edge. Pasos: nombre vacío/solo espacios; 21+ caracteres; 9 medidas; medida repetida (`Pecho`/`pecho`); valor de 21+ caracteres; emojis. Esperado: nombre vacío da error inline; los campos no pasan de 20/30/20 caracteres; "Agregar medida" se deshabilita en 8; la repetida muestra "La medida … está repetida." Resultado: no probado.
+ID: TC-SIZE-06 — Caso: editar talle. Tipo: happy. Pasos: editar nombre, tipo y medidas de un talle. Esperado: la tabla se actualiza; los productos que ya lo tienen conservan su nombre de opción. Resultado: no probado.
+ID: TC-SIZE-07 — Caso: desactivar y activar. Tipo: happy/security. Pasos: Desactivar y confirmar o cancelar; luego Activar. Esperado: pide confirmación antes de desactivar (cancelar no cambia nada); activar es directo; el botón se bloquea mientras guarda. Resultado: no probado.
+ID: TC-SIZE-08 — Caso: acceso sin permisos. Tipo: security. Pasos: abrir /admin/sizes sin sesión admin; llamar PUT/POST /api/sizes sin token. Esperado: redirige/403, nunca se listan acciones. Resultado: no probado.
+ID: TC-SIZE-09 — Caso: producto nuevo no trae talles. Tipo: happy. Pasos: crear producto, pestaña Variantes. Esperado: bloque "Talles de este producto" vacío con texto guía; ningún global preseleccionado. Resultado: no probado.
+ID: TC-SIZE-10 — Caso: elegir talles globales. Tipo: happy. Pasos: marcar S, M y 38 en "Talles globales". Esperado: aparecen en "Talles de este producto" con etiqueta Global y stock 0 editable; el stock total se recalcula. Resultado: no probado.
+ID: TC-SIZE-11 — Caso: globales inactivos. Tipo: edge. Pasos: desactivar un talle en el catálogo; abrir un producto que lo tenía y uno que no. Esperado: en el que lo tenía sigue marcado con "desactivado" y se puede quitar; en el otro no se ofrece. Resultado: no probado.
+ID: TC-SIZE-12 — Caso: talle propio. Tipo: happy. Pasos: escribir `xxxl` y Enter; repetir con botón y medidas. Esperado: se agrega `XXXL` con etiqueta Propio; no aparece en /admin/sizes ni en otros productos; el input se limpia y recupera foco. Resultado: no probado.
+ID: TC-SIZE-13 — Caso: duplicados dentro del producto. Tipo: edge. Pasos: con `M` global elegido, agregar propio `m`; con propio `XL`, marcar global XL; agregar dos veces el mismo propio. Esperado: mensajes inline claros y no se agrega nada; el propio no se convierte en global. Resultado: no probado.
+ID: TC-SIZE-14 — Caso: quitar talle. Tipo: happy. Pasos: quitar un global y volver a marcarlo; quitar un propio. Esperado: solo sale del producto (catálogo y otros productos intactos); el global vuelve como Global; stock y colores por talle se actualizan. Resultado: no probado.
+ID: TC-SIZE-15 — Caso: guardar y reabrir. Tipo: regression. Pasos: guardar un producto con globales y propios (con medidas); reabrir; ver vista previa. Esperado: origen, stock y medidas se conservan; el body de PUT /products lleva `variants[].optionMeta`. Resultado: no probado.
+ID: TC-SIZE-16 — Caso: producto anterior sin optionMeta. Tipo: regression. Pasos: abrir un producto con talles existentes y guardarlo. Esperado: todos figuran como Propio, sin migrarse; el checkout y el carrito siguen leyendo `options` y `stockByOption`. Resultado: no probado.
+ID: TC-SIZE-17 — Caso: guía anterior (`size_guide`). Tipo: regression. Pasos: editar y guardar un producto que tenía guía legacy. Esperado: no hay editor de guía; aviso de que se conserva; el guardado no la borra (no envía `sizeGuide: null`). Resultado: no probado.
+ID: TC-SIZE-18 — Caso: catálogo no disponible en el formulario. Tipo: failure. Pasos: cortar la red/500 en GET /api/sizes con la pestaña Variantes abierta. Esperado: bloque "Talles globales" con error y "Reintentar"; se pueden seguir agregando talles propios. Resultado: no probado.
+ID: TC-SIZE-19 — Caso: guía pública con globales. Tipo: happy. Pasos: abrir un producto con talles globales con medidas y tocar "Ver guía de talles". Esperado: una fila por talle (orden del producto), columnas = unión de medidas, "—" donde falta. Resultado: no probado.
+ID: TC-SIZE-20 — Caso: guía pública con propios y mezcla. Tipo: edge. Pasos: producto con globales + propios (algunos sin medidas). Esperado: las medidas propias salen del producto; los talles sin medidas muestran "—". Resultado: no probado.
+ID: TC-SIZE-21 — Caso: guía legacy como fallback. Tipo: regression. Pasos: producto sin medidas en sus talles pero con `size_guide`. Esperado: se muestra la guía anterior como hoy. Resultado: no probado.
+ID: TC-SIZE-22 — Caso: sin datos para la guía. Tipo: edge. Pasos: producto con talles sin medidas ni guía legacy; producto sin variante Talle. Esperado: el botón "Ver guía de talles" no aparece. Resultado: no probado.
+ID: TC-SIZE-23 — Caso: guía con catálogo lento/caído. Tipo: failure. Pasos: producto con globales y GET /api/sizes lento o con 500. Esperado: el botón aparece al terminar de cargar; el modal muestra loader o el error con "Reintentar". Resultado: no probado.
+ID: TC-SIZE-24 — Caso: mobile 320/375px. Tipo: a11y/mobile. Pasos: recorrer /admin/sizes, el formulario, el bloque de talles del producto y la guía pública. Esperado: sin scroll horizontal de página, botones de al menos 44px, foco visible, todo operable con teclado y labels leídos por lector de pantalla. Resultado: no probado.
+ID: TC-SIZE-25 — Caso: helpers puros (dedupe, sanitize con optionMeta, tabla de medidas). Tipo: regression. Pasos: `e2e/size-helpers.spec.ts`. Esperado: 18 casos ok. Resultado: ok (2026-10-26, ejecutado con un arnés esbuild+node porque `npx playwright test` no registra tests en este entorno).
 
 ## Seguridad de sesión + CSP + captcha (2026-10-11)
 
