@@ -117,6 +117,11 @@
 }
 
 .footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 20px;
   text-align: center;
   padding: 20px;
   border-top: 1px solid #333333;
@@ -136,40 +141,26 @@
   }
 }
 
-/* Botón de arrepentimiento (Disp. 954/2025): destacado y siempre visible, también durante la carga. */
-.footer-withdrawal {
-  display: flex;
-  justify-content: center;
-  padding: 0 20px 24px;
-}
-
+/* Botón de arrepentimiento (Disp. 954/2025): junto al copyright, siempre visible, también durante la carga. */
 .footer-withdrawal-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   min-height: 44px;
-  padding: 12px 24px;
-  border: 2px solid var(--white);
-  border-radius: 6px;
-  color: var(--white);
-  font-size: 0.95rem;
-  font-weight: 700;
+  color: inherit;
+  font-weight: 600;
   letter-spacing: 0.04em;
-  text-align: center;
-  text-decoration: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
 }
 
 .footer-withdrawal-link:hover {
-  background-color: var(--white);
-  color: var(--dark-bg);
+  color: var(--white);
 }
 
 .footer-withdrawal-link:focus-visible {
   outline: 3px solid var(--primary-light);
   outline-offset: 3px;
-}
-
-.footer-withdrawal-link:active {
-  transform: translateY(1px);
 }
 
 /* Datos del vendedor (razón social, CUIT, domicilio, horarios, área responsable). */

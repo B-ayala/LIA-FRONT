@@ -34,11 +34,9 @@ const WITHDRAWAL_LINK_LABEL = 'BOTÓN DE ARREPENTIMIENTO';
 
 // Se renderiza también durante la carga del footer: el enlace no depende del contenido del CMS.
 const WithdrawalLink = () => (
-  <div className="footer-withdrawal">
-    <Link to="/arrepentimiento" className="footer-withdrawal-link">
-      {WITHDRAWAL_LINK_LABEL}
-    </Link>
-  </div>
+  <Link to="/arrepentimiento" className="footer-withdrawal-link">
+    {WITHDRAWAL_LINK_LABEL}
+  </Link>
 );
 
 const Footer = () => {
@@ -78,9 +76,9 @@ const Footer = () => {
             <div className="footer-skeleton footer-skeleton--line skeleton" />
           </div>
         </div>
-        <WithdrawalLink />
         <div className="footer-bottom">
           <div className="footer-skeleton footer-skeleton--copyright skeleton" />
+          <WithdrawalLink />
         </div>
       </footer>
     );
@@ -162,11 +160,11 @@ const Footer = () => {
 
       </div>
 
-      <WithdrawalLink />
       <DataFiscalBadge url={footerInfo.dataFiscalUrl} imageUrl={footerInfo.dataFiscalImageUrl} />
 
       <div className="footer-bottom">
         <p>&copy; {new Date().getFullYear()} {footerInfo.copyright}</p>
+        <WithdrawalLink />
       </div>
     </footer>
   );
