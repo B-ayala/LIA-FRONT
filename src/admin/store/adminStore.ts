@@ -76,6 +76,14 @@ export interface FooterInfo {
   address: string;
   mapQuery: string;
   copyright: string;
+  // Datos del proveedor y Data Fiscal (ARCA): opcionales, el Footer no muestra lo que esté vacío.
+  legalName?: string;
+  cuit?: string;
+  fiscalAddress?: string;
+  businessHours?: string;
+  responsibleArea?: string;
+  dataFiscalUrl?: string;
+  dataFiscalImageUrl?: string;
 }
 
 interface AdminState {

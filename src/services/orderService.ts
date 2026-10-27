@@ -243,6 +243,8 @@ export const createMpPreference = async (
 
 export interface Purchase {
   id: string;
+  /** Número de pedido por compra (las líneas del mismo carrito lo comparten). null = pedido anterior a la numeración. */
+  order_number: number | null;
   product_id: string | number | null;
   product_name: string;
   product_image: string | null;

@@ -8,6 +8,8 @@ export type ReviewReason = 'amount_mismatch' | 'duplicate_payment' | 'refunded' 
 
 export interface Sale {
   id: string;
+  /** null = venta anterior a la numeración; ausente si la columna aún no existe en la base. */
+  order_number?: number | null;
   buyer_name: string | null;
   buyer_email: string | null;
   product_id: number | null;
@@ -51,7 +53,12 @@ export interface SalesPageResult {
 // Filtros, orden, búsqueda y paginación corren en el servidor (.range + count exact).
 // `review_reason` requiere la migración del backend: si falta, la query falla y la vista
 // muestra el error con "Reintentar" (nunca una tabla vacía).
-const SALES_COLUMNS = 'id, buyer_name, buyer_email, product_id, product_name, product_image, quantity, unit_price, total_price, units_config, payment_method, payment_status, shipping_method, oversold, review_reason, created_at';
+const SALES_COLUMNS_BASE = 'id, buyer_name, buyer_email, product_id, product_name, product_image, quantity, unit_price, total_price, units_config, payment_method, payment_status, shipping_method, oversold, review_reason, created_at';
+const ORDER_NUMBER_COLUMN = 'order_number';
+// Si el script SQL de `order_number` todavía no corrió, Ventas sigue funcionando sin esa columna.
+let orderNumberColumnAvailable = true;
+const salesColumns = (): string =>
+  orderNumberColumnAvailable ? `${SALES_COLUMNS_BASE}, ${ORDER_NUMBER_COLUMN}` : SALES_COLUMNS_BASE;
 const LOW_STOCK_THRESHOLD = 5;
 // Tope de ids a pasar en .in() para no exceder el largo de URL de PostgREST.
 const STOCK_IDS_LIMIT = 500;
@@ -146,25 +153,33 @@ export const fetchSalesPage = async (filters: SalesFilters, page: number): Promi
     if (stockIds.length === 0) return { rows: [], totalCount: 0 };
   }
 
-  let query = supabase.from('ventas').select(SALES_COLUMNS, { count: 'exact' });
+  const buildQuery = () => {
+    let query = supabase.from('ventas').select(salesColumns(), { count: 'exact' });
 
-  if (filters.paymentStatus) query = applyPaymentStatusFilter(query, filters.paymentStatus);
-  if (filters.paymentMethod) query = query.eq('payment_method', filters.paymentMethod);
-  if (stockIds) query = query.in('product_id', stockIds);
-  if (filters.search) {
-    const term = `%${filters.search}%`;
-    query = query.or(`product_name.ilike.${term},buyer_name.ilike.${term},buyer_email.ilike.${term}`);
-  }
+    if (filters.paymentStatus) query = applyPaymentStatusFilter(query, filters.paymentStatus);
+    if (filters.paymentMethod) query = query.eq('payment_method', filters.paymentMethod);
+    if (stockIds) query = query.in('product_id', stockIds);
+    if (filters.search) {
+      const term = `%${filters.search}%`;
+      query = query.or(`product_name.ilike.${term},buyer_name.ilike.${term},buyer_email.ilike.${term}`);
+    }
 
-  const sort = filters.sort ?? DEFAULT_SORT;
-  // id como desempate: con valores repetidos, range() podría duplicar u omitir filas entre páginas.
-  query = query
-    .order(sort.key, { ascending: sort.direction === 'asc', nullsFirst: false })
-    .order('id', { ascending: true });
+    const sort = filters.sort ?? DEFAULT_SORT;
+    // id como desempate: con valores repetidos, range() podría duplicar u omitir filas entre páginas.
+    return query
+      .order(sort.key, { ascending: sort.direction === 'asc', nullsFirst: false })
+      .order('id', { ascending: true });
+  };
 
   const { from, to } = getPageRange(page);
-  const { data, error, count } = await query.range(from, to);
-  if (error) throw error;
+  let result = await buildQuery().range(from, to);
+  const missingOrderNumber = result.error?.code === MISSING_COLUMN_CODE
+    && result.error.message.includes(ORDER_NUMBER_COLUMN);
+  if (missingOrderNumber && orderNumberColumnAvailable) {
+    orderNumberColumnAvailable = false;
+    result = await buildQuery().range(from, to);
+  }
+  if (result.error) throw result.error;
 
-  return { rows: (data ?? []) as Sale[], totalCount: count ?? 0 };
+  return { rows: (result.data ?? []) as unknown as Sale[], totalCount: result.count ?? 0 };
 };

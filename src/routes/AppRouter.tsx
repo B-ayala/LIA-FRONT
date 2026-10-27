@@ -39,6 +39,7 @@ const Checkout = lazy(() => import('../users/pages/checkout/Checkout'));
 const CheckoutResult = lazy(() => import('../users/pages/checkout/CheckoutResult'));
 const Contact = lazy(() => import('../users/pages/contact/Contact'));
 const About = lazy(() => import('../users/pages/about/About'));
+const Withdrawal = lazy(() => import('../users/pages/withdrawal/Withdrawal'));
 const EmailConfirmation = lazy(() => import('../users/pages/auth/EmailConfirmation'));
 const ResetPassword = lazy(() => import('../users/pages/auth/ResetPassword'));
 
@@ -59,6 +60,7 @@ const AdminSales = lazy(() => import('../admin/pages/Sales/Sales'));
 const AdminDispatches = lazy(() => import('../admin/pages/Dispatches/Dispatches'));
 const AdminStock = lazy(() => import('../admin/pages/Stock/Stock'));
 const AdminSizes = lazy(() => import('../admin/pages/Sizes/Sizes'));
+const AdminWithdrawals = lazy(() => import('../admin/pages/Withdrawals/Withdrawals'));
 
 // Fallback estable: min-height evita colapso del layout mientras se descarga
 // el chunk de la página. Solo se ve en conexiones lentas — la navegación
@@ -95,7 +97,14 @@ const AppRouter = () => {
               <Route path="dispatches" element={<AdminDispatches />} />
               <Route path="stock" element={<AdminStock />} />
               <Route path="sizes" element={<AdminSizes />} />
+              <Route path="arrepentimientos" element={<AdminWithdrawals />} />
             </Route>
+          </Route>
+
+          {/* El derecho de arrepentimiento no puede quedar detrás de ningún redirect ni de un login:
+              por eso vive fuera de AdminRedirect y es accesible con o sin sesión. */}
+          <Route element={<UserLayout />}>
+            <Route path="/arrepentimiento" element={<InitialRouteReady><Withdrawal /></InitialRouteReady>} />
           </Route>
 
           {/* Public Routes — redirige a /admin si la sesión es de admin */}

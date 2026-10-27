@@ -74,6 +74,9 @@ const PurchaseItemContent = ({ purchase }: { purchase: Purchase }) => (
         {purchase.product_name}
       </p>
       <p style={{ margin: '0 0 0.25rem', fontSize: '0.82rem', color: '#888' }}>
+        {purchase.order_number !== null && (
+          <strong style={{ color: 'var(--text-dark)' }}>Pedido #{purchase.order_number} · </strong>
+        )}
         {formatDate(purchase.created_at)}
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.4rem' }}>
@@ -238,7 +241,7 @@ const PurchaseProductDetail = ({
             }}
           >
             <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-dark)' }}>
-              Tu compra
+              Tu compra{purchase.order_number !== null && ` · Pedido #${purchase.order_number}`}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.83rem', color: '#666' }}>
               <span>{purchase.quantity} {purchase.quantity === 1 ? 'unidad' : 'unidades'}</span>

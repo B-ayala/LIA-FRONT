@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, ShoppingBag, Users, Info, Settings, LogOut, Image, Palette, BarChart2, Truck, Boxes, Ruler } from 'lucide-react';
+import { Home, ShoppingBag, Users, Info, Settings, LogOut, Image, Palette, BarChart2, Truck, Boxes, Ruler, Undo2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 // @ts-ignore - vite-imagetools query param
 import logoImg from '../../assets/img/logo.jpeg?w=120&format=webp&quality=80';
@@ -15,6 +15,7 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: { isOpen: boolean, toggleSideba
         { path: '/admin/sizes', name: 'Talles', icon: Ruler },
         { path: '/admin/sales', name: 'Ventas', icon: BarChart2 },
         { path: '/admin/dispatches', name: 'Despachos', icon: Truck },
+        { path: '/admin/arrepentimientos', name: 'Arrepentimientos', icon: Undo2 },
         { path: '/admin/users', name: 'Usuarios', icon: Users },
         { path: '/admin/about', name: 'Acerca de', icon: Info },
         { path: '/admin/site-config', name: 'Config. del sitio', icon: Settings },

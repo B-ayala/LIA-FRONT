@@ -506,7 +506,7 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
                 <div className="additional__item">
                   <span className="item__icon">↩️</span>
                   <div className="item__content">
-                    <strong>Devolución gratis</strong>
+                    <strong>Política de devolución</strong>
                     <p>{product.returnPolicy}</p>
                   </div>
                 </div>

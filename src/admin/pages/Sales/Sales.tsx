@@ -294,7 +294,10 @@ const Sales = () => {
                                         )}
                                         <div className="sale-card-info">
                                             <span className="sale-card-name">{sale.product_name}</span>
-                                            <span className="sale-card-date">{formatDate(sale.created_at)}</span>
+                                            <span className="sale-card-date">
+                                                {sale.order_number != null && <strong>Pedido #{sale.order_number} · </strong>}
+                                                {formatDate(sale.created_at)}
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="sale-card-body">
@@ -329,6 +332,7 @@ const Sales = () => {
                                     <th onClick={() => requestSort('product_name')} className="sortable">
                                         Producto <ArrowUpDown size={14} />
                                     </th>
+                                    <th>Pedido</th>
                                     <th onClick={() => requestSort('created_at')} className="sortable">
                                         Fecha <ArrowUpDown size={14} />
                                     </th>
@@ -372,6 +376,7 @@ const Sales = () => {
                                                 <span>{sale.product_name}</span>
                                             </div>
                                         </td>
+                                        <td>{sale.order_number != null ? `#${sale.order_number}` : '—'}</td>
                                         <td className="date-cell">{formatDate(sale.created_at)}</td>
                                         <td>{sale.quantity}</td>
                                         <td className="font-medium">{formatPriceInt(sale.total_price)}</td>

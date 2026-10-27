@@ -13,7 +13,14 @@ import { buildCloudinaryUrl } from '../../../utils/cloudinary';
 const THUMB = { width: 240, crop: 'limit' } as const;
 
 // Filtros, orden y paginación corren en el servidor (.range + count exact).
-const DISPATCH_COLUMNS = 'id, buyer_name, buyer_email, product_id, product_name, product_image, quantity, total_price, payment_method, payment_status, shipping_method, dispatch_status, created_at';
+const DISPATCH_COLUMNS_BASE = 'id, buyer_name, buyer_email, product_id, product_name, product_image, quantity, total_price, payment_method, payment_status, shipping_method, dispatch_status, created_at';
+const ORDER_NUMBER_COLUMN = 'order_number';
+/** Postgres "undefined_column": el script SQL de `order_number` todavía no corrió. */
+const MISSING_COLUMN_CODE = '42703';
+// Sin la columna, Despachos sigue funcionando sin mostrar el número de pedido.
+let orderNumberColumnAvailable = true;
+const dispatchColumns = (): string =>
+    orderNumberColumnAvailable ? `${DISPATCH_COLUMNS_BASE}, ${ORDER_NUMBER_COLUMN}` : DISPATCH_COLUMNS_BASE;
 
 type DispatchStatus = 'pendiente' | 'en_preparacion' | 'despachado' | 'listo_para_retiro' | 'entregado';
 type PaymentStatus = 'pagado';
@@ -39,6 +46,7 @@ const PENDING_FILTER = 'dispatch_status.eq.pendiente,dispatch_status.is.null';
 
 interface Dispatch {
     id: string;
+    order_number?: number | null;
     buyer_name: string | null;
     buyer_email: string | null;
     product_id: number | null;
@@ -116,30 +124,38 @@ const fetchDispatchSummary = async (): Promise<DispatchSummary> => {
 };
 
 const fetchDispatchesPage = async (filters: DispatchFilters, page: number): Promise<{ rows: Dispatch[]; totalCount: number }> => {
-    let query = supabase
-        .from('ventas')
-        .select(DISPATCH_COLUMNS, { count: 'exact' })
-        .eq('payment_status', 'pagado');
+    const buildQuery = () => {
+        let query = supabase
+            .from('ventas')
+            .select(dispatchColumns(), { count: 'exact' })
+            .eq('payment_status', 'pagado');
 
-    if (filters.shipping) query = query.eq('shipping_method', filters.shipping);
-    if (filters.dispatch === 'pendiente') query = query.or(PENDING_FILTER);
-    else if (filters.dispatch) query = query.eq('dispatch_status', filters.dispatch);
+        if (filters.shipping) query = query.eq('shipping_method', filters.shipping);
+        if (filters.dispatch === 'pendiente') query = query.or(PENDING_FILTER);
+        else if (filters.dispatch) query = query.eq('dispatch_status', filters.dispatch);
 
-    const sort = filters.sort ?? DEFAULT_SORT;
-    // id como desempate: con valores repetidos, range() podría duplicar u omitir filas entre páginas.
-    query = query
-        .order(sort.key, { ascending: sort.direction === 'asc', nullsFirst: false })
-        .order('id', { ascending: true });
+        const sort = filters.sort ?? DEFAULT_SORT;
+        // id como desempate: con valores repetidos, range() podría duplicar u omitir filas entre páginas.
+        return query
+            .order(sort.key, { ascending: sort.direction === 'asc', nullsFirst: false })
+            .order('id', { ascending: true });
+    };
 
     const { from, to } = getPageRange(page);
-    const { data, error, count } = await query.range(from, to);
-    if (error) throw error;
+    let result = await buildQuery().range(from, to);
+    const missingOrderNumber = result.error?.code === MISSING_COLUMN_CODE
+        && result.error.message.includes(ORDER_NUMBER_COLUMN);
+    if (missingOrderNumber && orderNumberColumnAvailable) {
+        orderNumberColumnAvailable = false;
+        result = await buildQuery().range(from, to);
+    }
+    if (result.error) throw result.error;
 
-    const rows: Dispatch[] = (data ?? []).map((row) => ({
+    const rows = ((result.data ?? []) as unknown as Dispatch[]).map((row) => ({
         ...row,
         dispatch_status: row.dispatch_status ?? 'pendiente',
-    })) as Dispatch[];
-    return { rows, totalCount: count ?? 0 };
+    }));
+    return { rows, totalCount: result.count ?? 0 };
 };
 
 const Dispatches = () => {
@@ -346,7 +362,10 @@ const Dispatches = () => {
                                             )}
                                             <div className="dispatch-card-info">
                                                 <span className="dispatch-card-name">{d.product_name}</span>
-                                                <span className="dispatch-card-date">{formatDate(d.created_at)}</span>
+                                                <span className="dispatch-card-date">
+                                                    {d.order_number != null && <strong>Pedido #{d.order_number} · </strong>}
+                                                    {formatDate(d.created_at)}
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="dispatch-card-body">
@@ -400,6 +419,7 @@ const Dispatches = () => {
                                     <th onClick={() => requestSort('product_name')} className="sortable">
                                         Producto <ArrowUpDown size={14} />
                                     </th>
+                                    <th>Pedido</th>
                                     <th onClick={() => requestSort('created_at')} className="sortable">
                                         Fecha <ArrowUpDown size={14} />
                                     </th>
@@ -434,6 +454,7 @@ const Dispatches = () => {
                                                 <span>{d.product_name}</span>
                                             </div>
                                         </td>
+                                        <td>{d.order_number != null ? `#${d.order_number}` : '—'}</td>
                                         <td className="date-cell">{formatDate(d.created_at)}</td>
                                         <td>
                                             <span className="dispatch-shipping-cell">

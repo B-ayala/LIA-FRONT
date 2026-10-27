@@ -1,0 +1,209 @@
+.admin-withdrawals-page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.withdrawals-toolbar {
+    display: flex;
+    padding: 0.5rem 0.75rem;
+}
+
+.withdrawals-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+.withdrawal-admin-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.withdrawal-admin-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.withdrawal-admin-code {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--color-ink);
+}
+
+.withdrawal-admin-date {
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+}
+
+.withdrawal-badge {
+    flex-shrink: 0;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.withdrawal-badge--recibida {
+    background: var(--color-warning-bg);
+    border-color: var(--color-warning-border);
+    color: var(--color-warning-ink);
+}
+
+.withdrawal-badge--en_gestion {
+    background: var(--color-surface-muted);
+    border-color: var(--color-border-soft);
+    color: var(--color-ink);
+}
+
+.withdrawal-badge--resuelta {
+    background: var(--color-success-bg);
+    border-color: var(--color-success-border);
+    color: var(--color-success-ink);
+}
+
+.withdrawal-badge--rechazada {
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger-border);
+    color: var(--color-danger);
+}
+
+.withdrawal-admin-review {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--color-warning-border);
+    border-radius: 6px;
+    background: var(--color-warning-bg);
+    color: var(--color-warning-ink);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.withdrawal-admin-person {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    font-size: 0.85rem;
+    color: var(--color-ink);
+}
+
+.withdrawal-admin-person span,
+.withdrawal-admin-person a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    word-break: break-all;
+}
+
+.withdrawal-admin-person a {
+    color: var(--color-link);
+}
+
+.withdrawal-admin-description {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--color-ink);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.withdrawal-admin-declared,
+.withdrawal-admin-unlinked {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--color-ink-muted);
+}
+
+.withdrawal-admin-sales {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    list-style: none;
+    border-radius: 6px;
+    background: var(--color-surface-muted);
+    font-size: 0.82rem;
+    color: var(--color-ink);
+}
+
+.withdrawal-admin-sales li + li {
+    margin-top: 0.25rem;
+}
+
+.withdrawal-admin-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+.withdrawal-admin-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.withdrawal-admin-field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-ink-muted);
+}
+
+.withdrawal-admin-field select,
+.withdrawal-admin-field textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-family: inherit;
+    font-size: 0.875rem;
+    box-sizing: border-box;
+}
+
+.withdrawal-admin-field textarea {
+    resize: vertical;
+}
+
+.withdrawal-admin-field select:focus-visible,
+.withdrawal-admin-field textarea:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+}
+
+.withdrawal-admin-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.withdrawal-admin-feedback {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.82rem;
+}
+
+.withdrawal-admin-feedback--success {
+    color: var(--color-success-ink);
+}
+
+.withdrawal-admin-feedback--error {
+    color: var(--color-danger);
+}
+
+@media (min-width: 768px) {
+    .withdrawals-list {
+        grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    }
+}

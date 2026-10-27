@@ -13,7 +13,19 @@ import {
 } from '../../../services/siteContentService';
 import type { BannerInfo } from '../../../services/siteContentService';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import LegalFooterFields, { type DataFiscalValue } from './LegalFooterFields';
+import {
+    formatCuit,
+    getLegalFooterErrors,
+    hasLegalFooterErrors,
+    type LegalFooterValues,
+} from '../../../utils/legalFooter';
 import './FooterEditor.css';
+
+const EMPTY_LEGAL: LegalFooterValues = {
+    legalName: '', cuit: '', fiscalAddress: '', businessHours: '', responsibleArea: '',
+};
+const EMPTY_DATA_FISCAL: DataFiscalValue = { dataFiscalUrl: '', dataFiscalImageUrl: '' };
 
 // URL opcional pero, si se carga, debe ser http(s) absoluta — evita guardar
 // enlaces rotos o esquemas peligrosos (javascript:, data:) en el footer público.
@@ -42,6 +54,8 @@ const FooterEditor = () => {
     const [address, setAddress] = useState(footerInfo.address);
     const [mapQuery, setMapQuery] = useState(footerInfo.mapQuery);
     const [copyright, setCopyright] = useState(footerInfo.copyright);
+    const [legal, setLegal] = useState<LegalFooterValues>(EMPTY_LEGAL);
+    const [dataFiscal, setDataFiscal] = useState<DataFiscalValue>(EMPTY_DATA_FISCAL);
     const [bannerText, setBannerText] = useState('');
     const [bannerVisible, setBannerVisible] = useState(false);
     const [navbarOverlayTextColor, setNavbarOverlayTextColor] = useState(DEFAULT_NAVBAR_STYLE.overlayTextColor);
@@ -69,6 +83,17 @@ const FooterEditor = () => {
                     setAddress(info.address ?? '');
                     setMapQuery(info.mapQuery ?? '');
                     setCopyright(info.copyright ?? '');
+                    setLegal({
+                        legalName: info.legalName ?? '',
+                        cuit: info.cuit ?? '',
+                        fiscalAddress: info.fiscalAddress ?? '',
+                        businessHours: info.businessHours ?? '',
+                        responsibleArea: info.responsibleArea ?? '',
+                    });
+                    setDataFiscal({
+                        dataFiscalUrl: info.dataFiscalUrl ?? '',
+                        dataFiscalImageUrl: info.dataFiscalImageUrl ?? '',
+                    });
                     updateFooterInfo(info);
                 }
 
@@ -131,10 +156,21 @@ const FooterEditor = () => {
             return;
         }
 
+        if (hasLegalFooterErrors(getLegalFooterErrors(legal))) {
+            setError('Revisá los datos del vendedor: hay campos con errores.');
+            return;
+        }
+
         const newInfo = {
             brandName, description, whatsapp, email,
             tiktokUser, tiktokUrl, facebookUser, facebookUrl,
-            address, mapQuery, copyright
+            address, mapQuery, copyright,
+            legalName: legal.legalName.trim(),
+            cuit: formatCuit(legal.cuit),
+            fiscalAddress: legal.fiscalAddress.trim(),
+            businessHours: legal.businessHours.trim(),
+            responsibleArea: legal.responsibleArea.trim(),
+            ...dataFiscal,
         };
 
         try {
@@ -244,6 +280,13 @@ const FooterEditor = () => {
                             </div>
                         </div>
                     )}
+
+                    <LegalFooterFields
+                        values={legal}
+                        dataFiscal={dataFiscal}
+                        onChange={(patch) => setLegal((prev) => ({ ...prev, ...patch }))}
+                        onDataFiscalChange={setDataFiscal}
+                    />
 
                     {/* Banner */}
                     <h3 className="footer-editor-section-title">Banner de la tienda</h3>

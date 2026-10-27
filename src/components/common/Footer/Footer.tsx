@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { FaWhatsapp, FaEnvelope, FaTiktok, FaFacebook, FaMapMarkerAlt } from 'react-icons/fa';
 import type { FooterInfo } from '../../../admin/store/adminStore';
 import { getSiteContent } from '../../../services/siteContentService';
+import SellerInfo from './SellerInfo';
+import { hasSellerInfo } from '../../../utils/legalFooter';
+import DataFiscalBadge from './DataFiscalBadge';
 import './Footer.css';
 
 const emptyFooter: FooterInfo = {
@@ -16,7 +20,26 @@ const emptyFooter: FooterInfo = {
   address: '',
   mapQuery: '',
   copyright: '',
+  legalName: '',
+  cuit: '',
+  fiscalAddress: '',
+  businessHours: '',
+  responsibleArea: '',
+  dataFiscalUrl: '',
+  dataFiscalImageUrl: '',
 };
+
+// Texto exacto exigido por la Disposición 954/2025; no se traduce ni se abrevia.
+const WITHDRAWAL_LINK_LABEL = 'BOTÓN DE ARREPENTIMIENTO';
+
+// Se renderiza también durante la carga del footer: el enlace no depende del contenido del CMS.
+const WithdrawalLink = () => (
+  <div className="footer-withdrawal">
+    <Link to="/arrepentimiento" className="footer-withdrawal-link">
+      {WITHDRAWAL_LINK_LABEL}
+    </Link>
+  </div>
+);
 
 const Footer = () => {
   const [footerInfo, setFooterInfo] = useState<FooterInfo>(emptyFooter);
@@ -55,6 +78,7 @@ const Footer = () => {
             <div className="footer-skeleton footer-skeleton--line skeleton" />
           </div>
         </div>
+        <WithdrawalLink />
         <div className="footer-bottom">
           <div className="footer-skeleton footer-skeleton--copyright skeleton" />
         </div>
@@ -134,7 +158,12 @@ const Footer = () => {
           </div>
         )}
 
+        {hasSellerInfo(footerInfo) && <SellerInfo info={footerInfo} />}
+
       </div>
+
+      <WithdrawalLink />
+      <DataFiscalBadge url={footerInfo.dataFiscalUrl} imageUrl={footerInfo.dataFiscalImageUrl} />
 
       <div className="footer-bottom">
         <p>&copy; {new Date().getFullYear()} {footerInfo.copyright}</p>
