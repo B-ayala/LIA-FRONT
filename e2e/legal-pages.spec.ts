@@ -18,12 +18,12 @@ const VIEWPORTS = [
 
 test.describe('Páginas legales', () => {
   for (const { link, path, heading } of PAGES) {
-    test(`el Footer enlaza a ${path} y la página muestra el aviso de borrador`, async ({ page }) => {
+    test(`el Footer enlaza a ${path} y la página no muestra el aviso de borrador`, async ({ page }) => {
       await page.goto('/contact');
       await page.getByRole('navigation', { name: 'Información legal' }).getByRole('link', { name: link }).click();
       await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
-      await expect(page.getByText('Borrador para revisión legal')).toBeVisible();
+      await expect(page.getByText('Borrador para revisión legal')).toHaveCount(0);
     });
   }
 

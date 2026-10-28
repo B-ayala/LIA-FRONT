@@ -5,7 +5,7 @@ import './LegalPage.css';
 
 // Mientras el abogado no apruebe los textos, cada página avisa que es un borrador.
 // Cuando estén aprobados, pasar a false: es el único lugar donde se controla.
-const LEGAL_TEXTS_ARE_DRAFT = true;
+const LEGAL_TEXTS_ARE_DRAFT = false;
 
 interface LegalPageProps {
   title: string;
