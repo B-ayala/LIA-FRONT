@@ -8,6 +8,7 @@ import type { FooterInfo } from '../../../admin/store/adminStore';
 import { getSiteContent } from '../../../services/siteContentService';
 import { withTimeout } from '../../../utils/withTimeout';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import DataProtectionNotice from '../../../components/common/DataProtectionNotice/DataProtectionNotice';
 import './Contact.css';
 
 interface ContactFormData {
@@ -327,6 +328,8 @@ const Contact = () => {
                     {formData.message.length} / {MAX_MESSAGE_LENGTH}
                   </span>
                 </div>
+
+                <DataProtectionNotice />
 
                 <button
                   type="submit"

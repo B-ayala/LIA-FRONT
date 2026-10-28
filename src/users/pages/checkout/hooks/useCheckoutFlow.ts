@@ -14,6 +14,7 @@ import {
 } from '../checkoutUtils';
 import { useCheckoutStep } from './useCheckoutStep';
 import { useCheckoutPayment } from './useCheckoutPayment';
+import { useCheckoutTerms } from './useCheckoutTerms';
 import { useTransferNudge } from './useTransferNudge';
 import { useCartFreshness, type CartFreshness } from './useCartFreshness';
 import type { ReleaseStatus } from './useReleaseAbandonedMpPayment';
@@ -51,7 +52,8 @@ export const useCheckoutFlow = (user: AuthUser, items: CheckoutItem[], isDirectP
   // mientras se verifica el stock).
   const blockReason = getCheckoutBlockReason(totals, buyerName, buyerEmail);
   const freshness = useCartFreshness(items);
-  const submitLockReason = getSubmitLockReason(freshness, releaseStatus);
+  const terms = useCheckoutTerms();
+  const submitLockReason = getSubmitLockReason(freshness, releaseStatus) ?? terms.lockReason;
   const stepper = useCheckoutStep(blockReason === null);
   const nudge = useTransferNudge(clearCart);
   const pay = useCheckoutPayment({
@@ -59,10 +61,11 @@ export const useCheckoutFlow = (user: AuthUser, items: CheckoutItem[], isDirectP
     submitBlocked: blockReason !== null || submitLockReason !== null,
     onTransferCreated: nudge.armNudge,
     onStockError: freshness.refresh,
+    ensureTermsAccepted: terms.ensureAccepted,
   });
 
   return {
-    items, totals, blockReason, submitLockReason, freshness, stepper, nudge, pay, isDirectPurchase,
+    items, totals, blockReason, submitLockReason, freshness, stepper, nudge, pay, isDirectPurchase, terms,
     buyer: { name: buyerName, email: buyerEmail, needsName: sessionName === '', setName: setNameDraft },
     shipping, setShipping, payment, setPayment,
   };

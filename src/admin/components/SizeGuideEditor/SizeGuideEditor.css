@@ -5,18 +5,27 @@
     margin-bottom: 0.75rem;
 }
 
+.size-guide-globals__hint {
+    margin: 0 0 0.25rem;
+    font-size: 0.8rem;
+    color: var(--color-ink-muted);
+}
+
 .size-guide-globals__group {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem;
-    margin-bottom: 0.3rem;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 0.5rem;
 }
 
 .size-guide-globals__group-label {
-    font-size: 0.75rem;
-    color: var(--color-ink-muted);
-    min-width: 4.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+.size-guide-globals__group-label::first-letter {
+    text-transform: uppercase;
 }
 
 .size-guide-globals__chips {
@@ -27,6 +36,9 @@
 
 .size-guide-globals__chip,
 .size-guide-globals__retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     min-height: 44px;
     min-width: 44px;
     padding: 0 0.8rem;

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Copy, AlertCircle } from 'lucide-react';
 import SEO from '../../../components/common/SEO/SEO';
+import DataProtectionNotice from '../../../components/common/DataProtectionNotice/DataProtectionNotice';
 import { useAuthStore } from '../../../store/authStore';
 import { createWithdrawal, type WithdrawalReceipt } from '../../../services/withdrawalService';
 import {
   DESCRIPTION_MAX_LENGTH,
   EMPTY_WITHDRAWAL_FORM,
   toWithdrawalPayload,
+  todayIsoDate,
   validateWithdrawalField,
   validateWithdrawalForm,
   type WithdrawalErrors,
@@ -65,7 +67,7 @@ const WithdrawalSuccess = ({ receipt }: { receipt: WithdrawalReceipt }) => {
     <section className="withdrawal-card withdrawal-success" aria-live="polite">
       <CheckCircle2 size={44} className="withdrawal-success-icon" aria-hidden="true" />
       <h2 ref={headingRef} tabIndex={-1}>Recibimos tu solicitud</h2>
-      <p>Este es tu código de seguimiento y tu constancia. No te enviamos un mail: copialo o sacale una captura ahora.</p>
+      <p>Este es tu código de seguimiento y tu constancia. Te enviamos una copia por mail (revisá también spam). Por las dudas, copialo o sacale una captura ahora.</p>
       <p className="withdrawal-code" data-testid="withdrawal-code">{receipt.code}</p>
       <button type="button" className="withdrawal-secondary-btn" onClick={copyCode}>
         <Copy size={16} aria-hidden="true" /> {copied ? 'Código copiado' : 'Copiar código'}
@@ -154,6 +156,7 @@ const Withdrawal = () => {
         <p>
           Si compraste por internet, podés arrepentirte dentro de los 10 días corridos de recibir el producto,
           sin dar explicaciones y sin costo para vos. Completá este formulario: no necesitás tener cuenta.
+          Si preferís, también podés escribirnos por los medios de contacto del sitio y lo gestionamos igual.
         </p>
       </header>
 
@@ -196,8 +199,8 @@ const Withdrawal = () => {
             />
           </Field>
 
-          <Field id="orderNumber" label="N° de pedido (opcional)" error={errors.orderNumber}
-            hint="Lo ves en Mis compras. Si no lo tenés a mano, dejalo vacío.">
+          <Field id="orderNumber" label="N° de pedido (si lo tenés)" error={errors.orderNumber}
+            hint="Lo ves en Mis compras, por ejemplo 1001. Con más datos de la compra la encontramos más rápido.">
             <input
               id={fieldId('orderNumber')} type="text" inputMode="numeric" autoComplete="off" value={values.orderNumber}
               onChange={handleChange('orderNumber')} onBlur={handleBlur('orderNumber')}
@@ -206,6 +209,29 @@ const Withdrawal = () => {
               disabled={submitting}
             />
           </Field>
+
+          <Field id="purchaseDate" label="Fecha de compra aproximada (si la recordás)" error={errors.purchaseDate}>
+            <input
+              id={fieldId('purchaseDate')} type="date" max={todayIsoDate()} value={values.purchaseDate}
+              onChange={handleChange('purchaseDate')} onBlur={handleBlur('purchaseDate')}
+              aria-invalid={Boolean(errors.purchaseDate)}
+              aria-describedby={describedBy('purchaseDate', false, errors.purchaseDate)}
+              disabled={submitting}
+            />
+          </Field>
+
+          <Field id="purchaseAmount" label="Importe pagado (si lo recordás)" error={errors.purchaseAmount}
+            hint="Por ejemplo: 15000">
+            <input
+              id={fieldId('purchaseAmount')} type="text" inputMode="decimal" autoComplete="off" value={values.purchaseAmount}
+              onChange={handleChange('purchaseAmount')} onBlur={handleBlur('purchaseAmount')}
+              aria-invalid={Boolean(errors.purchaseAmount)}
+              aria-describedby={describedBy('purchaseAmount', true, errors.purchaseAmount)}
+              disabled={submitting}
+            />
+          </Field>
+
+          <DataProtectionNotice />
 
           <button type="submit" className="withdrawal-primary-btn" disabled={submitting} aria-busy={submitting}>
             {submitting ? 'Enviando…' : 'Solicitar arrepentimiento'}

@@ -4,6 +4,23 @@
     gap: 0.75rem;
 }
 
+.withdrawals-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.withdrawals-header-actions .admin-btn-secondary {
+    min-height: 44px;
+    text-decoration: none;
+}
+
+.withdrawals-policy-hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-ink-muted);
+}
+
 .withdrawals-toolbar {
     display: flex;
     padding: 0.5rem 0.75rem;

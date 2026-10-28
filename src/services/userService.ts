@@ -11,6 +11,8 @@ interface CreateUserPayload {
   email: string;
   phone?: string;
   password: string;
+  /** Versión de los términos que la persona tildó al registrarse. */
+  termsVersion: string;
   captchaToken?: string;
 }
 

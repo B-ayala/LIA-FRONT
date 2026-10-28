@@ -145,20 +145,60 @@
 .footer-withdrawal-link {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 32px;
   color: inherit;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-size: 0.7rem;
+  font-weight: 400;
+  text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .footer-withdrawal-link:hover {
   color: var(--white);
+  text-decoration: underline;
 }
 
 .footer-withdrawal-link:focus-visible {
+  outline: 3px solid var(--primary-light);
+  outline-offset: 3px;
+}
+
+/* Enlaces a los textos legales, sobre la franja del copyright. */
+.footer-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 20px;
+  padding: 0 20px 8px;
+  font-size: 0.85rem;
+}
+
+.footer-legal-links .footer-link {
+  min-height: 44px;
+}
+
+.footer-consumer-defense {
+  margin: 0;
+  padding: 0 20px 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #aaaaaa;
+}
+
+.footer-consumer-defense a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.footer-consumer-defense a:hover {
+  color: var(--white);
+}
+
+.footer-consumer-defense a:focus-visible {
   outline: 3px solid var(--primary-light);
   outline-offset: 3px;
 }

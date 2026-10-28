@@ -39,6 +39,29 @@ const WithdrawalLink = () => (
   </Link>
 );
 
+const LEGAL_LINKS: ReadonlyArray<{ to: string; label: string }> = [
+  { to: '/terminos', label: 'Términos y condiciones' },
+  { to: '/privacidad', label: 'Política de privacidad' },
+  { to: '/cambios-y-devoluciones', label: 'Cambios y devoluciones' },
+];
+
+// Ventanilla de reclamos de consumidores de la Secretaría de Industria y Comercio.
+const CONSUMER_DEFENSE_URL = 'https://autogestion.produccion.gob.ar/consumidores';
+
+const LegalLinks = () => (
+  <>
+    <nav className="footer-legal-links" aria-label="Información legal">
+      {LEGAL_LINKS.map(({ to, label }) => (
+        <Link key={to} to={to} className="footer-link">{label}</Link>
+      ))}
+    </nav>
+    <p className="footer-consumer-defense">
+      Defensa de las y los Consumidores. Para reclamos:{' '}
+      <a href={CONSUMER_DEFENSE_URL} target="_blank" rel="noopener noreferrer">Ingrese aquí</a>
+    </p>
+  </>
+);
+
 const Footer = () => {
   const [footerInfo, setFooterInfo] = useState<FooterInfo>(emptyFooter);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +99,7 @@ const Footer = () => {
             <div className="footer-skeleton footer-skeleton--line skeleton" />
           </div>
         </div>
+        <LegalLinks />
         <div className="footer-bottom">
           <div className="footer-skeleton footer-skeleton--copyright skeleton" />
           <WithdrawalLink />
@@ -161,6 +185,8 @@ const Footer = () => {
       </div>
 
       <DataFiscalBadge url={footerInfo.dataFiscalUrl} imageUrl={footerInfo.dataFiscalImageUrl} />
+
+      <LegalLinks />
 
       <div className="footer-bottom">
         <p>&copy; {new Date().getFullYear()} {footerInfo.copyright}</p>

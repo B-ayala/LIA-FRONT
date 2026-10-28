@@ -40,6 +40,9 @@ const CheckoutResult = lazy(() => import('../users/pages/checkout/CheckoutResult
 const Contact = lazy(() => import('../users/pages/contact/Contact'));
 const About = lazy(() => import('../users/pages/about/About'));
 const Withdrawal = lazy(() => import('../users/pages/withdrawal/Withdrawal'));
+const Terms = lazy(() => import('../users/pages/legal/Terms'));
+const Privacy = lazy(() => import('../users/pages/legal/Privacy'));
+const Returns = lazy(() => import('../users/pages/legal/Returns'));
 const EmailConfirmation = lazy(() => import('../users/pages/auth/EmailConfirmation'));
 const ResetPassword = lazy(() => import('../users/pages/auth/ResetPassword'));
 
@@ -61,6 +64,8 @@ const AdminDispatches = lazy(() => import('../admin/pages/Dispatches/Dispatches'
 const AdminStock = lazy(() => import('../admin/pages/Stock/Stock'));
 const AdminSizes = lazy(() => import('../admin/pages/Sizes/Sizes'));
 const AdminWithdrawals = lazy(() => import('../admin/pages/Withdrawals/Withdrawals'));
+const AdminTerms = lazy(() => import('../admin/pages/TermsEditor/TermsEditor'));
+const AdminReturns = lazy(() => import('../admin/pages/ReturnsEditor/ReturnsEditor'));
 
 // Fallback estable: min-height evita colapso del layout mientras se descarga
 // el chunk de la página. Solo se ve en conexiones lentas — la navegación
@@ -98,13 +103,18 @@ const AppRouter = () => {
               <Route path="stock" element={<AdminStock />} />
               <Route path="sizes" element={<AdminSizes />} />
               <Route path="arrepentimientos" element={<AdminWithdrawals />} />
+              <Route path="arrepentimientos/cambios-y-devoluciones" element={<AdminReturns />} />
+              <Route path="terminos" element={<AdminTerms />} />
             </Route>
           </Route>
 
-          {/* El derecho de arrepentimiento no puede quedar detrás de ningún redirect ni de un login:
-              por eso vive fuera de AdminRedirect y es accesible con o sin sesión. */}
+          {/* El derecho de arrepentimiento y los textos legales no pueden quedar detrás de ningún redirect
+              ni de un login: por eso viven fuera de AdminRedirect y son accesibles con o sin sesión. */}
           <Route element={<UserLayout />}>
             <Route path="/arrepentimiento" element={<InitialRouteReady><Withdrawal /></InitialRouteReady>} />
+            <Route path="/terminos" element={<InitialRouteReady><Terms /></InitialRouteReady>} />
+            <Route path="/privacidad" element={<InitialRouteReady><Privacy /></InitialRouteReady>} />
+            <Route path="/cambios-y-devoluciones" element={<InitialRouteReady><Returns /></InitialRouteReady>} />
           </Route>
 
           {/* Public Routes — redirige a /admin si la sesión es de admin */}

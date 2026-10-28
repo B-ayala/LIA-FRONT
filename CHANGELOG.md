@@ -6,12 +6,22 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Added
+- Footer: enlace "Defensa de las y los Consumidores. Para reclamos: Ingrese aquí" a la ventanilla de la Secretaría de Industria y Comercio.
+- Leyenda de protección de datos personales (Disp. DNPDP 10/2008) en los formularios de arrepentimiento, contacto, registro y en el paso Pago.
+- Páginas "Términos y condiciones" (`/terminos`), "Política de privacidad" (`/privacidad`) y "Cambios y devoluciones" (`/cambios-y-devoluciones`), con aviso "Borrador para revisión legal" (se apaga en `LEGAL_TEXTS_ARE_DRAFT`, `users/pages/legal/LegalPage.tsx`) y enlaces en el Footer.
+- Registro: casilla obligatoria "Acepto los Términos y condiciones y la Política de privacidad" (con enlaces); sin tildarla no se crea la cuenta. La versión aceptada y la fecha quedan en la cuenta y el backend guarda la constancia con la IP.
+- Checkout, paso Pago: si la cuenta ya aceptó la versión vigente se muestra el aviso fijo "Al pagar aceptás los Términos y condiciones (versión X)…" sin casilla; si no (cuentas anteriores al tilde del registro, o cuando cambia la versión) se pide el tilde una sola vez y se registra antes de crear el pedido.
+- Admin > "Términos y condiciones" (menú lateral, `/admin/terminos`): editor del texto de `/terminos` con vista previa y formato simple (`## título`, `- ítem`, enlaces `[texto](/ruta)`). "Es un cambio importante" publica una versión nueva (AAAA-MM-DD, `.2`, `.3`… el mismo día) y todos los clientes tendrán que aceptarla en su próxima compra; sin tildar, es una corrección y la versión no cambia. Se guarda en `site_content` clave `legal_terms`.
 - Admin Productos > Variantes > Guía de talles: las columnas pueden ser talles globales del catálogo (con precarga de medidas) o propios del producto, con etiqueta de origen, sin duplicados; la guía nueva arranca sin columnas si hay globales activos del tipo (`size_guide.columnSources`).
+
+- Admin > Arrepentimientos > "Editar Cambios y devoluciones" (`/admin/arrepentimientos/cambios-y-devoluciones`): editor del texto de `/cambios-y-devoluciones` con vista previa, formato simple (`##`, `###`, `- `, enlaces) y aviso de cuántos `[A DEFINIR: …]` quedan sin completar y no deja publicar hasta completarlos. Se guarda en `site_content` clave `legal_returns`; no tiene versión ni pide nueva aceptación. El editor es el mismo componente que el de Términos (`LegalContentEditor`).
 
 ### Security
 - Alta, recuperación y cambio de contraseña: contraseña de 8 a 64 caracteres con mayúscula, minúscula, número y símbolo (coincide con "Password requirements" de Supabase) (antes mínimo 6 sin más reglas); se rechaza lo que superaría 72 bytes en vez de truncarlo en silencio. Nombre de 2 a 60 caracteres (solo letras, espacios, apóstrofes, puntos y guiones), email hasta 254 y celular de 7 a 20. Los formularios muestran el límite como ayuda y frenan la escritura al llegar al máximo. Reglas en `utils/validation.ts`.
 
 ### Changed
+- "Cambios y devoluciones" pasa a formato de preguntas y respuestas (cambios, devoluciones, reintegros, fallas, documentación) adaptado a retiro en el local, sin costos de flete. Los plazos y condiciones que solo define el negocio (plazo de cambio, estado de la prenda, cambio por otro talle o producto, ofertas, productos sin cambio, plazo de revisión y reintegro) quedan como `[A DEFINIR]` hasta que el admin los complete. La página ya no muestra "Versión".
+- Botón de arrepentimiento: el N° de pedido sigue siendo opcional y se suman fecha e importe de la compra (opcionales) para encontrar la compra; el botón del Footer es más chico y sin subrayado; la constancia avisa que también se envía por mail; también aparece en "Mis compras".
 - Detalle de producto: el título fijo "Devolución gratis" pasa a "Política de devolución"; el texto de cada producto no cambia.
 - Admin Productos > Variantes > Talle y "Ver guía de talles" vuelven al flujo anterior (talle libre con stock y colores + editor manual de guía; la guía pública usa `size_guide` y, si no hay, las opciones de la variante). La sección Talles queda como catálogo independiente que por ahora no alimenta al producto.
 - Admin: las miniaturas de Productos, Destacados, Galería, Despachos y de las grillas de Cloudinary (gestor y selector) se piden a Cloudinary a 240–400 px (`buildCloudinaryUrl`) con `loading="lazy"`; antes bajaban la imagen original completa. Sin cambios visuales.

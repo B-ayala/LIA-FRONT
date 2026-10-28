@@ -37,7 +37,7 @@ sequenceDiagram
   actor A as Admin
   C->>F: Toca BOTÓN DE ARREPENTIMIENTO y completa el formulario
   F->>F: Valida campos
-  F->>B: POST {name, email, description, orderNumber?}
+  F->>B: POST {name, email, description, orderNumber?, purchaseDate?, purchaseAmount?}
   B-->>F: 201 {code ARR-AAAA-NNNN}
   F-->>C: Muestra el código y el aviso de 24 h
   A->>B: GET /api/withdrawals?status=
@@ -46,6 +46,6 @@ sequenceDiagram
 ```
 
 ## Datos involucrados
-- Entrada: nombre, email, descripción, N° de pedido opcional.
+- Entrada: nombre, email, descripción; N° de pedido, fecha e importe de la compra opcionales (ayudan a encontrar la compra).
 - Salida: código de seguimiento.
 - Persistencia: tabla de solicitudes en el backend; el front no guarda nada.

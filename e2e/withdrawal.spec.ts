@@ -48,23 +48,51 @@ test.describe('Botón de arrepentimiento', () => {
     expect(requests).toBe(0);
   });
 
-  test('el número de pedido es opcional pero se valida si se completa', async ({ page }) => {
+  test('los datos de la compra son opcionales pero se valida su formato', async ({ page }) => {
     await page.goto(WITHDRAWAL_PATH);
-    await page.getByLabel('N° de pedido (opcional)').fill('abc');
-    await page.getByLabel('N° de pedido (opcional)').blur();
+    await page.getByLabel(/N° de pedido/).fill('abc');
+    await page.getByLabel(/N° de pedido/).blur();
     await expect(page.getByText('Ingresá solo el número, por ejemplo 1001')).toBeVisible();
+    await page.getByLabel(/Importe pagado/).fill('mucho');
+    await page.getByLabel(/Importe pagado/).blur();
+    await expect(page.getByText('Ingresá solo el importe, por ejemplo 15000')).toBeVisible();
   });
 
   test('envío exitoso: muestra el código de seguimiento y el aviso de 24 h', async ({ page }) => {
     await page.route(WITHDRAWALS_ENDPOINT, fulfillCreated);
     await page.goto(WITHDRAWAL_PATH);
     await fillForm(page);
-    await page.getByLabel('N° de pedido (opcional)').fill('#1001');
+    await page.getByLabel(/N° de pedido/).fill('#1001');
 
     await page.getByRole('button', { name: 'Solicitar arrepentimiento' }).click();
 
     await expect(page.getByTestId('withdrawal-code')).toHaveText(RECEIPT_CODE);
     await expect(page.getByText(/dentro de las 24 horas/)).toBeVisible();
+  });
+
+  test('sin N° de pedido se envía igual, y fecha e importe viajan si se completan', async ({ page }) => {
+    const bodies: Record<string, unknown>[] = [];
+    await page.route(WITHDRAWALS_ENDPOINT, (route) => {
+      bodies.push(route.request().postDataJSON() as Record<string, unknown>);
+      return fulfillCreated(route);
+    });
+    await page.goto(WITHDRAWAL_PATH);
+    await fillForm(page);
+    await page.getByLabel(/Fecha de compra/).fill('2026-10-06');
+    await page.getByLabel(/Importe pagado/).fill('15.000,50');
+
+    await page.getByRole('button', { name: 'Solicitar arrepentimiento' }).click();
+
+    await expect(page.getByTestId('withdrawal-code')).toHaveText(RECEIPT_CODE);
+    expect(bodies[0]).toEqual({
+      name: 'María Pérez', email: 'maria@example.com', description: 'Campera negra talle M, comprada el 6/10',
+      purchaseDate: '2026-10-06', purchaseAmount: 15000.5,
+    });
+  });
+
+  test('el formulario muestra la leyenda de protección de datos personales', async ({ page }) => {
+    await page.goto(WITHDRAWAL_PATH);
+    await expect(page.getByText(/Órgano de Control de la Ley N° 25.326/)).toBeVisible();
   });
 
   test('doble click: se envía una sola solicitud', async ({ page }) => {

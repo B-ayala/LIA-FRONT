@@ -33,6 +33,8 @@ interface CheckoutPaymentInput {
   onTransferCreated: (orderIds: string[]) => void;
   /** El backend rechazó una línea por stock/talle: conviene recargar precio y stock. */
   onStockError: () => void;
+  /** Deja constancia de la aceptación de los términos antes de crear el pedido (lanza si no se pudo). */
+  ensureTermsAccepted: () => Promise<void>;
 }
 
 export interface TransferCreated {
@@ -76,7 +78,9 @@ const buildLastOrder = (items: CheckoutItem[], totals: CheckoutTotals, isDirect:
 
 /** Envío del pedido (transferencia o Mercado Pago) con idempotencia y protecciones anti doble envío. */
 export const useCheckoutPayment = (input: CheckoutPaymentInput): CheckoutPayment => {
-  const { items, isDirectPurchase, shipping, payment, totals, submitBlocked, onTransferCreated, onStockError } = input;
+  const {
+    items, isDirectPurchase, shipping, payment, totals, submitBlocked, onTransferCreated, onStockError, ensureTermsAccepted,
+  } = input;
   const [submitting, setSubmitting] = useState(false);
   const [mpError, setMpError] = useState('');
   const [mpNoticeOpen, setMpNoticeOpen] = useState(false);
@@ -136,6 +140,7 @@ export const useCheckoutPayment = (input: CheckoutPaymentInput): CheckoutPayment
     inFlightRef.current = true;
     setSubmitting(true);
     try {
+      await ensureTermsAccepted();
       // La key se conserva tras el éxito: un reenvío accidental devuelve la misma venta.
       const orderIds = await createOrder({ ...orderBase, paymentMethod: 'transfer' }, idempotencyKeyFor('transfer'));
       const whatsappUrl = buildWhatsAppUrl(buildWhatsAppMessage(items, shipping, totals));
@@ -178,6 +183,7 @@ export const useCheckoutPayment = (input: CheckoutPaymentInput): CheckoutPayment
     setSubmitting(true);
     setMpError('');
     try {
+      await ensureTermsAccepted();
       // La key NO se descarta tras el éxito: si la redirección se traba y el usuario reintenta,
       // el backend devuelve la misma preferencia en vez de reservar stock otra vez.
       const { init_point, order_ids } = await createMpPreference(orderBase, idempotencyKeyFor('mp'));

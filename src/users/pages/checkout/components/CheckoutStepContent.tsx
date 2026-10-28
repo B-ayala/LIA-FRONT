@@ -38,6 +38,7 @@ const CheckoutStepContent = ({ flow }: CheckoutStepContentProps) => {
       submitting={pay.submitting}
       error={pay.mpError || blockReason}
       lockReason={submitLockReason}
+      terms={flow.terms}
       canSubmit={blockReason === null && submitLockReason === null}
       completedSlot={pay.transferCreated
         ? <TransferCreatedPanel created={pay.transferCreated} onDone={flow.nudge.finish} />

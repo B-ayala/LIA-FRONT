@@ -1,6 +1,9 @@
 import type { ReactNode, RefObject } from 'react';
+import { Link } from 'react-router-dom';
+import DataProtectionNotice from '../../../../components/common/DataProtectionNotice/DataProtectionNotice';
 import OptionList, { type OptionItem } from './OptionList';
 import PrimaryPillButton from './PrimaryPillButton';
+import type { CheckoutTerms } from '../hooks/useCheckoutTerms';
 import { SHIPPING_LABEL, TRANSFER_ALIAS, type PaymentMethod, type ShippingMethod } from '../checkoutUtils';
 
 const PAYMENT_OPTIONS: OptionItem<PaymentMethod>[] = [
@@ -36,8 +39,9 @@ interface PaymentStepProps {
   onPaymentChange: (method: PaymentMethod) => void;
   submitting: boolean;
   error: string | null;
-  /** Motivo (no error) por el que el CTA está bloqueado: verificando stock, reserva anterior, etc. */
+  /** Motivo (no error) por el que el CTA está bloqueado: verificando stock, reserva anterior, términos, etc. */
   lockReason: string | null;
+  terms: CheckoutTerms;
   canSubmit: boolean;
   /** Reemplaza al CTA (p. ej. "Pedido creado"): evita un segundo envío. */
   completedSlot?: ReactNode;
@@ -45,8 +49,44 @@ interface PaymentStepProps {
   onBack: () => void;
 }
 
+interface TermsNoticeProps {
+  terms: CheckoutTerms;
+  disabled: boolean;
+}
+
+/** Cuentas que ya aceptaron la versión vigente: aviso fijo. Si no, el tilde (se pide una sola vez por versión). */
+const TermsNotice = ({ terms, disabled }: TermsNoticeProps) => {
+  if (terms.needsCheckbox) {
+    return (
+      <label className="checkout-step__terms">
+        <input
+          type="checkbox"
+          checked={terms.checked}
+          onChange={(event) => terms.setChecked(event.currentTarget.checked)}
+          disabled={disabled}
+        />
+        <span>
+          Leí y acepto los <Link to="/terminos" target="_blank" rel="noopener noreferrer">términos y condiciones</Link>{' '}
+          (versión {terms.version}) y la{' '}
+          <Link to="/privacidad" target="_blank" rel="noopener noreferrer">política de privacidad</Link>.
+        </span>
+      </label>
+    );
+  }
+  if (terms.alreadyAccepted) {
+    return (
+      <p className="checkout-step__terms-notice">
+        Al pagar aceptás los <Link to="/terminos" target="_blank" rel="noopener noreferrer">Términos y condiciones</Link>{' '}
+        (versión {terms.version}) y la{' '}
+        <Link to="/privacidad" target="_blank" rel="noopener noreferrer">Política de privacidad</Link>.
+      </p>
+    );
+  }
+  return null;
+};
+
 const PaymentStep = (props: PaymentStepProps) => {
-  const { headingRef, payment, submitting, error } = props;
+  const { headingRef, payment, submitting, error, lockReason } = props;
 
   return (
     <div className="checkout-step">
@@ -71,11 +111,14 @@ const PaymentStep = (props: PaymentStepProps) => {
         onChange={props.onPaymentChange}
       />
 
+      <TermsNotice terms={props.terms} disabled={submitting} />
+      <DataProtectionNotice />
+
       <div className="checkout-step__actions">
         {props.completedSlot ?? (
           <>
             {error && <p className="checkout-step__error" role="alert">{error}</p>}
-            {!error && props.lockReason && <p className="checkout-step__reason" role="status">{props.lockReason}</p>}
+            {!error && lockReason && <p className="checkout-step__reason" role="status">{lockReason}</p>}
             <PrimaryPillButton onClick={props.onSubmit} disabled={!props.canSubmit} loading={submitting}>
               {ctaLabel(payment, submitting)}
             </PrimaryPillButton>

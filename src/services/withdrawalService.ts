@@ -20,6 +20,9 @@ export interface WithdrawalPayload {
   email: string;
   description: string;
   orderNumber?: number;
+  /** Fecha de compra aproximada, YYYY-MM-DD. */
+  purchaseDate?: string;
+  purchaseAmount?: number;
 }
 
 export interface WithdrawalReceipt {
@@ -41,6 +44,8 @@ export interface Withdrawal {
   email: string;
   description: string;
   order_number: number | null;
+  purchase_date: string | null;
+  purchase_amount: number | null;
   status: WithdrawalStatus;
   needs_review: boolean;
   admin_note: string | null;

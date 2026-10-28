@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog, DialogContent, Grow, Box, Typography, Stack, Button,
-  useMediaQuery, Tabs, Tab, TextField, Alert, Link, InputAdornment, IconButton,
+  useMediaQuery, Tabs, Tab, TextField, Alert, Link, InputAdornment, IconButton, Checkbox, FormControlLabel,
+  FormHelperText,
 } from '@mui/material';
 import {
   FiLogIn, FiUserPlus, FiAlertCircle, FiCheckCircle, FiMail, FiMessageSquare,
@@ -19,8 +20,10 @@ import { extractErrorMessage } from '../../../utils/errorMessage';
 import { createUser, resendConfirmationEmail, requestPasswordReset } from '../../../services/userService';
 import Modal from '../../../components/common/Modal/Modal';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
+import DataProtectionNotice from '../../../components/common/DataProtectionNotice/DataProtectionNotice';
 import TurnstileWidget from '../../../components/common/Turnstile/TurnstileWidget';
 import { useCaptcha, CAPTCHA_REQUIRED_MESSAGE } from '../../../hooks/useCaptcha';
+import { useTermsContent } from '../../../hooks/useLegalContent';
 import { EMAIL_CONFIRMED_CHANNEL, EMAIL_CONFIRMED_STORAGE_KEY } from '../../pages/auth/EmailConfirmation';
 
 interface AuthModalProps {
@@ -173,6 +176,8 @@ const resendBtnSx = {
   },
 };
 
+const TERMS_REQUIRED_MESSAGE = 'Aceptá los términos y la política de privacidad para crear tu cuenta.';
+
 const fieldError = (msg?: string) =>
   msg ? (
     <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -187,6 +192,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const authCaptcha = useCaptcha();
   const resendCaptcha = useCaptcha();
   const isMobile = useMediaQuery('(max-width:639px)');
+  const terms = useTermsContent();
   const [view, setView] = useState<'login' | 'register'>('login');
 
   // Login form state
@@ -199,6 +205,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const [registerPhone, setRegisterPhone] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
+  const [registerTermsAccepted, setRegisterTermsAccepted] = useState(false);
 
   // Password visibility
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -293,6 +300,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     setRegisterPhone('');
     setRegisterPassword('');
     setRegisterConfirmPassword('');
+    setRegisterTermsAccepted(false);
     setErrors({});
     setServerError('');
     setSuccessMessage('');
@@ -338,6 +346,8 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
 
     const matchError = validatePasswordMatch(registerPassword, registerConfirmPassword);
     if (matchError) newErrors.registerConfirmPassword = matchError;
+
+    if (!registerTermsAccepted) newErrors.registerTerms = TERMS_REQUIRED_MESSAGE;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -429,6 +439,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
         email: registerEmail.trim(),
         phone: registerPhone.trim(),
         password: registerPassword,
+        termsVersion: terms.content.version,
         captchaToken: authCaptcha.captchaToken,
       });
 
@@ -444,6 +455,7 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
       setRegisterEmail('');
       setRegisterPassword('');
       setRegisterConfirmPassword('');
+      setRegisterTermsAccepted(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error al registrar el usuario';
       if (message === 'EMAIL_ALREADY_CONFIRMED') {
@@ -867,8 +879,40 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                 </Alert>
               )}
 
+              <Box>
+                <FormControlLabel
+                  sx={{ alignItems: 'flex-start', mx: 0, '& .MuiFormControlLabel-label': { fontSize: '0.875rem', lineHeight: 1.45 } }}
+                  control={(
+                    <Checkbox
+                      id="registerTerms"
+                      checked={registerTermsAccepted}
+                      onChange={(e) => {
+                        setRegisterTermsAccepted(e.target.checked);
+                        if (e.target.checked) setErrors((prev) => ({ ...prev, registerTerms: '' }));
+                      }}
+                      slotProps={{ input: { 'aria-describedby': errors.registerTerms ? 'registerTermsError' : undefined } }}
+                      sx={{ pt: 0.25, color: 'var(--primary-color)', '&.Mui-checked': { color: 'var(--primary-dark)' } }}
+                    />
+                  )}
+                  label={(
+                    <span>
+                      Acepto los{' '}
+                      <Link href="/terminos" target="_blank" rel="noopener noreferrer" underline="always" sx={{ color: 'var(--primary-dark)', fontWeight: 600 }}>Términos y condiciones</Link>{' '}
+                      y la{' '}
+                      <Link href="/privacidad" target="_blank" rel="noopener noreferrer" underline="always" sx={{ color: 'var(--primary-dark)', fontWeight: 600 }}>Política de privacidad</Link>.
+                    </span>
+                  )}
+                />
+                {errors.registerTerms && (
+                  <FormHelperText id="registerTermsError" error role="alert" sx={{ mx: 0, fontWeight: 500 }}>
+                    {errors.registerTerms}
+                  </FormHelperText>
+                )}
+              </Box>
+
+              <DataProtectionNotice />
               <TurnstileWidget {...authCaptcha.widgetProps} />
-              <Button type="submit" disabled={isLoading} variant="contained" fullWidth sx={submitBtnSx}
+              <Button type="submit" disabled={isLoading || terms.loading} variant="contained" fullWidth sx={submitBtnSx}
                 startIcon={isLoading ? <LiaLoader size="xs" /> : <FiUserPlus size={18} />}
               >
                 {isLoading ? 'Registrando...' : 'Registrarse'}

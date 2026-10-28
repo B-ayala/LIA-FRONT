@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import MuiThemeScope from '../../../../components/common/MuiTheme/MuiThemeScope';
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Collapse, Divider } from '@mui/material';
 import { FiPackage, FiChevronDown, FiChevronUp, FiShoppingBag, FiArrowLeft } from 'react-icons/fi';
 import Modal from '../../../../components/common/Modal/Modal';
@@ -575,6 +576,14 @@ const MyPurchasesModalContent = ({ isOpen, onClose, email }: MyPurchasesModalPro
                   Aún no realizaste compras.
                 </p>
               </div>
+            )}
+
+            {!loading && !error && (
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', textAlign: 'center' }}>
+                <Link to="/arrepentimiento" onClick={handleClose} style={{ color: 'inherit', textDecoration: 'underline' }}>
+                  BOTÓN DE ARREPENTIMIENTO
+                </Link>
+              </p>
             )}
 
             {!loading && !error && purchases.length > 0 && (

@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
+import { Check, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { SizeGuide } from '../../../types/product';
 import type { Size } from '../../../types/size';
-import { formatSizeLabel, groupSizesByGarment } from '../../../utils/sizeGarment';
+import { groupSizesByGarment } from '../../../utils/sizeGarment';
 import { findColumnBySizeId } from '../../../utils/sizeGuideColumns';
 import type { SizeGuideCatalog } from './sizeGuideCatalog';
 
@@ -54,7 +55,8 @@ const GlobalSizesPicker = ({ guide, catalog, onToggle }: GlobalSizesPickerProps)
                 className={`size-guide-globals__chip${selected ? ' size-guide-globals__chip--on' : ''}`}
                 onClick={() => onToggle(size, selected)}
               >
-                {formatSizeLabel(size)}{size.active ? '' : ' (desactivado)'}
+                {selected ? <Check size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}
+                {size.name}{size.active ? '' : ' (desactivado)'}
               </button>
             );
           })}
@@ -66,6 +68,7 @@ const GlobalSizesPicker = ({ guide, catalog, onToggle }: GlobalSizesPickerProps)
   return (
     <div className="size-guide-globals">
       <span className="size-guide-cols-label" id="size-guide-globals-title">Talles globales:</span>
+      <p className="size-guide-globals__hint">Los creaste en la sección Talles. Tocá uno para sumarlo a la guía.</p>
       <div aria-labelledby="size-guide-globals-title">{renderBody()}</div>
     </div>
   );

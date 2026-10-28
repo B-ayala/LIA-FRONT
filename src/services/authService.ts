@@ -13,6 +13,7 @@ import { supabase } from '../config/supabaseClient';
 import { API_BASE_URL } from '../config/apiBaseUrl';
 import { authTokenStore, type AuthUser } from '../utils/authTokenStore';
 import { getValidAccessToken, hasNoSessionHint, markSignedOut, refreshSession, storeSessionPayload } from './sessionRefresh';
+import { recordRegistrationAcceptance } from './termsService';
 
 export type { AuthUser };
 
@@ -21,6 +22,8 @@ export interface RegisterPayload {
   email: string;
   phone?: string;
   password: string;
+  /** Versión de los términos que tildó al registrarse: queda en los metadatos de la cuenta. */
+  termsVersion: string;
   captchaToken?: string;
 }
 
@@ -76,7 +79,12 @@ export const register = async (payload: RegisterPayload): Promise<RegisterResult
     email: payload.email,
     password: payload.password,
     options: {
-      data: { name: payload.name, phone: payload.phone },
+      data: {
+        name: payload.name,
+        phone: payload.phone,
+        terms_version: payload.termsVersion,
+        terms_accepted_at: new Date().toISOString(),
+      },
       emailRedirectTo: redirectUrl('/auth/confirm'),
       captchaToken: payload.captchaToken,
     },
@@ -91,6 +99,8 @@ export const register = async (payload: RegisterPayload): Promise<RegisterResult
   if (data.user && (data.user.identities?.length ?? 0) === 0) {
     throw codedError('Ese email ya está registrado.', 'EMAIL_ALREADY_CONFIRMED');
   }
+
+  await recordRegistrationAcceptance(payload.email, payload.termsVersion);
 
   return {
     success: true,
