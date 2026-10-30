@@ -5,6 +5,9 @@ import App from './App.tsx'
 import AppErrorBoundary from './components/common/ErrorBoundary/AppErrorBoundary'
 import { purgeLegacyStoredSession } from './utils/authTokenStore'
 import { loadWebAnalytics } from './utils/webAnalytics'
+import { watchStaleChunks } from './utils/reloadOnStaleChunk'
+
+watchStaleChunks()
 
 // Versiones anteriores guardaban tokens en localStorage: se borran para que no queden legibles por JS.
 purgeLegacyStoredSession()

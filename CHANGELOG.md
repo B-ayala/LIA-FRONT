@@ -27,7 +27,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ### Security
 - Alta, recuperación y cambio de contraseña: contraseña de 8 a 64 caracteres con mayúscula, minúscula, número y símbolo (coincide con "Password requirements" de Supabase) (antes mínimo 6 sin más reglas); se rechaza lo que superaría 72 bytes en vez de truncarlo en silencio. Nombre de 2 a 60 caracteres (solo letras, espacios, apóstrofes, puntos y guiones), email hasta 254 y celular de 7 a 20. Los formularios muestran el límite como ayuda y frenan la escritura al llegar al máximo. Reglas en `utils/validation.ts`.
 
+### Fixed
+- Los cambios del admin (carrusel, banners, footer, About, WhatsApp, envíos, textos legales, productos, categorías, talles) llegan a las pestañas públicas ya abiertas: se revalidan al volver a la pestaña (cada 60 s como máximo) y el contenido del sitio también por Realtime. Ya no hace falta F5.
+- El carrusel guardado desde el admin se ve al instante: las mutaciones invalidan su caché, que además baja de 2 min a 30 s.
+- Tras un deploy, una pestaña abierta con archivos viejos se recarga sola una vez (`vite:preloadError` y error de chunk en el `AppErrorBoundary`, con tope anti-bucle) en vez de mostrar "Algo salió mal".
+- `vercel.json`: el rewrite SPA ya no devuelve `index.html` para `/assets/` (un chunk viejo da 404 real); HTML con `no-cache` y `/assets` con `immutable`.
+
 ### Changed
+- Caché en memoria de categorías, opciones de card y talles: de 5 min a 60 s.
+- Carrusel del home: se quitan las flechas anterior/siguiente; la navegación queda con los puntos y el avance automático.
 - Registro: las recomendaciones de cada campo (nombre, celular, contraseña) ya no se muestran de entrada; aparecen junto al error al salir del input o al presionar "Registrarse", y el error se limpia en vivo al corregirlo.
 - Card de producto: los sellos (ej. "con transferencia") ocupan el 100% del ancho de la card y se apilan, en todos los tamaños de pantalla. Se quita el espaciado de letras global de los sellos para que el texto entre en una sola línea en tablet y desktop.
 - Contacto y descripciones del sitio ya no prometen "envíos a todo el país": por defecto dicen que la entrega es con retiro en el local (editable desde Config. del sitio).

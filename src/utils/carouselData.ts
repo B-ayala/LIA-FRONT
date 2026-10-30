@@ -1,6 +1,7 @@
 import { fetchCarouselImages, fetchCarouselLayout, type CarouselLayout } from '../services/productService';
 import { createCachedFetcher } from './createCachedFetcher';
 import { withTimeout } from './withTimeout';
+import { registerCarouselInvalidator } from './carouselCacheBus';
 import type { CarouselItem } from './carouselSlides';
 
 type DeviceType = 'desktop' | 'mobile';
@@ -18,8 +19,9 @@ const MAX_ATTEMPTS = 2;
 // reintenten en el mismo instante y lo vuelvan a tumbar.
 const RETRY_BASE_DELAY_MS = 500;
 const RETRY_JITTER_MS = 1000;
-// Volver al Home dentro de la sesión no repite el pedido ni el skeleton.
-const CACHE_TTL_MS = 2 * 60 * 1000;
+// Volver al Home dentro de la sesión no repite el pedido ni el skeleton. Corto:
+// un cambio del admin tiene que llegar al público en segundos, no minutos.
+const CACHE_TTL_MS = 30 * 1000;
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -67,4 +69,9 @@ const fetchers: Record<DeviceType, ReturnType<typeof createCachedFetcher<Carouse
   mobile: createCachedFetcher(() => fetchWithRetry('mobile'), CACHE_TTL_MS),
 };
 
-export const loadCarouselData = (deviceType: DeviceType): Promise<CarouselData> => fetchers[deviceType].load();
+registerCarouselInvalidator(() => {
+  fetchers.desktop.invalidate();
+  fetchers.mobile.invalidate();
+});
+
+export const loadCarouselData =(deviceType: DeviceType): Promise<CarouselData> => fetchers[deviceType].load();

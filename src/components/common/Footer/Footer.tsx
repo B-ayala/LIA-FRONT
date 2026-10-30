@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom';
 import { FaWhatsapp, FaEnvelope, FaTiktok, FaFacebook, FaMapMarkerAlt } from 'react-icons/fa';
 import type { FooterInfo } from '../../../admin/store/adminStore';
 import { getSiteContent } from '../../../services/siteContentService';
+import { useSiteContentRefresh } from '../../../hooks/useSiteContentRefresh';
 import SellerInfo from './SellerInfo';
 import { hasSellerInfo } from '../../../utils/legalFooter';
 import DataFiscalBadge from './DataFiscalBadge';
 import './Footer.css';
+
+const FOOTER_KEYS = ['footer'] as const;
 
 const emptyFooter: FooterInfo = {
   brandName: '',
@@ -65,6 +68,7 @@ const LegalLinks = () => (
 const Footer = () => {
   const [footerInfo, setFooterInfo] = useState<FooterInfo>(emptyFooter);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshTick = useSiteContentRefresh(FOOTER_KEYS);
 
   useEffect(() => {
     const loadFooter = async () => {
@@ -82,7 +86,7 @@ const Footer = () => {
     };
 
     loadFooter();
-  }, []);
+  }, [refreshTick]);
 
   if (isLoading) {
     return (

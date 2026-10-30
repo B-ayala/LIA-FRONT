@@ -7,6 +7,7 @@ import { getProductStockFromVariants, sanitizeProductVariants } from '../utils/p
 import { extractCloudinaryPublicId } from '../utils/cloudinary';
 import { cleanText, normalizeCategory } from '../utils/formatters';
 import { createCachedFetcher } from '../utils/createCachedFetcher';
+import { invalidateCarouselCaches } from '../utils/carouselCacheBus';
 import { parseBannerDesign, type BannerDesign } from '../utils/carouselBanner';
 import { parseProductCardOptions } from '../utils/productCardOptions';
 import { parseNavbarColor } from '../utils/navbarColor';
@@ -15,7 +16,7 @@ import { parseNavbarColor } from '../utils/navbarColor';
 // opciones de card) pero que el público pide en cada mount. Las mutadoras
 // invalidan su caché, así que el TTL solo cubre cambios hechos por fuera de
 // esta pestaña (otro admin, otro dispositivo).
-const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
+const CONFIG_CACHE_TTL_MS = 60 * 1000;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mapDbRowToProduct = (row: any): Product => {
@@ -690,6 +691,7 @@ export const insertCarouselImage = async (
     .select()
     .single();
   if (error) throw error;
+  invalidateCarouselCaches();
   return mapCarouselRow(data);
 };
 
@@ -707,6 +709,7 @@ export const insertCarouselBanner = async (
     .select()
     .single();
   if (error) throw error;
+  invalidateCarouselCaches();
   return mapCarouselRow(data);
 };
 
@@ -719,6 +722,7 @@ export const updateCarouselImageDb = async (
     .update(changes)
     .eq('id', id);
   if (error) throw error;
+  invalidateCarouselCaches();
 };
 
 export const deleteCarouselImageDb = async (id: string): Promise<void> => {
@@ -727,6 +731,7 @@ export const deleteCarouselImageDb = async (id: string): Promise<void> => {
     .delete()
     .eq('id', id);
   if (error) throw error;
+  invalidateCarouselCaches();
 };
 
 export const reorderCarouselImages = async (images: { id: string; order: number }[]): Promise<void> => {
@@ -735,6 +740,7 @@ export const reorderCarouselImages = async (images: { id: string; order: number 
       supabase.from('carousel_images').update({ order: img.order }).eq('id', img.id)
     )
   );
+  invalidateCarouselCaches();
   const failed = results.find((r) => r.error);
   if (failed?.error) throw failed.error;
 };
@@ -776,6 +782,7 @@ export const updateCarouselLayout = async (
     .update({ layout })
     .eq('device_type', deviceType);
   if (error) throw error;
+  invalidateCarouselCaches();
 };
 
 // ── Product Card Options (sellos configurables en la card de producto) ───────

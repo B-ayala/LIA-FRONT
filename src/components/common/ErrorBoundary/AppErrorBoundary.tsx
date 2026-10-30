@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { isStaleChunkError, reloadOnceForNewVersion } from '../../../utils/reloadOnStaleChunk';
 import './AppErrorBoundary.css';
 
 interface Props {
@@ -24,6 +25,7 @@ export default class AppErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
+    if (isStaleChunkError(error) && reloadOnceForNewVersion()) return;
     console.error('Error de render no controlado:', error, info.componentStack);
   }
 

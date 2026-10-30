@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import type { CarouselLayout } from '../../../services/productService';
 import { loadCarouselData } from '../../../utils/carouselData';
 import { groupBySlide, imagesPerSlide, type CarouselItem } from '../../../utils/carouselSlides';
@@ -8,6 +7,7 @@ import { BANNER_REFERENCE_WIDTH, bannerImageUrls, type BannerDesign } from '../.
 import { buildCarouselImageUrl, type CarouselViewport } from '../../../utils/carouselImageUrl';
 import { readCachedFirstImage, writeCachedFirstImage } from '../../../utils/carouselImageCache';
 import { preloadImage, preloadImages } from '../../../utils/preloadImage';
+import { useRefetchOnVisible } from '../../../hooks/useRefetchOnVisible';
 import { useNavbarToneStore } from '../../../store/navbarToneStore';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import BannerCanvas from '../../../components/common/BannerCanvas/BannerCanvas';
@@ -110,6 +110,23 @@ const Carousel = () => {
       void preloadImage(buildCarouselImageUrl(hint.url, viewport, hint.imageCount));
     }
   }, [deviceType, viewport]);
+
+  // Revalidación silenciosa al volver a la pestaña: sin skeleton, sin saltar de
+  // slide y sin tocar nada si el admin no cambió el carrusel.
+  const refreshCarousel = useCallback(() => {
+    loadCarouselData(deviceType)
+      .then(({ items, layout: loadedLayout }) => {
+        const grouped = groupIntoSlides(items, loadedLayout, deviceType === 'mobile');
+        setLoaded((previous) => {
+          if (previous?.deviceType !== deviceType || previous.hasError) return previous;
+          const unchanged = previous.layout === loadedLayout && JSON.stringify(previous.slides) === JSON.stringify(grouped);
+          return unchanged ? previous : { deviceType, slides: grouped, layout: loadedLayout, hasError: false };
+        });
+        setCurrentSlide((index) => (index < grouped.length ? index : 0));
+      })
+      .catch(console.error);
+  }, [deviceType]);
+  useRefetchOnVisible(refreshCarousel);
 
   useEffect(() => {
     let cancelled = false;
@@ -230,25 +247,6 @@ const Carousel = () => {
           )}
         </motion.div>
       </AnimatePresence>
-
-      {slides.length > 1 && (
-        <>
-          <button
-            className="carousel-arrow carousel-arrow-left"
-            onClick={() => goToSlide((currentSlide - 1 + slides.length) % slides.length, -1)}
-            aria-label="Anterior"
-          >
-            <FiChevronLeft />
-          </button>
-          <button
-            className="carousel-arrow carousel-arrow-right"
-            onClick={() => goToSlide((currentSlide + 1) % slides.length, 1)}
-            aria-label="Siguiente"
-          >
-            <FiChevronRight />
-          </button>
-        </>
-      )}
 
       <div className="carousel-dots">
         {slides.map((_, index) => (

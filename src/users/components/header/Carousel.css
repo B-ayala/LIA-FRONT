@@ -97,47 +97,6 @@
 }
 
 
-.carousel-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  width: 60px;
-  height: 60px;
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-  transition: all var(--transition-base) var(--transition-ease);
-  box-shadow: var(--shadow-dark);
-}
-
-.carousel-arrow:hover {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-  transform: translateY(-50%) scale(1.1);
-}
-
-.carousel-arrow svg {
-  font-size: 2rem;
-  color: var(--text-dark);
-  transition: color var(--transition-base) var(--transition-ease);
-}
-
-.carousel-arrow:hover svg {
-  color: white;
-}
-
-.carousel-arrow-left {
-  left: 2rem;
-}
-
-.carousel-arrow-right {
-  right: 2rem;
-}
-
 .carousel-dots {
   position: absolute;
   bottom: 3rem;
@@ -172,35 +131,7 @@
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
-  .carousel-arrow {
-    width: 50px;
-    height: 50px;
-  }
-
-  .carousel-arrow svg {
-    font-size: 1.5rem;
-  }
-}
-
 @media (max-width: 768px) {
-  .carousel-arrow {
-    width: 40px;
-    height: 40px;
-  }
-
-  .carousel-arrow svg {
-    font-size: 1.2rem;
-  }
-
-  .carousel-arrow-left {
-    left: 1rem;
-  }
-
-  .carousel-arrow-right {
-    right: 1rem;
-  }
-
   .carousel-dots {
     bottom: 2rem;
   }

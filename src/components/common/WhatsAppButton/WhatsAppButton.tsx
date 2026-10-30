@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { FaWhatsapp } from 'react-icons/fa';
 import type { FooterInfo } from '../../../admin/store/adminStore';
 import { getSiteContent } from '../../../services/siteContentService';
+import { useSiteContentRefresh } from '../../../hooks/useSiteContentRefresh';
 import './WhatsAppButton.css';
+
+const FOOTER_KEYS = ['footer'] as const;
 
 const WhatsAppButton: React.FC = () => {
   const [footerInfo, setFooterInfo] = useState<FooterInfo | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshTick = useSiteContentRefresh(FOOTER_KEYS);
 
-  // Cargar footer desde Supabase al montar
+  // Cargar footer desde Supabase al montar y cada vez que el admin lo cambia
   useEffect(() => {
     const loadFooter = async () => {
       try {
@@ -26,7 +30,7 @@ const WhatsAppButton: React.FC = () => {
     };
 
     loadFooter();
-  }, []);
+  }, [refreshTick]);
 
   // Detectar si hay modal abierto
   useEffect(() => {

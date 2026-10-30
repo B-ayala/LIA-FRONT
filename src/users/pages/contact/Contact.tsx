@@ -6,6 +6,9 @@ import Modal from '../../../components/common/Modal/Modal';
 import SEO from '../../../components/common/SEO/SEO';
 import type { FooterInfo } from '../../../admin/store/adminStore';
 import { getSiteContent } from '../../../services/siteContentService';
+import { useSiteContentRefresh } from '../../../hooks/useSiteContentRefresh';
+
+const FOOTER_KEYS = ['footer'] as const;
 import { withTimeout } from '../../../utils/withTimeout';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import DataProtectionNotice from '../../../components/common/DataProtectionNotice/DataProtectionNotice';
@@ -41,6 +44,8 @@ const Contact = () => {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [submitError, setSubmitError] = useState<string>('');
 
+  const refreshTick = useSiteContentRefresh(FOOTER_KEYS);
+
   // Cargar datos del footer desde Supabase
   useEffect(() => {
     let cancelled = false;
@@ -66,7 +71,7 @@ const Contact = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshTick]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>

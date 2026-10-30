@@ -9,6 +9,7 @@ import type { Product } from '../../../types/product';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import { withTimeout } from '../../../utils/withTimeout';
 import { useShippingInfo } from '../../../hooks/useShippingInfo';
+import { useRefetchOnVisible } from '../../../hooks/useRefetchOnVisible';
 
 const ALL_CATEGORIES = 'Todos';
 const LOAD_ERROR_MESSAGE = 'No pudimos cargar los productos. Revisá tu conexión y reintentá.';
@@ -41,6 +42,7 @@ const Products = () => {
   // Descarta respuestas de una categoría anterior si el usuario cambió de filtro en vuelo.
   const requestIdRef = useRef(0);
   const productsCountRef = useRef(0);
+  const loadedMoreRef = useRef(false);
 
   useInitialLoadTask('route', loading);
 
@@ -67,6 +69,7 @@ const Products = () => {
     setError(null);
     setProducts([]);
     productsCountRef.current = 0;
+    loadedMoreRef.current = false;
     try {
       const page = await fetchPage(0);
       if (requestId !== requestIdRef.current) return;
@@ -90,6 +93,7 @@ const Products = () => {
     try {
       const page = await fetchPage(productsCountRef.current);
       if (requestId !== requestIdRef.current) return;
+      loadedMoreRef.current = true;
       setProducts((prev) => {
         const seen = new Set(prev.map((p) => p.id));
         const next = [...prev, ...page.items.filter((p) => !seen.has(p.id))];
@@ -108,6 +112,24 @@ const Products = () => {
   useEffect(() => {
     void loadFirstPage();
   }, [loadFirstPage]);
+
+  // Al volver a la pestaña se refresca la primera página sin skeleton. Si la
+  // persona ya fue cargando más, se deja la lista como está: reemplazarla
+  // le haría perder el lugar.
+  const refreshFirstPage = useCallback(async () => {
+    if (loadedMoreRef.current || loading) return;
+    const requestId = requestIdRef.current;
+    try {
+      const page = await fetchPage(0);
+      if (requestId !== requestIdRef.current || loadedMoreRef.current) return;
+      setProducts(page.items);
+      productsCountRef.current = page.items.length;
+      setHasMore(page.hasMore);
+    } catch (refreshError) {
+      console.error(refreshError);
+    }
+  }, [fetchPage, loading]);
+  useRefetchOnVisible(() => void refreshFirstPage());
 
   const breadcrumbItems = useMemo(() => {
     const items: { label: string; onClick?: () => void }[] = [

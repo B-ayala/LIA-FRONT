@@ -4,7 +4,7 @@ import type { Size, SizeInput, SizeUpdate } from '../types/size';
 
 const SIZES_URL = `${API_BASE_URL}/sizes`;
 // El catálogo cambia poco; las mutaciones invalidan la caché de esta pestaña.
-const SIZES_CACHE_TTL_MS = 5 * 60 * 1000;
+const SIZES_CACHE_TTL_MS = 60 * 1000;
 const HTTP_CONFLICT = 409;
 
 const SIZE_DUPLICATE_CODE = 'SIZE_DUPLICATE';

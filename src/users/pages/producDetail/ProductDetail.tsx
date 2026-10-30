@@ -7,6 +7,7 @@ import type { Product } from '../../../types/product';
 import SEO from '../../../components/common/SEO/SEO';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import { withTimeout } from '../../../utils/withTimeout';
+import { useRefetchOnVisible } from '../../../hooks/useRefetchOnVisible';
 import ProductDetailView from './ProductDetailView';
 import './ProductDetail.css';
 
@@ -54,6 +55,19 @@ const ProductDetail = () => {
       cancelled = true;
     };
   }, [id]);
+
+  // Al volver a la pestaña se revalida precio/stock sin skeleton ni errores
+  // visibles; solo se reemplaza el producto si realmente cambió.
+  useRefetchOnVisible(() => {
+    if (!id || !product) return;
+    withTimeout(fetchProductById(id))
+      .then((row) => {
+        if (!row) return setNotFound(true);
+        const fresh = mapDbRowToProduct(row);
+        setProduct((current) => (JSON.stringify(current) === JSON.stringify(fresh) ? current : fresh));
+      })
+      .catch(console.error);
+  });
 
   if (notFound) {
     return (

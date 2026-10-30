@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Carousel from '../../components/header/Carousel';
 import ProductGrid from '../../components/ProductGrid/ProductGrid';
@@ -7,6 +7,7 @@ import { fetchFeaturedProducts, mapDbRowToProduct } from '../../../services/prod
 import type { Product } from '../../../types/product';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import { useShippingInfo } from '../../../hooks/useShippingInfo';
+import { useRefetchOnVisible } from '../../../hooks/useRefetchOnVisible';
 import './Home.css';
 
 const FEATURED_PRODUCTS_LIMIT = 10;
@@ -21,12 +22,15 @@ const Home = () => {
   // resuelva, sería bloquear el primer contenido por datos que no son LCP.
   useInitialLoadTask('route', false);
 
-  useEffect(() => {
+  const loadFeatured = useCallback(() => {
     fetchFeaturedProducts(FEATURED_PRODUCTS_LIMIT)
       .then((rows) => setProducts(rows.map(mapDbRowToProduct)))
       .catch(console.error)
       .finally(() => setIsFeaturedLoading(false));
   }, []);
+
+  useEffect(loadFeatured, [loadFeatured]);
+  useRefetchOnVisible(loadFeatured);
 
   return (
     <div className="home">

@@ -5,7 +5,10 @@ import { buildCloudinaryUrl } from '../../../utils/cloudinary';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import { getSiteContent } from '../../../services/siteContentService';
 import { withTimeout } from '../../../utils/withTimeout';
+import { useSiteContentRefresh } from '../../../hooks/useSiteContentRefresh';
 import './About.css';
+
+const ABOUT_KEYS = ['about', 'hero_image'] as const;
 
 interface AboutInfo {
   title: string;
@@ -30,6 +33,7 @@ const About = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isImageReady, setIsImageReady] = useState(false);
   const [isHeroImageReady, setIsHeroImageReady] = useState(false);
+  const refreshTick = useSiteContentRefresh(ABOUT_KEYS);
 
   const image = aboutInfo?.imageUrl;
 
@@ -70,7 +74,7 @@ const About = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshTick]);
 
   useEffect(() => {
     setIsImageReady(!image);
