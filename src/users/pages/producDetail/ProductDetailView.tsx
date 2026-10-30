@@ -22,6 +22,7 @@ import {
   sanitizeSelectedVariants,
   getSelectionStockLimit,
 } from '../../../utils/productVariants';
+import { useShippingInfo } from '../../../hooks/useShippingInfo';
 import './ProductDetail.css';
 
 // Lazy: ProductDetail es eager (entrada SEO directa por link compartido) y este
@@ -37,6 +38,7 @@ interface ProductDetailViewProps {
 
 const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps) => {
   const navigate = useNavigate();
+  const { shippingSummary } = useShippingInfo();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [requestedQuantity, setQuantity] = useState(1);
   const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: string }>(
@@ -222,7 +224,7 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
       {!preview && (
         <SEO
           title={product.name}
-          description={product.description?.slice(0, 160) || `Comprá ${product.name} en LIA. Moda femenina con envío a todo el país.`}
+          description={product.description?.slice(0, 160) || `Comprá ${product.name} en LIA. Moda femenina con ${shippingSummary}.`}
           path={`/product/${product.id}`}
           ogImage={product.images?.[0] || product.image}
           ogType="product"

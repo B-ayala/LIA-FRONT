@@ -1,5 +1,6 @@
 import { buildCloudinaryUrl } from '../../../utils/cloudinary';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useShippingInfo } from '../../../hooks/useShippingInfo';
 import SEO from '../../../components/common/SEO/SEO';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import { formatAmount, parseReturnShipping, type CheckoutReturnState } from './checkoutUtils';
@@ -50,7 +51,8 @@ const CheckoutResult = () => {
         paymentId: params.get('payment_id') ?? params.get('collection_id') ?? '',
         externalRef: params.get('external_reference') ?? '',
     });
-    const view = resolveResultView({ status, confirm, cancel, shippingMethod: lastOrder?.shippingMethod });
+    const { pickupHours } = useShippingInfo();
+    const view = resolveResultView({ status, confirm, cancel, shippingMethod: lastOrder?.shippingMethod, pickupHours });
 
     // Reabre el checkout en el paso de pago con el envío ya elegido (el estado del
     // checkout es local y se pierde al salir a Mercado Pago).

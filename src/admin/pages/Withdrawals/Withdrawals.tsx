@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, FileText, RefreshCw, Undo2 } from 'lucide-react';
+import { AlertTriangle, FileText, Mail, RefreshCw, Undo2 } from 'lucide-react';
 import { Box, MenuItem, Pagination, TextField } from '@mui/material';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import { filterSelectSlotProps } from '../../../utils/labels';
@@ -67,13 +67,16 @@ const Withdrawals = () => {
           <Link to="/admin/arrepentimientos/cambios-y-devoluciones" className="admin-btn-secondary admin-flex-center gap-2">
             <FileText size={16} /> Editar Cambios y devoluciones
           </Link>
+          <Link to="/admin/arrepentimientos/mail" className="admin-btn-secondary admin-flex-center gap-2">
+            <Mail size={16} /> Editar mail de constancia
+          </Link>
           <button className="admin-btn-secondary admin-flex-center gap-2" onClick={() => void load(true)}>
             <RefreshCw size={16} /> Actualizar
           </button>
         </div>
       </div>
       <p className="withdrawals-policy-hint">
-        El texto de la página pública <strong>Cambios y devoluciones</strong> (plazos, condiciones, reintegros) se edita desde el botón de arriba.
+        El texto de la página pública <strong>Cambios y devoluciones</strong> (plazos, condiciones, reintegros) se edita desde “Editar Cambios y devoluciones”; el “Qué sigue” del mail que recibe el cliente, desde “Editar mail de constancia”.
       </p>
 
       <div className="admin-card withdrawals-toolbar">

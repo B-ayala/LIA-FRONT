@@ -6,11 +6,13 @@ import SEO from '../../../components/common/SEO/SEO';
 import { fetchFeaturedProducts, mapDbRowToProduct } from '../../../services/productService';
 import type { Product } from '../../../types/product';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
+import { useShippingInfo } from '../../../hooks/useShippingInfo';
 import './Home.css';
 
 const FEATURED_PRODUCTS_LIMIT = 10;
 
 const Home = () => {
+  const { shippingSummary } = useShippingInfo();
   const [products, setProducts] = useState<Product[]>([]);
   const [isFeaturedLoading, setIsFeaturedLoading] = useState(true);
 
@@ -30,7 +32,7 @@ const Home = () => {
     <div className="home">
       <SEO
         title="Inicio"
-        description="Tienda online de moda femenina LIA by Damiana Bella. Descubrí ropa, accesorios y las últimas tendencias con envío a todo el país."
+        description={`Tienda online de moda femenina LIA by Damiana Bella. Descubrí ropa, accesorios y las últimas tendencias con ${shippingSummary}.`}
         path="/"
       />
       <h1 className="sr-only">LIA — Tienda de Moda Femenina</h1>

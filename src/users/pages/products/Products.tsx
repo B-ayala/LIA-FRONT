@@ -8,6 +8,7 @@ import { cleanText } from '../../../utils/formatters';
 import type { Product } from '../../../types/product';
 import { useInitialLoadTask } from '../../../components/common/InitialLoad/InitialLoadProvider';
 import { withTimeout } from '../../../utils/withTimeout';
+import { useShippingInfo } from '../../../hooks/useShippingInfo';
 
 const ALL_CATEGORIES = 'Todos';
 const LOAD_ERROR_MESSAGE = 'No pudimos cargar los productos. Revisá tu conexión y reintentá.';
@@ -30,6 +31,7 @@ function getAllDescendantNames(categories: Category[], rootName: string): Set<st
 }
 
 const Products = () => {
+  const { shippingSummary } = useShippingInfo();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -137,7 +139,7 @@ const Products = () => {
     <div className="products-page">
       <SEO
         title="Catálogo de Productos"
-        description="Explorá nuestro catálogo completo de moda femenina. Ropa, accesorios y más con envío a todo el país."
+        description={`Explorá nuestro catálogo completo de moda femenina. Ropa, accesorios y más con ${shippingSummary}.`}
         path="/products"
       />
       <div className="products-container">

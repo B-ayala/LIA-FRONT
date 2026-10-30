@@ -66,6 +66,8 @@ const AdminSizes = lazy(() => import('../admin/pages/Sizes/Sizes'));
 const AdminWithdrawals = lazy(() => import('../admin/pages/Withdrawals/Withdrawals'));
 const AdminTerms = lazy(() => import('../admin/pages/TermsEditor/TermsEditor'));
 const AdminReturns = lazy(() => import('../admin/pages/ReturnsEditor/ReturnsEditor'));
+const AdminWithdrawalFollowUp = lazy(() => import('../admin/pages/WithdrawalFollowUpEditor/WithdrawalFollowUpEditor'));
+const AdminPrivacy = lazy(() => import('../admin/pages/PrivacyEditor/PrivacyEditor'));
 
 // Fallback estable: min-height evita colapso del layout mientras se descarga
 // el chunk de la página. Solo se ve en conexiones lentas — la navegación
@@ -104,7 +106,9 @@ const AppRouter = () => {
               <Route path="sizes" element={<AdminSizes />} />
               <Route path="arrepentimientos" element={<AdminWithdrawals />} />
               <Route path="arrepentimientos/cambios-y-devoluciones" element={<AdminReturns />} />
+              <Route path="arrepentimientos/mail" element={<AdminWithdrawalFollowUp />} />
               <Route path="terminos" element={<AdminTerms />} />
+              <Route path="privacidad" element={<AdminPrivacy />} />
             </Route>
           </Route>
 

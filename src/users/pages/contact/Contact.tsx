@@ -9,6 +9,7 @@ import { getSiteContent } from '../../../services/siteContentService';
 import { withTimeout } from '../../../utils/withTimeout';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import DataProtectionNotice from '../../../components/common/DataProtectionNotice/DataProtectionNotice';
+import { useShippingInfo } from '../../../hooks/useShippingInfo';
 import './Contact.css';
 
 interface ContactFormData {
@@ -24,6 +25,7 @@ const MAX_EMAIL_LENGTH = 254;
 const MAX_MESSAGE_LENGTH = 5000;
 
 const Contact = () => {
+  const { contactNote, shippingSummary } = useShippingInfo();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [footerInfo, setFooterInfo] = useState<FooterInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,7 +140,7 @@ const Contact = () => {
     <div className="contact-page">
       <SEO
         title="Contacto"
-        description="Contactanos por WhatsApp, redes sociales o email. Estamos para ayudarte con tus compras, consultas y envíos a todo el país."
+        description={`Contactanos por WhatsApp, redes sociales o email. Estamos para ayudarte con tus compras, consultas y entregas (${shippingSummary}).`}
         path="/contact"
       />
       <div className="contact-header">
@@ -221,7 +223,7 @@ const Contact = () => {
             <FiMapPin className="inline-icon" style={{ marginRight: '5px' }} />
             <span>Avelino Díaz & Alfonsina Storni, Villa Celina, Buenos Aires</span>
           </div>
-          <p>Hacemos envíos a todo el país. Llevamos LIA hasta la puerta de tu casa.</p>
+          <p>{contactNote}</p>
         </div>
       </div>
 

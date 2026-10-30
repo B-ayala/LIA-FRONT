@@ -19,7 +19,7 @@ export interface ResultView {
 
 const ICON_SIZE = 56;
 
-const PICKUP_DESC = 'Podés retirarlo en nuestro local de lunes a viernes (días hábiles), de 10:00 a 18:00.';
+const pickupDesc = (pickupHours: string) => `Podés retirarlo en nuestro local. Horario: ${pickupHours}.`;
 const IN_PROCESS_DESC = 'Tenés un pago en proceso. No vuelvas a pagar: te avisamos en Mis compras cuando se confirme.';
 
 const base = (tone: ResultTone, icon: ReactNode, title: string, desc: string): ResultView => ({
@@ -27,11 +27,11 @@ const base = (tone: ResultTone, icon: ReactNode, title: string, desc: string): R
   showBackToCheckout: false, showMyPurchases: false, showRetryRelease: false, busy: false,
 });
 
-const approvedView = (confirm: ConfirmState, shippingMethod?: string): ResultView => {
+const approvedView = (confirm: ConfirmState, pickupHours: string, shippingMethod?: string): ResultView => {
   if (confirm === 'confirming') {
     return { ...base('pending', <Loader2 size={ICON_SIZE} className="checkout-result-spin" />, 'Confirmando tu pago…', 'Estamos registrando tu pago. No cierres esta página.'), busy: true };
   }
-  const pickup = shippingMethod === 'local' ? ` ${PICKUP_DESC}` : '';
+  const pickup = shippingMethod === 'local' ? ` ${pickupDesc(pickupHours)}` : '';
   if (confirm === 'unverified') {
     return {
       ...base('approved', <CheckCircle size={ICON_SIZE} />, '¡Recibimos tu pago!', `Recibimos tu pago y lo estamos verificando. En unos minutos lo vas a ver en Mis compras.${pickup}`),
@@ -76,11 +76,13 @@ interface ResolveInput {
   confirm: ConfirmState;
   cancel: CancelView;
   shippingMethod?: string;
+  /** Horario de retiro que publica el admin (Config. del sitio → Entrega). */
+  pickupHours: string;
 }
 
 /** Qué mostrar en /checkout/result según lo que dijo MP en la URL y lo que respondió el backend. */
-export const resolveResultView = ({ status, confirm, cancel, shippingMethod }: ResolveInput): ResultView => {
-  if (status === 'approved') return approvedView(confirm, shippingMethod);
+export const resolveResultView = ({ status, confirm, cancel, shippingMethod, pickupHours }: ResolveInput): ResultView => {
+  if (status === 'approved') return approvedView(confirm, pickupHours, shippingMethod);
   if (status === 'failure') return failureView(cancel);
   if (status === 'pending') {
     return { ...base('pending', <Clock size={ICON_SIZE} />, 'Pago en proceso', IN_PROCESS_DESC), showMyPurchases: true };

@@ -14,6 +14,13 @@ import {
 import type { BannerInfo } from '../../../services/siteContentService';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import LegalFooterFields, { type DataFiscalValue } from './LegalFooterFields';
+import ShippingInfoFields from './ShippingInfoFields';
+import {
+    DEFAULT_SHIPPING_INFO,
+    SHIPPING_INFO_KEY,
+    normalizeShippingInfo,
+    type ShippingInfo,
+} from '../../../services/shippingInfoService';
 import {
     formatCuit,
     getLegalFooterErrors,
@@ -56,6 +63,7 @@ const FooterEditor = () => {
     const [copyright, setCopyright] = useState(footerInfo.copyright);
     const [legal, setLegal] = useState<LegalFooterValues>(EMPTY_LEGAL);
     const [dataFiscal, setDataFiscal] = useState<DataFiscalValue>(EMPTY_DATA_FISCAL);
+    const [shipping, setShipping] = useState<ShippingInfo>(DEFAULT_SHIPPING_INFO);
     const [bannerText, setBannerText] = useState('');
     const [bannerVisible, setBannerVisible] = useState(false);
     const [navbarOverlayTextColor, setNavbarOverlayTextColor] = useState(DEFAULT_NAVBAR_STYLE.overlayTextColor);
@@ -96,6 +104,8 @@ const FooterEditor = () => {
                     });
                     updateFooterInfo(info);
                 }
+
+                setShipping(normalizeShippingInfo(await getSiteContent<unknown>(SHIPPING_INFO_KEY)));
 
                 const bannerValue = await getSiteContent<unknown>('banner');
                 const banner = normalizeBannerInfo(bannerValue);
@@ -182,6 +192,8 @@ const FooterEditor = () => {
             };
 
             await saveSiteContent('banner', bannerInfo);
+
+            await saveSiteContent(SHIPPING_INFO_KEY, normalizeShippingInfo(shipping));
 
             await saveSiteContent('welcomeModal', {
                 enabled: welcomeEnabled,
@@ -287,6 +299,8 @@ const FooterEditor = () => {
                         onChange={(patch) => setLegal((prev) => ({ ...prev, ...patch }))}
                         onDataFiscalChange={setDataFiscal}
                     />
+
+                    <ShippingInfoFields values={shipping} onChange={(patch) => setShipping((prev) => ({ ...prev, ...patch }))} />
 
                     {/* Banner */}
                     <h3 className="footer-editor-section-title">Banner de la tienda</h3>

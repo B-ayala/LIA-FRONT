@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DEFAULT_TERMS, getTermsContent, type TermsContent } from '../services/termsService';
 import { DEFAULT_RETURNS, getReturnsContent, type ReturnsContent } from '../services/returnsService';
+import { DEFAULT_PRIVACY, getPrivacyContent, type PrivacyContent } from '../services/privacyService';
 
 interface LegalContentState<T> {
   content: T;
@@ -26,3 +27,6 @@ export const useTermsContent = (): LegalContentState<TermsContent> => useLegalCo
 
 export const useReturnsContent = (): LegalContentState<ReturnsContent> =>
   useLegalContent(getReturnsContent, DEFAULT_RETURNS);
+
+export const usePrivacyContent = (): LegalContentState<PrivacyContent> =>
+  useLegalContent(getPrivacyContent, DEFAULT_PRIVACY);

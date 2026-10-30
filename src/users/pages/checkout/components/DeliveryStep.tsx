@@ -2,17 +2,19 @@ import type { FormEvent, RefObject } from 'react';
 import OptionList, { type OptionItem } from './OptionList';
 import PillInput from './PillInput';
 import PrimaryPillButton from './PrimaryPillButton';
+import { useShippingInfo } from '../../../../hooks/useShippingInfo';
+import type { ShippingInfo } from '../../../../services/shippingInfoService';
 import { SHIPPING_COSTS, SHIPPING_LABEL, formatAmount, type ShippingMethod } from '../checkoutUtils';
 
-const SHIPPING_OPTIONS: OptionItem<ShippingMethod>[] = [
+const buildShippingOptions = (info: ShippingInfo): OptionItem<ShippingMethod>[] => [
   {
     value: 'correo',
     title: SHIPPING_LABEL.correo,
     aside: `$${formatAmount(SHIPPING_COSTS.correo)}`,
     description: (
       <>
-        <span>Despacho lun, mié y vie. Preparación: 24 hs.</span>
-        <span>Llega en 3 a 5 días hábiles desde el despacho.</span>
+        <span>{info.correoDispatch}</span>
+        <span>{info.correoDelivery}</span>
       </>
     ),
     disabled: true,
@@ -25,7 +27,7 @@ const SHIPPING_OPTIONS: OptionItem<ShippingMethod>[] = [
     description: (
       <>
         <span>Podés retirar el mismo día de la compra.</span>
-        <span>Horario: lunes a viernes 10 a 19 hs.</span>
+        <span>Horario: {info.pickupHours}.</span>
         <span>Coordinamos por WhatsApp: esperá la confirmación antes de acercarte.</span>
       </>
     ),
@@ -48,6 +50,7 @@ interface DeliveryStepProps {
 
 const DeliveryStep = (props: DeliveryStepProps) => {
   const { headingRef, buyerEmail, buyerName, needsName, blockReason, onContinue } = props;
+  const shippingOptions = buildShippingOptions(useShippingInfo());
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,7 +87,7 @@ const DeliveryStep = (props: DeliveryStepProps) => {
       <OptionList
         name="shipping"
         labelledBy="delivery-options-title"
-        options={SHIPPING_OPTIONS}
+        options={shippingOptions}
         value={props.shipping}
         onChange={props.onShippingChange}
       />
