@@ -379,6 +379,36 @@
   margin-bottom: 8px;
 }
 
+.pricing__tax-free {
+  margin: 0 0 8px;
+  color: var(--color-ink-muted, var(--color-ink));
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.pricing__transfer {
+  margin: 0 0 8px;
+  color: var(--color-danger);
+  line-height: 1.4;
+}
+
+/* Mobile first: la base es 320px; los tamaños crecen con min-width. */
+.pricing__transfer-amount {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.pricing__transfer-label {
+  white-space: nowrap; /* en pantallas chicas baja entero a la línea siguiente en vez de partirse */
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .pricing__transfer-amount { font-size: 20px; }
+  .pricing__transfer-label  { font-size: 14px; }
+}
+
 .pricing__warning {
   margin: 0 0 8px;
   color: #b91c1c;

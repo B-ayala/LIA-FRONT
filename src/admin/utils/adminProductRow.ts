@@ -9,6 +9,7 @@ export const mapAdminProductRow = (p: Record<string, unknown>): AdminProduct => 
   name: cleanText(p.name as string),
   price: p.price as number,
   originalPrice: (p.original_price as number) || undefined,
+  transferPrice: (p.transfer_price as number) || undefined,
   // Si el producto trackea stock por talle, la suma de variantes es la fuente de
   // verdad (igual que la tienda pública). La columna `stock` puede quedar
   // desincronizada; sólo se usa como fallback para productos sin talles.

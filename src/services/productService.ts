@@ -30,6 +30,7 @@ export const mapDbRowToProduct = (row: any): Product => {
     name: cleanText(row.name),
     price: row.price,
     originalPrice: row.original_price,
+    transferPrice: row.transfer_price ?? undefined,
     image: images[0] || '',
     images,
     description: row.description,
@@ -304,7 +305,7 @@ export const toggleProductFeatured = async (id: string, featured: boolean) => {
 // lista es casi completa. Quedan afuera las de uso interno (public_id, created_at).
 // `updated_at` viaja para el control de concurrencia al editar (expectedUpdatedAt).
 const ADMIN_LIST_COLUMNS =
-  'id, name, price, original_price, stock, category, image_url, images, description, discount, condition, free_shipping, hover_image_enabled, card_options, variants, specifications, features, faqs, warranty, return_policy, size_guide, status, featured, updated_at';
+  'id, name, price, original_price, transfer_price, stock, category, image_url, images, description, discount, condition, free_shipping, hover_image_enabled, card_options, variants, specifications, features, faqs, warranty, return_policy, size_guide, status, featured, updated_at';
 
 // Fetch products from Supabase. Pass activeOnly=false for admin (includes inactive).
 export const fetchProducts = async (activeOnly = true) => {
@@ -511,6 +512,7 @@ const buildProductBody = (product: Partial<AdminProduct>) => ({
   name: product.name === undefined ? undefined : cleanText(product.name),
   price: product.price,
   originalPrice: product.originalPrice,
+  transferPrice: product.transferPrice,
   stock: product.stock,
   category: product.category === undefined ? undefined : normalizeCategory(product.category),
   imageUrl: product.imageUrl,
@@ -594,7 +596,7 @@ export const updateProduct = async (
     // Sin `stock` en el body el backend no toca esa columna (productos sin stock por talle).
     body: JSON.stringify({
       ...buildProductBody(product),
-      ...nullWhenPresent(product, ['discount', 'originalPrice', 'sizeGuide', 'cardOptions']),
+      ...nullWhenPresent(product, ['discount', 'originalPrice', 'transferPrice', 'sizeGuide', 'cardOptions']),
       ...(options.expectedUpdatedAt ? { expectedUpdatedAt: options.expectedUpdatedAt } : {}),
     }),
   });

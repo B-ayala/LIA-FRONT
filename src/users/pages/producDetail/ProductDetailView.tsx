@@ -6,7 +6,7 @@ import SEO from '../../../components/common/SEO/SEO';
 import VariantTable from '../../../components/common/VariantTable/VariantTable';
 import PurchaseVariantModal from '../../components/PurchaseVariantModal/PurchaseVariantModal';
 import { parseColorOption } from '../../../utils/constants';
-import { getProductPricing } from '../../../utils/pricing';
+import { getPriceWithoutTax, getProductPricing } from '../../../utils/pricing';
 import { INVALID_PRODUCT_PRICE_MESSAGE } from '../../../services/orderService';
 import { useCartStore } from '../../../store/cartStore';
 import type { UnitVariants } from '../../../store/cartStore';
@@ -73,6 +73,8 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
   const pricing = getProductPricing(product);
   const discountedPrice = pricing.finalPrice;
   const hasValidPrice = Number.isFinite(discountedPrice) && discountedPrice > 0;
+  const priceWithoutTax = getPriceWithoutTax(discountedPrice);
+  const transferPrice = product.transferPrice && product.transferPrice > 0 ? product.transferPrice : undefined;
 
   const handlePreviousImage = () => {
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -316,6 +318,19 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
               <div className="pricing__final">
                 ${discountedPrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
               </div>
+              {priceWithoutTax !== undefined && (
+                <p className="pricing__tax-free">
+                  Precio sin impuestos ${priceWithoutTax.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                </p>
+              )}
+              {transferPrice && (
+                <p className="pricing__transfer">
+                  <span className="pricing__transfer-amount">
+                    ${transferPrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                  </span>{' '}
+                  <span className="pricing__transfer-label">con Transferencia</span>
+                </p>
+              )}
               {!hasValidPrice && (
                 <p className="pricing__warning">
                   Este producto no esta disponible para compra porque todavia no tiene un precio asignado.

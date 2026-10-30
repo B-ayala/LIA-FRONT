@@ -35,6 +35,7 @@ const draftToProduct = (draft: ProductDraft, productId: string | null) =>
     name: draft.name,
     price: draft.price,
     original_price: draft.originalPrice,
+    transfer_price: draft.transferPrice,
     image_url: draft.imageUrl,
     images: draft.images,
     description: draft.description,

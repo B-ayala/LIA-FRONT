@@ -48,6 +48,8 @@ export interface Product {
   name: string;
   price: number;
   originalPrice?: number;
+  /** Precio informativo "con transferencia": solo se muestra, el checkout cobra `price`. */
+  transferPrice?: number;
   image: string;
   images?: string[];
   description?: string;

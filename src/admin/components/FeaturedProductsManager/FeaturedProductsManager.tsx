@@ -15,6 +15,7 @@ const mapProductRow = (p: Record<string, unknown>): AdminProduct => ({
     name: cleanText(p.name as string),
     price: p.price as number,
     originalPrice: (p.original_price as number) || undefined,
+    transferPrice: (p.transfer_price as number) || undefined,
     stock: p.stock as number,
     category: normalizeCategory(p.category as string),
     imageUrl: (p.image_url as string) || '',

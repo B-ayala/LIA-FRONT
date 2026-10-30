@@ -533,7 +533,7 @@ Tablas que el frontend toca directamente con la `anon key`:
 
 | Tabla | Operaciones desde el front | Notas |
 |---|---|---|
-| `productos` | read (público: `status='active'`; admin: todos) | mapeada a `Product` por `mapDbRowToProduct`. Campos snake_case: `image_url`, `original_price`, `free_shipping`, `return_policy`, `featured`, `status`. |
+| `productos` | read (público: `status='active'`; admin: todos) | mapeada a `Product` por `mapDbRowToProduct`. Campos snake_case: `image_url`, `original_price`, `transfer_price` (informativo, se muestra en el detalle), `free_shipping`, `return_policy`, `featured`, `status`. |
 | `categories` | read/write | árbol por `parent_id` + `level`; con fallback a categorías derivadas de `productos`. |
 | `carousel_images` | read/write | filtrable por `device_type` (`desktop`/`mobile`), `is_active`, `order`. `kind` = `image` (usa `url`) o `banner` (usa `design` jsonb, `url` = `''`). `navbar_color` (hex o NULL) = color del menú sobre ese slide. |
 | `site_content` | read/write/delete | clave-valor (`key`/`value` JSON) para about, footer, banner, temas. Requiere UNIQUE en `key`. |

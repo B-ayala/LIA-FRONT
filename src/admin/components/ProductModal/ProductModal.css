@@ -341,6 +341,25 @@
     box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.1) !important;
 }
 
+/* Precio + precio con transferencia apilados en una sola celda de la grilla */
+.form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+/* "En transferencia": rojo para que se distinga del precio principal */
+.form-group--transfer > label,
+.form-group--transfer > label small {
+    color: var(--color-danger);
+}
+
+.form-group--transfer > input:not([type='checkbox']):not([type='radio']) {
+    border-color: var(--color-danger-border);
+    color: var(--color-danger);
+}
+
 /* Mensaje de error debajo del campo */
 .field-error-msg {
     display: block;

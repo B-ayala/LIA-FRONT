@@ -61,6 +61,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
     const catDropTriggerRef = useRef<HTMLButtonElement>(null);
     const [catDropPos, setCatDropPos] = useState<{ top: number; left: number; width: number; maxHeight: number; openUp: boolean } | null>(null);
     const [price, setPrice] = useState('');
+    const [transferPrice, setTransferPrice] = useState('');
     const [condition, setCondition] = useState<'new' | 'used'>('new');
     const [status, setStatus] = useState<'active' | 'inactive'>('active');
     const [images, setImages] = useState<string[]>([]);
@@ -255,6 +256,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                 setName(formSource.name || '');
                 setCategory(savedCategory);
                 setPrice(formSource.price?.toString() || '');
+                setTransferPrice(formSource.transferPrice?.toString() || '');
                 setCondition(formSource.condition || 'new');
                 setStatus(formSource.status || 'active');
                 setImages(
@@ -315,6 +317,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
         setName('');
         setCategory('');
         setPrice('');
+        setTransferPrice('');
         setCondition('new');
         setStatus('active');
         setImages([]);
@@ -358,6 +361,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
             category: toTitleCase(category.trim()),
             price: parseFloat(price),
             originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
+            transferPrice: transferPrice ? parseFloat(transferPrice) : undefined,
             stock,
             unmanagedStock: stock === undefined ? unmanagedStock : undefined,
             updatedAt: draft?.updatedAt ?? product?.updatedAt,
@@ -393,6 +397,15 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
             setFieldErrors({ price: 'El precio es requerido y debe ser mayor a 0' });
             setActiveTab('Datos Básicos');
             return;
+        }
+
+        if (transferPrice.trim() !== '') {
+            const transferValue = parseFloat(transferPrice);
+            if (!Number.isFinite(transferValue) || transferValue <= 0) {
+                setFieldErrors({ transferPrice: 'El precio con transferencia debe ser mayor a 0 (o dejalo vacío).' });
+                setActiveTab('Datos Básicos');
+                return;
+            }
         }
 
         // Foto, stock y color incompletos requieren confirmación explícita antes de
@@ -825,6 +838,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                     )}
                                     {fieldErrors.category && <span className="field-error-msg">{fieldErrors.category}</span>}
                                 </div>
+                                <div className="form-stack">
                                 <div className={`form-group${fieldErrors.price ? ' form-group--error' : ''}`}>
                                     <label>Precio ($)</label>
                                     <input
@@ -838,6 +852,22 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                         }}
                                     />
                                     {fieldErrors.price && <span className="field-error-msg">{fieldErrors.price}</span>}
+                                </div>
+                                <div className={`form-group form-group--transfer${fieldErrors.transferPrice ? ' form-group--error' : ''}`}>
+                                    <label htmlFor="product-transfer-price">En transferencia ($) <small>(opcional)</small></label>
+                                    <input
+                                        id="product-transfer-price"
+                                        type="number"
+                                        min="0"
+                                        placeholder="Ej: 64350"
+                                        value={transferPrice}
+                                        onChange={e => {
+                                            setTransferPrice(e.target.value);
+                                            if (fieldErrors.transferPrice) setFieldErrors(prev => { const n = {...prev}; delete n.transferPrice; return n; });
+                                        }}
+                                    />
+                                    {fieldErrors.transferPrice && <span className="field-error-msg">{fieldErrors.transferPrice}</span>}
+                                </div>
                                 </div>
                                 <div className="form-group">
                                     <label>Stock total</label>

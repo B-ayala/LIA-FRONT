@@ -17,7 +17,16 @@ const CENTS_FACTOR = 100;
 export const roundToCents = (value: number): number =>
   Math.round((value + Number.EPSILON) * CENTS_FACTOR) / CENTS_FACTOR;
 
-const roundDiscount = (value: number) => roundToCents(value);
+/** IVA general de Argentina. Los precios del catálogo se cargan con IVA incluido. */
+export const VAT_RATE = 0.21;
+
+/** Neto (sin IVA) de un precio final. Devuelve undefined si el precio no es válido. */
+export const getPriceWithoutTax = (finalPrice: number): number | undefined => {
+  if (!Number.isFinite(finalPrice) || finalPrice <= 0) return undefined;
+  return roundToCents(finalPrice / (1 + VAT_RATE));
+};
+
+const roundDiscount =(value: number) => roundToCents(value);
 
 export const calculateDiscountPercentage = (originalPrice: number, finalPrice: number) => {
   if (!Number.isFinite(originalPrice) || !Number.isFinite(finalPrice) || originalPrice <= 0 || finalPrice >= originalPrice) {

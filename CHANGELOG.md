@@ -6,6 +6,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Added
+- Admin > Productos > Datos Básicos: campo opcional "En transferencia ($)" (en rojo). Si se carga, el detalle del producto muestra debajo del precio, en rojo, "$X con Transferencia". Es solo informativo: el checkout cobra el precio normal. Requiere el script SQL `2026-10-30_add_transfer_price_to_productos.sql` del backend (PENDIENTE de aplicar).
+- Detalle de producto: línea "Precio sin impuestos $X" bajo el precio, calculada automáticamente como precio final ÷ 1,21 (IVA 21 % incluido). Estilos de la línea de precios nuevos en mobile first.
 - Admin > Editor de banner: botón "Enderezar (0°)" en el panel de cualquier elemento girado, para volver el giro a 0 sin ajustar el slider a mano.
 - Admin > Opciones de la card (global y por producto): botón "Sin ícono" para mostrar el sello solo con texto.
 - Admin > Config. del sitio > Entrega: texto de la página Contacto sobre la entrega y frase corta de entrega para las descripciones de Google (Inicio, Catálogo, productos, Contacto). Reemplaza la promesa fija "envíos a todo el país".

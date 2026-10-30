@@ -11,6 +11,8 @@ export interface AdminProduct {
   name: string;
   price: number;
   originalPrice?: number;
+  // Permite null: sentinel de "borrar precio con transferencia" en PUT (undefined se omite del JSON).
+  transferPrice?: number | null;
   stock: number;
   category: string;
   imageUrl: string;
