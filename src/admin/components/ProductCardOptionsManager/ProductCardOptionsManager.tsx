@@ -165,7 +165,7 @@ const ProductCardOptionsManager = () => {
                                     </div>
                                 ) : (
                                     <div className="card-option-preview">
-                                        <Icon size={16} />
+                                        {Icon && <Icon size={16} />}
                                         <span>{option.label}</span>
                                     </div>
                                 )}

@@ -1,4 +1,5 @@
-import { CARD_OPTION_ICON_KEYS, getCardOptionIcon } from '../../../utils/cardOptionIcons';
+import { Ban } from 'lucide-react';
+import { CARD_OPTION_ICON_KEYS, CARD_OPTION_ICONS, NO_ICON_KEY } from '../../../utils/cardOptionIcons';
 import './CardOptionIconPicker.css';
 
 interface CardOptionIconPickerProps {
@@ -9,7 +10,7 @@ interface CardOptionIconPickerProps {
 const CardOptionIconPicker = ({ value, onChange }: CardOptionIconPickerProps) => (
     <div className="card-option-icon-picker" role="radiogroup" aria-label="Ícono">
         {CARD_OPTION_ICON_KEYS.map((key) => {
-            const Icon = getCardOptionIcon(key);
+            const Icon = CARD_OPTION_ICONS[key];
             return (
                 <button
                     key={key}
@@ -25,6 +26,17 @@ const CardOptionIconPicker = ({ value, onChange }: CardOptionIconPickerProps) =>
                 </button>
             );
         })}
+        <button
+            type="button"
+            role="radio"
+            aria-checked={value === NO_ICON_KEY}
+            aria-label="Sin ícono"
+            className={`card-option-icon-btn ${value === NO_ICON_KEY ? 'active' : ''}`}
+            onClick={() => onChange(NO_ICON_KEY)}
+            title="Sin ícono"
+        >
+            <Ban size={16} />
+        </button>
     </div>
 );
 

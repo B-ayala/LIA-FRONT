@@ -209,7 +209,7 @@
 /* Sellos: mobile first (base = 320px). El texto hace salto de línea en vez de cortarse. */
 .product-card__badges {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 4px;
   margin: 0;
   padding: 0;
@@ -218,11 +218,12 @@
 }
 
 .product-card__badge {
-  display: inline-flex;
+  display: flex;
   align-items: flex-start;
   gap: 4px;
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
-  max-width: 100%;
   padding: 3px 8px;
   border-radius: 12px;
   background: var(--gray-150, #f1f1f1);

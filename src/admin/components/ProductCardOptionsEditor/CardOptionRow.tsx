@@ -55,6 +55,8 @@ const CardOptionRow = ({ option, canMoveUp, canMoveDown, validateLabel, onSave, 
         }
     };
 
+    const previewIcon = getCardOptionIcon(option.icon);
+
     return (
         <Reorder.Item value={option} dragListener={false} dragControls={dragControls} className="card-option-item">
             <div
@@ -82,7 +84,7 @@ const CardOptionRow = ({ option, canMoveUp, canMoveDown, validateLabel, onSave, 
                 </div>
             ) : (
                 <div className={`card-option-preview ${option.isActive ? '' : 'is-inactive'}`}>
-                    {createElement(getCardOptionIcon(option.icon), { size: 16, 'aria-hidden': true })}
+                    {previewIcon && createElement(previewIcon, { size: 16, 'aria-hidden': true })}
                     <span>{option.label}</span>
                 </div>
             )}

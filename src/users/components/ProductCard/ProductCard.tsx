@@ -134,7 +134,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
               const Icon = getCardOptionIcon(option.icon);
               return (
                 <li key={`${option.icon}-${option.label}`} className="product-card__badge" title={option.label}>
-                  <Icon size={13} className="product-card__badge-icon" aria-hidden="true" />
+                  {Icon && <Icon size={13} className="product-card__badge-icon" aria-hidden="true" />}
                   <span className="product-card__badge-label">{option.label}</span>
                 </li>
               );
