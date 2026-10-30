@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpToLine, Copy, ImagePlus, RotateCw, Trash2 } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpToLine, Copy, ImagePlus, RotateCcw, RotateCw, Trash2 } from 'lucide-react';
 import { BANNER_LIMITS, isSafeHref, type BannerElement } from '../../../utils/carouselBanner';
 import { ColorField, SegmentedField, SliderField, TextField, ToggleField } from './controls';
 
@@ -152,6 +152,11 @@ const BannerInspector = ({ element, onPatch, onPickImage, onDuplicate, onRemove,
         <summary>Tamaño, giro y capas</summary>
         <SliderField label="Ancho" value={Math.round(element.w)} min={BANNER_LIMITS.minWidth} max={BANNER_LIMITS.maxWidth} step={1} unit="%" onChange={(value) => set('w', value)} />
         <SliderField label="Giro" value={Math.round(element.rotation)} min={-180} max={180} step={1} unit="°" onChange={(value) => set('rotation', value)} />
+        {element.rotation !== 0 && (
+          <button type="button" className="be-btn be-btn--outline" onClick={() => set('rotation', 0)}>
+            <RotateCcw size={16} /> Enderezar (0°)
+          </button>
+        )}
         <div className="be-row">
           <button type="button" className="be-btn be-btn--outline" onClick={() => onLayer('front')}>
             <ArrowUpToLine size={16} /> Al frente

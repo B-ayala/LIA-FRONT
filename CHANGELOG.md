@@ -6,6 +6,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Added
+- Admin > Editor de banner: botón "Enderezar (0°)" en el panel de cualquier elemento girado, para volver el giro a 0 sin ajustar el slider a mano.
 - Admin > Opciones de la card (global y por producto): botón "Sin ícono" para mostrar el sello solo con texto.
 - Admin > Config. del sitio > Entrega: texto de la página Contacto sobre la entrega y frase corta de entrega para las descripciones de Google (Inicio, Catálogo, productos, Contacto). Reemplaza la promesa fija "envíos a todo el país".
 - Admin > Config. del sitio > Entrega: horario de retiro en el local y plazos de Correo (`site_content` clave `shipping_info`). Se usan en el checkout y en la pantalla de pago aprobado, que antes mostraban horarios distintos (10 a 19 hs y 10:00 a 18:00).
@@ -25,6 +26,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Alta, recuperación y cambio de contraseña: contraseña de 8 a 64 caracteres con mayúscula, minúscula, número y símbolo (coincide con "Password requirements" de Supabase) (antes mínimo 6 sin más reglas); se rechaza lo que superaría 72 bytes en vez de truncarlo en silencio. Nombre de 2 a 60 caracteres (solo letras, espacios, apóstrofes, puntos y guiones), email hasta 254 y celular de 7 a 20. Los formularios muestran el límite como ayuda y frenan la escritura al llegar al máximo. Reglas en `utils/validation.ts`.
 
 ### Changed
+- Registro: las recomendaciones de cada campo (nombre, celular, contraseña) ya no se muestran de entrada; aparecen junto al error al salir del input o al presionar "Registrarse", y el error se limpia en vivo al corregirlo.
 - Card de producto: los sellos (ej. "con transferencia") ocupan el 100% del ancho de la card y se apilan, en todos los tamaños de pantalla. Se quita el espaciado de letras global de los sellos para que el texto entre en una sola línea en tablet y desktop.
 - Contacto y descripciones del sitio ya no prometen "envíos a todo el país": por defecto dicen que la entrega es con retiro en el local (editable desde Config. del sitio).
 - "Cambios y devoluciones" pasa a formato de preguntas y respuestas (cambios, devoluciones, reintegros, fallas, documentación) adaptado a retiro en el local, sin costos de flete. Los plazos y condiciones que solo define el negocio (plazo de cambio, estado de la prenda, cambio por otro talle o producto, ofertas, productos sin cambio, plazo de revisión y reintegro) quedan como `[A DEFINIR]` hasta que el admin los complete. La página ya no muestra "Versión".

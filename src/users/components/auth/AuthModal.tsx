@@ -186,6 +186,15 @@ const fieldError = (msg?: string) =>
     </Box>
   ) : undefined;
 
+// La recomendación recién se muestra cuando el campo ya tiene un error (al salir del input o al enviar).
+const fieldErrorWithHint = (msg: string | undefined, hint: string) =>
+  msg ? (
+    <>
+      {fieldError(msg)}
+      <Box component="span" sx={{ display: 'block', mt: '0.25rem' }}>{hint}</Box>
+    </>
+  ) : undefined;
+
 const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const navigate = useNavigate();
   const login = useAuthStore(state => state.login);
@@ -318,6 +327,27 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
         onClose();
     }, 50);
   };
+
+  const setFieldError = (key: string, message: string | null) =>
+    setErrors((prev) => ({ ...prev, [key]: message ?? '' }));
+
+  // Valida al salir del input; mientras ya hay error, revalida en vivo para que desaparezca al corregirlo.
+  const fieldHandlers = (key: string, value: string, validate: (v: string) => string | null) => ({
+    onChange: (next: string) => {
+      if (errors[key]) setFieldError(key, validate(next));
+    },
+    onBlur: () => setFieldError(key, validate(value)),
+  });
+
+  const nameField = fieldHandlers('registerName', registerName, validateName);
+  const emailField = fieldHandlers('registerEmail', registerEmail, validateEmail);
+  const phoneField = fieldHandlers('registerPhone', registerPhone, validatePhone);
+  const passwordField = fieldHandlers('registerPassword', registerPassword, validatePassword);
+  const confirmField = fieldHandlers(
+    'registerConfirmPassword',
+    registerConfirmPassword,
+    (v) => validatePasswordMatch(registerPassword, v),
+  );
 
   const validateLogin = () => {
     const newErrors: Record<string, string> = {};
@@ -712,9 +742,10 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   type="text"
                   autoComplete="name"
                   value={registerName}
-                  onChange={(e) => setRegisterName(e.target.value)}
+                  onChange={(e) => { setRegisterName(e.target.value); nameField.onChange(e.target.value); }}
+                  onBlur={nameField.onBlur}
                   error={!!errors.registerName}
-                  helperText={fieldError(errors.registerName) ?? NAME_HINT}
+                  helperText={fieldErrorWithHint(errors.registerName, NAME_HINT)}
                   variant="outlined"
                   fullWidth
                   sx={inputSx}
@@ -731,7 +762,8 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   type="email"
                   autoComplete="email"
                   value={registerEmail}
-                  onChange={(e) => setRegisterEmail(e.target.value)}
+                  onChange={(e) => { setRegisterEmail(e.target.value); emailField.onChange(e.target.value); }}
+                  onBlur={emailField.onBlur}
                   error={!!errors.registerEmail}
                   helperText={fieldError(errors.registerEmail)}
                   variant="outlined"
@@ -750,9 +782,10 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   type="tel"
                   autoComplete="tel"
                   value={registerPhone}
-                  onChange={(e) => setRegisterPhone(e.target.value)}
+                  onChange={(e) => { setRegisterPhone(e.target.value); phoneField.onChange(e.target.value); }}
+                  onBlur={phoneField.onBlur}
                   error={!!errors.registerPhone}
-                  helperText={fieldError(errors.registerPhone) ?? PHONE_HINT}
+                  helperText={fieldErrorWithHint(errors.registerPhone, PHONE_HINT)}
                   variant="outlined"
                   fullWidth
                   sx={inputSx}
@@ -778,9 +811,10 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   type={showRegisterPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   value={registerPassword}
-                  onChange={(e) => setRegisterPassword(e.target.value)}
+                  onChange={(e) => { setRegisterPassword(e.target.value); passwordField.onChange(e.target.value); }}
+                  onBlur={passwordField.onBlur}
                   error={!!errors.registerPassword}
-                  helperText={fieldError(errors.registerPassword) ?? PASSWORD_HINT}
+                  helperText={fieldErrorWithHint(errors.registerPassword, PASSWORD_HINT)}
                   variant="outlined"
                   fullWidth
                   sx={inputSx}
@@ -813,7 +847,8 @@ const AuthModalContent = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   type={showRegisterConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   value={registerConfirmPassword}
-                  onChange={(e) => setRegisterConfirmPassword(e.target.value)}
+                  onChange={(e) => { setRegisterConfirmPassword(e.target.value); confirmField.onChange(e.target.value); }}
+                  onBlur={confirmField.onBlur}
                   error={!!errors.registerConfirmPassword}
                   helperText={fieldError(errors.registerConfirmPassword)}
                   variant="outlined"
