@@ -231,6 +231,8 @@
   font-size: 0.65rem;
   font-weight: 500;
   line-height: 1.3;
+  /* El letter-spacing global ensancha el texto y fuerza saltos de línea innecesarios. */
+  letter-spacing: normal;
 }
 
 .product-card__badge-icon {
