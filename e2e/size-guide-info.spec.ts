@@ -9,6 +9,7 @@ import {
   guideTableStatus,
   hasGuideContent,
   measuresToExplain,
+  resolveFitReference,
   resolveGuideNotes,
   visibleFitReference,
 } from '../src/utils/sizeGuideInfo';
@@ -83,53 +84,76 @@ test.describe('cómo tomar las medidas', () => {
   });
 });
 
-test.describe('referencia de calce', () => {
+test.describe('modelo de referencia', () => {
+  const GLOBAL_FIT = { modelHeightCm: 170, topSize: 'S', image: IMG };
+
   test('sin datos de texto no se muestra, aunque tenga foto', () => {
-    expect(visibleFitReference(undefined, [IMG])).toBeNull();
-    expect(visibleFitReference({ image: IMG, topSize: '  ' }, [IMG])).toBeNull();
+    expect(visibleFitReference(undefined)).toBeNull();
+    expect(visibleFitReference({ image: IMG, topSize: '  ' })).toBeNull();
   });
 
   test('muestra solo lo cargado y formatea la altura', () => {
-    const visible = visibleFitReference({ modelHeightCm: 170, bottomSize: 'S' }, [IMG]);
+    const visible = visibleFitReference({ modelHeightCm: 170, bottomSize: 'S' });
     expect(visible).toEqual({ height: '1,70 m', sizes: [{ label: 'Pantalones y prendas inferiores', value: 'S' }], fit: undefined, notes: undefined });
     expect(formatModelHeight(165)).toBe('1,65 m');
   });
 
-  test('descarta la foto si ya no es una imagen del producto', () => {
-    expect(visibleFitReference({ fit: 'Ajustado', image: IMG }, [])?.image).toBeUndefined();
-    expect(visibleFitReference({ fit: 'Ajustado', image: IMG }, [IMG])?.image).toBe(IMG);
+  test('solo publica fotos https', () => {
+    expect(visibleFitReference({ fit: 'Ajustado', image: IMG })?.image).toBe(IMG);
+    expect(visibleFitReference({ fit: 'Ajustado', image: 'javascript:alert(1)' })?.image).toBeUndefined();
+  });
+
+  test('indumentaria usa la general; calzado y productos sin guía no', () => {
+    expect(resolveFitReference(guideWith({}), GLOBAL_FIT)).toBe(GLOBAL_FIT);
+    expect(resolveFitReference(guideWith({ type: 'calzado' }), GLOBAL_FIT)).toBeUndefined();
+    expect(resolveFitReference(undefined, GLOBAL_FIT)).toBeUndefined();
+  });
+
+  test('la propia reemplaza a la general y "No mostrar" la oculta', () => {
+    const own = { topSize: 'M' };
+    expect(resolveFitReference(guideWith({ fitReferenceMode: 'custom', fitReference: own }), GLOBAL_FIT)).toBe(own);
+    expect(resolveFitReference(guideWith({ type: 'calzado', fitReferenceMode: 'custom', fitReference: own }), GLOBAL_FIT)).toBe(own);
+    expect(resolveFitReference(guideWith({ fitReferenceMode: 'hidden' }), GLOBAL_FIT)).toBeUndefined();
   });
 });
 
 test.describe('validación y guardado', () => {
   test('rechaza valores que no son medidas, filas sin nombre y medidas repetidas', () => {
-    expect(findGuideProblem(guideWith({ rows: [{ label: 'Busto', values: { S: 'chico' } }] }), [])).toContain('no es una medida');
-    expect(findGuideProblem(guideWith({ rows: [{ label: '', values: { S: '86' } }] }), [])).toContain('sin nombre');
+    expect(findGuideProblem(guideWith({ rows: [{ label: 'Busto', values: { S: 'chico' } }] }))).toContain('no es una medida');
+    expect(findGuideProblem(guideWith({ rows: [{ label: '', values: { S: '86' } }] }))).toContain('sin nombre');
     const repeated = [{ label: 'Busto', values: {} }, { label: 'busto', values: {} }];
-    expect(findGuideProblem(guideWith({ rows: repeated }), [])).toContain('repetida');
-    expect(findGuideProblem(guideWith({ rows: [{ label: 'Busto', values: { S: '86-90' } }] }), [])).toBeNull();
+    expect(findGuideProblem(guideWith({ rows: repeated }))).toContain('repetida');
+    expect(findGuideProblem(guideWith({ rows: [{ label: 'Busto', values: { S: '86-90' } }] }))).toBeNull();
   });
 
-  test('rechaza altura fuera de rango, foto ajena y aclaraciones vacías', () => {
-    expect(findGuideProblem(guideWith({ fitReference: { modelHeightCm: 1.7 } }), [])).toContain('centímetros');
-    expect(findGuideProblem(guideWith({ fitReference: { image: IMG } }), [])).toContain('imágenes del producto');
-    expect(findGuideProblem(guideWith({ notes: ['ok', ' '] }), [])).toContain('vacía');
+  test('rechaza altura fuera de rango, foto sin datos o no https y aclaraciones vacías', () => {
+    const custom = (fitReference: SizeGuide['fitReference']) => guideWith({ fitReferenceMode: 'custom', fitReference });
+    expect(findGuideProblem(custom({ modelHeightCm: 1.7 }))).toContain('centímetros');
+    expect(findGuideProblem(custom({ image: IMG }))).toContain('completá al menos');
+    expect(findGuideProblem(custom({ topSize: 'S', image: 'http://x.com/a.jpg' }))).toContain('no es una imagen válida');
+    expect(findGuideProblem(guideWith({ notes: ['ok', ' '] }))).toContain('vacía');
   });
 
   test('la estructura precargada sin tocar no genera una guía para guardar', () => {
     expect(hasGuideContent({ type: 'indumentaria', columns: ['S'], rows: defaultMeasureRows('indumentaria') })).toBe(false);
     expect(hasGuideContent({ type: 'indumentaria', rows: [], measurementBasis: 'body' })).toBe(true);
-    expect(hasGuideContent({ type: 'indumentaria', rows: [], fitReference: { topSize: 'S' } })).toBe(true);
+    expect(hasGuideContent({ type: 'indumentaria', rows: [], fitReferenceMode: 'hidden' })).toBe(true);
     expect(hasGuideContent({ type: 'indumentaria', rows: [], fitReference: { topSize: ' ' } })).toBe(false);
   });
 
   test('cleanGuideInfo recorta textos, quita vacíos y no toca la tabla', () => {
-    const guide = guideWith({ notes: [' Una. ', ''], fitReference: { topSize: ' S ', fit: '', image: IMG } });
+    const guide = guideWith({ notes: [' Una. ', ''], fitReferenceMode: 'custom', fitReference: { topSize: ' S ', fit: '', image: IMG } });
     const cleaned = cleanGuideInfo(guide);
     expect(cleaned.notes).toEqual(['Una.']);
     expect(cleaned.fitReference).toEqual({ topSize: 'S', image: IMG });
     expect(cleaned.rows).toBe(guide.rows);
-    expect(cleanGuideInfo(guideWith({ fitReference: { image: IMG } })).fitReference).toBeUndefined();
+  });
+
+  test('la modelo propia solo se guarda en modo "Propia"; vacía queda como "No mostrar"', () => {
+    expect(cleanGuideInfo(guideWith({ fitReference: { topSize: 'S' } })).fitReference).toBeUndefined();
+    const empty = cleanGuideInfo(guideWith({ fitReferenceMode: 'custom', fitReference: { topSize: ' ' } }));
+    expect(empty.fitReference).toBeUndefined();
+    expect(empty.fitReferenceMode).toBe('hidden');
   });
 
   test('avisa talles de la guía que el producto no vende', () => {
@@ -138,7 +162,7 @@ test.describe('validación y guardado', () => {
   });
 });
 
-test.describe('textos globales', () => {
+test.describe('lo general', () => {
   test('sin publicar usa los de por defecto; textos vacíos caen al de por defecto', () => {
     expect(normalizeSizeGuideContent(null)).toEqual(DEFAULT_SIZE_GUIDE_CONTENT);
     const content = normalizeSizeGuideContent({ howToMeasure: { bust: '  ', waist: 'Otra.' }, notes: ['A', ''] });
@@ -149,5 +173,14 @@ test.describe('textos globales', () => {
 
   test('una lista de aclaraciones publicada vacía se respeta', () => {
     expect(normalizeSizeGuideContent({ notes: [] }).notes).toEqual([]);
+  });
+
+  test('la modelo general se limpia: sin modelo por defecto, altura inválida y fotos no https fuera', () => {
+    expect(normalizeSizeGuideContent({}).fitReference).toBeUndefined();
+    const content = normalizeSizeGuideContent({
+      fitReference: { modelHeightCm: 1.7, topSize: ' S ', image: 'javascript:alert(1)', extra: 'x' },
+    });
+    expect(content.fitReference).toEqual({ topSize: 'S' });
+    expect(normalizeSizeGuideContent({ fitReference: { image: IMG } }).fitReference).toBeUndefined();
   });
 });

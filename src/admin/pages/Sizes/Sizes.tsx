@@ -5,6 +5,7 @@ import { MenuItem, TextField } from '@mui/material';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import SizeFormModal from '../../components/SizeForm/SizeFormModal';
+import { GLOBAL_GUIDE_PATH } from '../../components/SizeGuideEditor/sizeGuideCatalog';
 import { useSizeCatalog } from '../../../hooks/useSizeCatalog';
 import { updateSize } from '../../../services/sizeService';
 import { filterSelectSlotProps } from '../../../utils/labels';
@@ -189,8 +190,8 @@ const Sizes = () => {
                     </p>
                 </div>
                 <div className="sizes-header-actions">
-                    <Link to="/admin/sizes/textos-guia" className="admin-btn-secondary admin-flex-center gap-2">
-                        <FileText size={16} aria-hidden="true" /> Textos de la guía
+                    <Link to={GLOBAL_GUIDE_PATH} className="admin-btn-secondary admin-flex-center gap-2">
+                        <FileText size={16} aria-hidden="true" /> Guía de talles general
                     </Link>
                     <button type="button" className="admin-btn-primary admin-flex-center gap-2" onClick={() => setFormTarget({ size: null })}>
                         <Plus size={16} aria-hidden="true" /> Nuevo talle

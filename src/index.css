@@ -97,6 +97,14 @@ b {
   --color-overlay: rgba(11, 42, 58, 0.5);
   --shadow-soft: 0 8px 28px rgba(11, 42, 58, 0.08), 0 1px 3px rgba(11, 42, 58, 0.06);
 
+  /* Ilustración "¿Cómo tomar tus medidas?" (guía de talles). measure: 4.9:1 sobre #ffffff. */
+  --color-figure-skin: #f7eee8;
+  --color-figure-garment: #ead8cb;
+  --color-figure-hair: #cdb7a7;
+  --color-figure-stroke: #3d3a38;
+  --color-figure-measure: #8f5f43;
+  --color-figure-panel: #fbf7f4;
+
   /* Alias legacy: todo el sitio que ya usaba estos tokens pasa al azul petróleo. */
   --text-dark: var(--color-ink);
   --text-light: var(--color-ink-muted);

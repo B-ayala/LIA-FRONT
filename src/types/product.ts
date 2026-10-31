@@ -27,15 +27,19 @@ export interface SizeGuide {
   unit?: SizeGuideUnit;
   /** Si los valores son del cuerpo o de la prenda. Ausente = sin indicar (la tienda no afirma ninguna). */
   measurementBasis?: SizeGuideMeasurementBasis;
-  /** Aclaraciones propias de este producto. Ausente = usa las globales (Admin > Talles > Textos de la guía). */
+  /** Aclaraciones propias de este producto. Ausente = usa las generales (Admin > Talles > Guía de talles). */
   notes?: string[];
-  /** Referencia de calce con datos reales de la modelo. Los campos vacíos no se muestran. */
+  /** Ausente = modelo general (solo indumentaria); `custom` = `fitReference`; `hidden` = no se muestra. */
+  fitReferenceMode?: SizeGuideFitReferenceMode;
+  /** Referencia de calce propia del producto (solo con `fitReferenceMode: 'custom'`). */
   fitReference?: SizeGuideFitReference;
 }
 
 export type SizeGuideUnit = 'cm' | 'mm';
 
 export type SizeGuideMeasurementBasis = 'body' | 'garment';
+
+export type SizeGuideFitReferenceMode = 'custom' | 'hidden';
 
 export interface SizeGuideFitReference {
   modelHeightCm?: number;
@@ -46,7 +50,7 @@ export interface SizeGuideFitReference {
   /** Calce de la prenda: ajustado, regular, holgado u otra descripción. */
   fit?: string;
   notes?: string;
-  /** Debe ser una de las imágenes del producto; si deja de serlo, la tienda no la muestra. */
+  /** URL https de la foto de la modelo (biblioteca de imágenes o una foto del producto). */
   image?: string;
 }
 

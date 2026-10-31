@@ -105,7 +105,7 @@ const AppRouter = () => {
               <Route path="dispatches" element={<AdminDispatches />} />
               <Route path="stock" element={<AdminStock />} />
               <Route path="sizes" element={<AdminSizes />} />
-              <Route path="sizes/textos-guia" element={<AdminSizeGuideContent />} />
+              <Route path="sizes/guia" element={<AdminSizeGuideContent />} />
               <Route path="arrepentimientos" element={<AdminWithdrawals />} />
               <Route path="arrepentimientos/cambios-y-devoluciones" element={<AdminReturns />} />
               <Route path="arrepentimientos/mail" element={<AdminWithdrawalFollowUp />} />

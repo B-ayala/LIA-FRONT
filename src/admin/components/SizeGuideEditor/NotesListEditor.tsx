@@ -22,7 +22,7 @@ const NotesListEditor = ({ notes, onChange, idPrefix, disabled = false }: NotesL
           <textarea
             id={`${idPrefix}-note-${index}`}
             className="size-guide-info__textarea"
-            rows={2}
+            rows={3}
             value={note}
             maxLength={SIZE_GUIDE_INFO_LIMITS.maxNoteLength}
             disabled={disabled}

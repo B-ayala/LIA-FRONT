@@ -118,11 +118,26 @@ const FIT_SIZE_LABELS: { key: 'topSize' | 'bottomSize' | 'fittedSize'; label: st
   { key: 'fittedSize', label: 'Calzas, shorts, bermudas y prendas ajustadas' },
 ];
 
+const HTTPS_URL = /^https:\/\/\S+$/;
+
+/** Misma regla que el backend: la foto solo puede ser una URL https (nada de `javascript:` ni `data:`). */
+export const isHttpsUrl = (value: string | undefined): value is string => Boolean(value && HTTPS_URL.test(value));
+
 /**
- * Solo los datos cargados. Sin ningún dato de texto devuelve null (una foto sola no es una referencia),
- * y la imagen se descarta si ya no es una de las del producto.
+ * Qué modelo muestra la guía: la propia, ninguna o la general. La general es solo para indumentaria:
+ * un calzado no se elige por la altura de una modelo. Sin guía no se sabe el tipo, así que no se muestra.
  */
-export const visibleFitReference = (fit: SizeGuideFitReference | undefined, productImages: string[]): VisibleFitReference | null => {
+export const resolveFitReference = (
+  guide: SizeGuide | undefined,
+  globalFit: SizeGuideFitReference | undefined,
+): SizeGuideFitReference | undefined => {
+  if (!guide || guide.fitReferenceMode === 'hidden') return undefined;
+  if (guide.fitReferenceMode === 'custom') return guide.fitReference;
+  return guide.type === 'calzado' ? undefined : globalFit;
+};
+
+/** Solo los datos cargados. Sin ningún dato de texto devuelve null: una foto sola no es una referencia. */
+export const visibleFitReference = (fit: SizeGuideFitReference | undefined): VisibleFitReference | null => {
   if (!fit) return null;
   const sizes = FIT_SIZE_LABELS
     .map(({ key, label }) => ({ label, value: fit[key]?.trim() ?? '' }))
@@ -134,7 +149,7 @@ export const visibleFitReference = (fit: SizeGuideFitReference | undefined, prod
     notes: fit.notes?.trim() || undefined,
   };
   if (!visible.height && sizes.length === 0 && !visible.fit && !visible.notes) return null;
-  if (fit.image && productImages.includes(fit.image)) visible.image = fit.image;
+  if (isHttpsUrl(fit.image)) visible.image = fit.image;
   return visible;
 };
 
@@ -148,7 +163,8 @@ const hasFitData = (fit: SizeGuideFitReference | undefined): boolean =>
  */
 export const hasGuideContent = (guide: SizeGuide): boolean => {
   const hasOwnRows = guide.rows.length > 0 && !isUntouchedDefaultRows(guide.rows, guide.type ?? 'indumentaria');
-  return hasOwnRows || Boolean(guide.measurementBasis) || guide.notes !== undefined || hasFitData(guide.fitReference);
+  return hasOwnRows || Boolean(guide.measurementBasis) || guide.notes !== undefined
+    || guide.fitReferenceMode !== undefined || hasFitData(guide.fitReference);
 };
 
 const findRowsProblem = (guide: SizeGuide): string | null => {
@@ -170,26 +186,30 @@ const findRowsProblem = (guide: SizeGuide): string | null => {
   return null;
 };
 
-const findFitProblem = (fit: SizeGuideFitReference | undefined, productImages: string[]): string | null => {
+/** Primer problema de una referencia de calce (de un producto o la general), o null. */
+export const findFitProblem = (fit: SizeGuideFitReference | undefined): string | null => {
   if (!fit) return null;
   const height = fit.modelHeightCm;
   const { minModelHeightCm, maxModelHeightCm } = SIZE_GUIDE_INFO_LIMITS;
   if (height !== undefined && (!Number.isInteger(height) || height < minModelHeightCm || height > maxModelHeightCm)) {
     return `La altura de la modelo va en centímetros, entre ${minModelHeightCm} y ${maxModelHeightCm} (ej: 170).`;
   }
-  if (fit.image && !productImages.includes(fit.image)) return 'La foto de la referencia de calce tiene que ser una de las imágenes del producto.';
+  if (fit.image && !isHttpsUrl(fit.image)) return 'La foto de la modelo no es una imagen válida. Elegila de nuevo.';
+  // Sin esto la foto se descartaría al guardar sin avisar (una foto sola no es una referencia).
+  if (fit.image && !trimmedFit(fit)) return 'Para mostrar la foto de la modelo, completá al menos su altura o un talle.';
   return null;
 };
 
 /** Primer problema que impide publicar la guía, o null. Mismas reglas que el backend más las de contenido. */
-export const findGuideProblem = (guide: SizeGuide, productImages: string[]): string | null => {
+export const findGuideProblem = (guide: SizeGuide): string | null => {
   const notes = guide.notes ?? [];
   if (notes.length > SIZE_GUIDE_INFO_LIMITS.maxNotes) return `Máximo ${SIZE_GUIDE_INFO_LIMITS.maxNotes} aclaraciones.`;
   if (notes.some((note) => !note.trim())) return 'Hay una aclaración vacía: completala o quitala.';
-  return findRowsProblem(guide) ?? findFitProblem(guide.fitReference, productImages);
+  return findRowsProblem(guide) ?? (guide.fitReferenceMode === 'custom' ? findFitProblem(guide.fitReference) : null);
 };
 
-const trimmedFit = (fit: SizeGuideFitReference): SizeGuideFitReference | undefined => {
+/** Referencia con los textos recortados y sin campos vacíos; undefined si no tiene datos de texto. */
+export const trimmedFit = (fit: SizeGuideFitReference): SizeGuideFitReference | undefined => {
   const entries = Object.entries(fit)
     .map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value] as const)
     .filter(([, value]) => value !== undefined && value !== '');
@@ -202,9 +222,11 @@ const trimmedFit = (fit: SizeGuideFitReference): SizeGuideFitReference | undefin
 export const cleanGuideInfo = (guide: SizeGuide): SizeGuide => {
   const next: SizeGuide = { ...guide };
   if (guide.notes !== undefined) next.notes = sanitizeNotes(guide.notes);
-  const fit = guide.fitReference ? trimmedFit(guide.fitReference) : undefined;
+  const fit = guide.fitReferenceMode === 'custom' && guide.fitReference ? trimmedFit(guide.fitReference) : undefined;
   if (fit) next.fitReference = fit;
   else delete next.fitReference;
+  // "Personalizar" sin ningún dato publica lo mismo que "No mostrar": se guarda como tal para que el admin lo vea así.
+  if (guide.fitReferenceMode === 'custom' && !fit) next.fitReferenceMode = 'hidden';
   if (!next.measurementBasis) delete next.measurementBasis;
   return next;
 };

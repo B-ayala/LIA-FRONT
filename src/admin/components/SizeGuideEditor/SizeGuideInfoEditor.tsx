@@ -1,13 +1,18 @@
-import { AlertTriangle } from 'lucide-react';
-import type { SizeGuide, SizeGuideMeasurementBasis, SizeGuideUnit } from '../../../types/product';
+import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, ExternalLink } from 'lucide-react';
+import type { SizeGuide, SizeGuideFitReferenceMode, SizeGuideMeasurementBasis, SizeGuideUnit } from '../../../types/product';
 import type { useSizeGuideContent } from '../../../hooks/useSizeGuideContent';
 import {
   guideSizesNotForSale,
   guideTableStatus,
   MEASUREMENT_BASIS_TOKEN,
-  UNIT_LABELS,
+  visibleFitReference,
   type GuideTableStatus,
 } from '../../../utils/sizeGuideInfo';
+import { buildCloudinaryUrl } from '../../../utils/cloudinary';
+import { GLOBAL_GUIDE_PATH } from './sizeGuideCatalog';
+import ChoiceGroup from './ChoiceGroup';
 import FitReferenceEditor from './FitReferenceEditor';
 import NotesListEditor from './NotesListEditor';
 
@@ -22,19 +27,38 @@ interface SizeGuideInfoEditorProps {
   variantSizes: string[];
 }
 
-const BASIS_OPTIONS: { value: SizeGuideMeasurementBasis | ''; label: string }[] = [
-  { value: '', label: 'Sin indicar' },
-  { value: 'body', label: 'Medidas corporales' },
-  { value: 'garment', label: 'Medidas de la prenda' },
+type BasisChoice = SizeGuideMeasurementBasis | 'unknown';
+type NotesChoice = 'global' | 'custom';
+type FitChoice = 'global' | SizeGuideFitReferenceMode;
+
+const UNIT_OPTIONS: { value: SizeGuideUnit; label: string }[] = [
+  { value: 'cm', label: 'cm' },
+  { value: 'mm', label: 'mm' },
+];
+
+const BASIS_OPTIONS: { value: BasisChoice; label: string }[] = [
+  { value: 'body', label: 'Del cuerpo' },
+  { value: 'garment', label: 'De la prenda' },
+  { value: 'unknown', label: 'No sé' },
+];
+
+const NOTES_OPTIONS: { value: NotesChoice; label: string }[] = [
+  { value: 'global', label: 'Las generales' },
+  { value: 'custom', label: 'Propias' },
 ];
 
 const STATUS_MESSAGES: Record<GuideTableStatus, string | null> = {
-  empty: 'Sin medidas cargadas: la tienda mostrará que están pendientes y no publicará la tabla.',
-  partial: 'Faltan medidas: la tienda mostrará las celdas vacías como "Pendiente".',
+  empty: 'Todavía no cargaste medidas: el cliente verá "medidas pendientes" en lugar de la tabla.',
+  partial: 'Faltan algunas medidas: el cliente las verá como "Pendiente".',
   complete: null,
 };
 
-/** Unidad, base de las medidas, aclaraciones y referencia de calce de la guía de un producto. */
+const fitChoiceOf = (guide: SizeGuide): FitChoice => {
+  if (guide.fitReferenceMode) return guide.fitReferenceMode;
+  return guide.type === 'calzado' ? 'hidden' : 'global';
+};
+
+/** Unidad, base de las medidas y qué aclaraciones y modelo acompañan la guía de un producto. */
 const SizeGuideInfoEditor = ({ guide, onChange, globalContent, productImages, variantSizes }: SizeGuideInfoEditorProps) => {
   const status = guideTableStatus(guide);
   const notForSale = guideSizesNotForSale(guide, variantSizes);
@@ -46,71 +70,88 @@ const SizeGuideInfoEditor = ({ guide, onChange, globalContent, productImages, va
       {notForSale.length > 0 && (
         <p className="size-guide-info__notice size-guide-info__notice--warn" role="status">
           <AlertTriangle size={14} aria-hidden="true" /> La guía muestra talles que este producto no vende: {notForSale.join(', ')}.
-          Quitalos o agregalos en la variante Talle para que la información coincida.
         </p>
       )}
 
-      <div className="size-guide-info__row">
-        <div className="size-guide-info__field">
-          <label htmlFor="size-guide-unit">Unidad de las medidas</label>
-          <select id="size-guide-unit" value={guide.unit ?? 'cm'} onChange={(e) => set({ unit: e.target.value as SizeGuideUnit })}>
-            {(Object.keys(UNIT_LABELS) as SizeGuideUnit[]).map((unit) => <option key={unit} value={unit}>{UNIT_LABELS[unit]}</option>)}
-          </select>
-        </div>
-        <div className="size-guide-info__field">
-          <label htmlFor="size-guide-basis">Las medidas corresponden a</label>
-          <select
-            id="size-guide-basis"
-            value={guide.measurementBasis ?? ''}
-            onChange={(e) => set({ measurementBasis: (e.target.value || undefined) as SizeGuideMeasurementBasis | undefined })}
-          >
-            {BASIS_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-          </select>
-        </div>
+      <div className="size-guide-info__choices">
+        <ChoiceGroup
+          name="size-guide-unit"
+          legend="Unidad"
+          options={UNIT_OPTIONS}
+          value={guide.unit ?? 'cm'}
+          onChange={(unit) => set({ unit })}
+        />
+        <ChoiceGroup
+          name="size-guide-basis"
+          legend="Las medidas son"
+          options={BASIS_OPTIONS}
+          value={guide.measurementBasis ?? 'unknown'}
+          onChange={(basis) => set({ measurementBasis: basis === 'unknown' ? undefined : basis })}
+        />
       </div>
       <p className="size-guide-info__hint">
-        Corporales: las de la persona que usa el talle (tabla del fabricante). De la prenda: medidas tomadas sobre la prenda.
-        Si no lo sabés con certeza, dejalo "Sin indicar" y la tienda no afirmará ninguna de las dos.
+        "Del cuerpo" si copiaste la tabla del fabricante; "De la prenda" si mediste la prenda. Con "No sé" la tienda no afirma ninguna.
       </p>
 
-      <GuideNotesSection guide={guide} onChange={onChange} globalContent={globalContent} />
-
-      <details className="size-guide-info__section" open={Boolean(guide.fitReference)}>
-        <summary>Referencia de calce (opcional)</summary>
-        <FitReferenceEditor value={guide.fitReference ?? {}} onChange={(fitReference) => set({ fitReference })} productImages={productImages} />
-      </details>
+      <div className="size-guide-info__extras">
+        <div className="size-guide-info__extras-head">
+          <p className="size-guide-info__subtitle">Qué más ve el cliente</p>
+          <Link to={GLOBAL_GUIDE_PATH} target="_blank" rel="noopener" className="size-guide-info__link">
+            Editar lo general <ExternalLink size={13} aria-hidden="true" />
+          </Link>
+        </div>
+        <NotesBlock guide={guide} onChange={onChange} globalContent={globalContent} />
+        <FitBlock guide={guide} onChange={onChange} globalContent={globalContent} productImages={productImages} />
+      </div>
     </div>
   );
 };
 
-interface GuideNotesSectionProps {
+interface BlockProps {
   guide: SizeGuide;
   onChange: (guide: SizeGuide) => void;
   globalContent: GuideContentState;
 }
 
-const GuideNotesSection = ({ guide, onChange, globalContent }: GuideNotesSectionProps) => {
-  const usesGlobal = guide.notes === undefined;
+const GlobalState = ({ globalContent, children }: { globalContent: GuideContentState; children: ReactNode }) => {
+  if (globalContent.status === 'loading' || globalContent.status === 'idle') {
+    return <p className="size-guide-info__hint" role="status">Cargando lo general...</p>;
+  }
+  if (globalContent.status === 'error') {
+    return (
+      <p className="size-guide-info__notice size-guide-info__notice--warn" role="alert">
+        No pudimos cargar lo general. {globalContent.error}{' '}
+        <button type="button" className="size-guide-info__link" onClick={globalContent.reload}>Reintentar</button>
+      </p>
+    );
+  }
+  return <>{children}</>;
+};
 
-  const toggleGlobal = (useGlobal: boolean) => {
-    const next: SizeGuide = { ...guide };
-    if (useGlobal) delete next.notes;
-    else next.notes = [...globalContent.content.notes];
-    onChange(next);
+const NotesBlock = ({ guide, onChange, globalContent }: BlockProps) => {
+  const choice: NotesChoice = guide.notes === undefined ? 'global' : 'custom';
+  const globalNotes = globalContent.content.notes;
+
+  const change = (next: NotesChoice) => {
+    const updated: SizeGuide = { ...guide };
+    if (next === 'global') delete updated.notes;
+    else updated.notes = [...globalNotes];
+    onChange(updated);
   };
 
   return (
-    <div className="size-guide-info__section">
-      <p className="size-guide-info__subtitle">Aclaraciones importantes</p>
-      <label className="size-guide-info__check">
-        <input type="checkbox" checked={usesGlobal} onChange={(e) => toggleGlobal(e.target.checked)} />
-        Usar las aclaraciones globales (Admin › Talles › Textos de la guía)
-      </label>
-      {usesGlobal ? <GlobalNotesPreview globalContent={globalContent} /> : (
+    <div className="size-guide-info__block">
+      <ChoiceGroup name="size-guide-notes" legend="Aclaraciones" options={NOTES_OPTIONS} value={choice} onChange={change} />
+      {choice === 'global' ? (
+        <GlobalState globalContent={globalContent}>
+          <p className="size-guide-info__summary">
+            {globalNotes.length === 0 ? 'Las aclaraciones generales están vacías: no se muestra este bloque.' : `Se muestran las ${globalNotes.length} aclaraciones generales.`}
+          </p>
+        </GlobalState>
+      ) : (
         <>
           <p className="size-guide-info__hint">
-            Solo para este producto. Escribí {MEASUREMENT_BASIS_TOKEN} donde va "medidas corporales" o "medidas de la prenda":
-            esa aclaración se muestra solo si indicaste a qué corresponden las medidas.
+            Solo para este producto. Escribí {MEASUREMENT_BASIS_TOKEN} donde va "medidas corporales" o "de la prenda".
           </p>
           <NotesListEditor notes={guide.notes ?? []} onChange={(notes) => onChange({ ...guide, notes })} idPrefix="product-guide" />
         </>
@@ -119,21 +160,61 @@ const GuideNotesSection = ({ guide, onChange, globalContent }: GuideNotesSection
   );
 };
 
-const GlobalNotesPreview = ({ globalContent }: { globalContent: GuideContentState }) => {
-  if (globalContent.status === 'loading') return <p className="size-guide-info__hint" role="status">Cargando aclaraciones globales...</p>;
-  if (globalContent.status === 'error') {
-    return (
-      <p className="size-guide-info__notice size-guide-info__notice--warn" role="alert">
-        No pudimos cargar las aclaraciones globales. {globalContent.error}{' '}
-        <button type="button" className="size-guide-info__link" onClick={globalContent.reload}>Reintentar</button>
-      </p>
-    );
-  }
-  if (globalContent.content.notes.length === 0) return <p className="size-guide-info__hint">Las aclaraciones globales están vacías.</p>;
+const FitBlock = ({ guide, onChange, globalContent, productImages }: BlockProps & { productImages: string[] }) => {
+  const choice = fitChoiceOf(guide);
+  const isFootwear = guide.type === 'calzado';
+  const options: { value: FitChoice; label: string }[] = [
+    ...(isFootwear ? [] : [{ value: 'global' as const, label: 'La general' }]),
+    { value: 'custom', label: 'Propia' },
+    { value: 'hidden', label: 'No mostrar' },
+  ];
+
+  const change = (next: FitChoice) => {
+    const updated: SizeGuide = { ...guide };
+    if (next === 'global') delete updated.fitReferenceMode;
+    else updated.fitReferenceMode = next;
+    if (next === 'custom' && !updated.fitReference) updated.fitReference = { ...globalContent.content.fitReference };
+    onChange(updated);
+  };
+
   return (
-    <ul className="size-guide-info__preview">
-      {globalContent.content.notes.map((note, index) => <li key={index}>{note}</li>)}
-    </ul>
+    <div className="size-guide-info__block">
+      <ChoiceGroup name="size-guide-fit" legend="Modelo de referencia" options={options} value={choice} onChange={change} />
+      {choice === 'global' && (
+        <GlobalState globalContent={globalContent}>
+          <GlobalFitSummary globalContent={globalContent} />
+        </GlobalState>
+      )}
+      {choice === 'custom' && (
+        <>
+          <p className="size-guide-info__hint">Solo con datos reales de la modelo que aparece con esta prenda. Lo vacío no se muestra.</p>
+          <FitReferenceEditor
+            idPrefix="product-fit"
+            value={guide.fitReference ?? {}}
+            onChange={(fitReference) => onChange({ ...guide, fitReference })}
+            productImages={productImages}
+          />
+        </>
+      )}
+      {choice === 'hidden' && isFootwear && guide.fitReferenceMode === undefined && (
+        <p className="size-guide-info__summary">En calzado la modelo general no se muestra.</p>
+      )}
+    </div>
+  );
+};
+
+const GlobalFitSummary = ({ globalContent }: { globalContent: GuideContentState }) => {
+  const fit = visibleFitReference(globalContent.content.fitReference);
+  if (!fit) return <p className="size-guide-info__summary">Todavía no cargaste la modelo general: no se muestra nada.</p>;
+  const parts = [
+    fit.height && `mide ${fit.height}`,
+    ...fit.sizes.map(({ label, value }) => `${label.toLowerCase()}: ${value}`),
+  ].filter(Boolean);
+  return (
+    <div className="size-guide-info__fit-summary">
+      {fit.image && <img src={buildCloudinaryUrl(fit.image, { width: 96, height: 120, gravity: 'auto' })} alt="" />}
+      <p className="size-guide-info__summary">Modelo general{parts.length > 0 ? ` — ${parts.join(' · ')}` : ''}.</p>
+    </div>
   );
 };
 

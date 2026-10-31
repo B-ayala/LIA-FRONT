@@ -631,7 +631,7 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
           onClose={() => setIsSizeGuideOpen(false)}
           title="Guía de Talles"
         >
-          <SizeGuideView guide={product.sizeGuide} productImages={images} />
+          <SizeGuideView guide={product.sizeGuide} />
         </Modal>
       </Suspense>
 

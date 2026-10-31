@@ -418,7 +418,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
             }
         }
 
-        const sizeGuideProblem = findGuideProblem(sizeGuide, images.filter(url => url.trim() !== ''));
+        const sizeGuideProblem = findGuideProblem(sizeGuide);
         if (sizeGuideProblem) {
             setFieldErrors({ sizeGuide: sizeGuideProblem });
             setActiveTab('Variantes');
@@ -631,6 +631,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
             unit: prev.unit,
             measurementBasis: prev.measurementBasis,
             notes: prev.notes,
+            fitReferenceMode: prev.fitReferenceMode,
             fitReference: prev.fitReference,
         }));
     };
@@ -1469,8 +1470,8 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                 </div>
                                 <p className="size-guide-editor__hint">
                                     {sizeGuide.type === 'calzado'
-                                        ? 'Configurá las medidas por número (ej: "Largo plantilla" → 35: 22.5 cm, 36: 23 cm). El usuario la verá en el botón "Ver guía de talles".'
-                                        : 'Configurá las medidas por talle (ej: "Pecho" → S: 86 cm, M: 91 cm). El usuario la verá en el botón "Ver guía de talles".'}
+                                        ? 'Elegí los números y completá las medidas reales (ej: Largo plantilla → 35: 22.5, 36: 23). El cliente la ve en "Ver guía de talles".'
+                                        : 'Elegí los talles y completá las medidas reales (ej: Busto → S: 86, M: 91). El cliente la ve en "Ver guía de talles".'}
                                 </p>
 
                                 <SizeGuideColumnsManager guide={sizeGuide} catalog={sizeCatalog} onChange={setSizeGuide} />
@@ -1495,7 +1496,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                                                 <input
                                                                     type="text"
                                                                     className="size-guide-table__input"
-                                                                    placeholder={sizeGuide.type === 'calzado' ? 'Ej: Largo plantilla (cm)' : 'Ej: Pecho (cm)'}
+                                                                    placeholder={sizeGuide.type === 'calzado' ? 'Ej: Largo plantilla' : 'Ej: Busto'}
                                                                     value={row.label}
                                                                     onChange={e => updateSizeGuideRowLabel(rowIdx, toSentenceCase(e.target.value))}
                                                                 />

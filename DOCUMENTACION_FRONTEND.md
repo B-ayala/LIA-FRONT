@@ -402,20 +402,24 @@ Nada de tokens en `localStorage`/`sessionStorage`. Todo pasa por `services/authS
   cargar; nunca se altera una guía editada ni una ya guardada. Si el catálogo falla se muestra "Reintentar" y se pueden seguir usando talles propios.
   Código: `utils/sizeGuideColumns.ts` (lógica pura) y `admin/components/SizeGuideEditor/` (UI).
   Estructura precargada: una guía nueva de indumentaria trae las filas Busto, Cintura, Cadera y Entrepierna **sin valores** (calzado, sin filas);
-  si quedan intactas no se guarda guía. Debajo de la tabla, `SizeGuideInfoEditor` agrega: unidad (`unit`: cm/mm, ausente = cm), a qué corresponden
-  las medidas (`measurementBasis`: `body`/`garment`, ausente = "Sin indicar"), aclaraciones (`notes`: ausente = usa las globales; presente = propias
-  del producto, también vacías) y referencia de calce opcional (`fitReference`: altura en cm 100–230, talles de arriba/abajo/ajustadas, calce, info
-  adicional y una foto que tiene que ser una de las imágenes del producto). Avisa si la tabla está vacía o incompleta y si la guía muestra talles que la
-  variante Talle no vende. Antes de la vista previa `findGuideProblem` frena valores sin número, filas con valores sin nombre, medidas repetidas,
-  altura inválida, foto ajena y aclaraciones vacías. Cambiar indumentaria/calzado reinicia la tabla pero conserva esos bloques.
-  `/admin/sizes/textos-guia` ("Textos de la guía" en Talles): instrucciones de cómo medirse y aclaraciones por defecto (`site_content` clave
-  `size_guide_content`; `{medidas}` se reemplaza por "medidas corporales"/"medidas de la prenda"). Un talle global nuevo de indumentaria precarga los
+  si quedan intactas no se guarda guía. Debajo de la tabla, `SizeGuideInfoEditor` (opciones segmentadas `ChoiceGroup`) agrega: unidad (`unit`: cm/mm,
+  ausente = cm), "Las medidas son" (`measurementBasis`: `body`/`garment`, ausente = "No sé") y el bloque "Qué más ve el cliente": aclaraciones
+  ("Las generales" = sin `notes`; "Propias" = `notes`, también vacías) y modelo de referencia ("La general" = sin `fitReferenceMode`, solo indumentaria;
+  "Propia" = `fitReferenceMode: 'custom'` + `fitReference`; "No mostrar" = `'hidden'`). "Propia" arranca copiando la modelo general; su foto se elige
+  de la biblioteca de Cloudinary o entre las fotos del producto. Avisa si la tabla está vacía o incompleta y si la guía muestra talles que la variante
+  Talle no vende. Antes de la vista previa `findGuideProblem` frena valores sin número, filas con valores sin nombre, medidas repetidas, altura inválida,
+  foto no https o sin ningún dato de la modelo y aclaraciones vacías. Cambiar indumentaria/calzado reinicia la tabla pero conserva esos bloques.
+  `/admin/sizes/guia` ("Guía de talles general" en Talles, `SizeGuideContentEditor`): lo general en `site_content` clave `size_guide_content` —
+  instrucciones de cómo medirse, aclaraciones por defecto (`{medidas}` se reemplaza por "medidas corporales"/"medidas de la prenda") y la modelo
+  general (`fitReference`, foto desde la biblioteca de Cloudinary), con vista previa de lo que ve el cliente. Como se escribe directo en Supabase,
+  `normalizeSizeGuideContent` vuelve a validar la modelo al leerla (altura, largos, foto https). Un talle global nuevo de indumentaria precarga los
   nombres de esas medidas; las que quedan sin valor no se guardan.
   La guía pública ("📏 Ver guía de talles" en el detalle, botón en todo producto con variantes) es `components/common/SizeGuide/SizeGuideView`:
   tabla (`VariantTable`, celdas vacías como "Pendiente" y unidad explícita; sin ningún valor no hay tabla, solo "pendientes de completar"),
-  "¿Cómo tomar tus medidas?" con ilustración SVG propia (solo las medidas estándar que tiene la tabla; si no tiene ninguna, las cuatro; nunca en calzado
-  ni sin guía), aclaraciones (la de `{medidas}` solo si la guía indica la base y tiene valores) y referencia de calce (solo campos cargados; sin datos de
-  texto no se muestra, y la foto solo si sigue en el producto). Lógica pura en `utils/sizeGuideInfo.ts` y `utils/sizeGuideContent.ts`.
+  "¿Cómo tomar tus medidas?" con ilustración SVG propia de cuerpo entero y líneas punteadas (solo las medidas estándar que tiene la tabla; si no tiene
+  ninguna, las cuatro; nunca en calzado ni sin guía), aclaraciones (la de `{medidas}` solo si la guía indica la base y tiene valores) y referencia de
+  calce (`resolveFitReference`: propia, oculta o la general; solo campos cargados; sin datos de texto no se muestra). Los colores de la figura son
+  tokens `--color-figure-*` en `index.css` y el layout usa container queries (modal y vista previa del admin). Lógica pura en `utils/sizeGuideInfo.ts` y `utils/sizeGuideContent.ts`.
   El backend conserva `/api/sizes` y acepta `optionMeta` opcional en `variants`, pero el front no lo usa.
 - `Sales` (`salesQueries.ts`, `SaleStatusCell`, `useSaleActions`): lee `ventas` de Supabase
   (incluye `oversold` y `review_reason`; si la columna falta, error con "Reintentar"). Estado
