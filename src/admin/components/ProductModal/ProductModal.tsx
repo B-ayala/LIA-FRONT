@@ -10,6 +10,9 @@ import type { Specification, FAQ, SizeGuide, SizeGuideType } from '../../../type
 import SizeGuideColumnsManager from '../SizeGuideEditor/SizeGuideColumnsManager';
 import { useSizeCatalog } from '../../../hooks/useSizeCatalog';
 import { DEFAULT_SIZE_COLUMNS, defaultGuideForType, isUntouchedFallbackGuide, pruneColumnSources } from '../../../utils/sizeGuideColumns';
+import { cleanGuideInfo, findGuideProblem, hasGuideContent } from '../../../utils/sizeGuideInfo';
+import SizeGuideInfoEditor from '../SizeGuideEditor/SizeGuideInfoEditor';
+import { useSizeGuideContent } from '../../../hooks/useSizeGuideContent';
 import { toTitleCase, toSentenceCase } from '../../../utils/textCase';
 import { COLOR_MAP, parseColorOption } from '../../../utils/constants';
 import { calculateDiscountPercentage, getProductPricing } from '../../../utils/pricing';
@@ -84,8 +87,9 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
 
     // Variantes
     const [variants, setVariants] = useState<{ name: string; optionsText: string; stockByOption?: Record<string, number>; colorsByOption?: Record<string, string[]> }[]>([]);
-    const [sizeGuide, setSizeGuide] = useState<SizeGuide>({ type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] });
+    const [sizeGuide, setSizeGuide] = useState<SizeGuide>(() => defaultGuideForType('indumentaria', []));
     const sizeCatalog = useSizeCatalog(isOpen);
+    const sizeGuideContent = useSizeGuideContent(isOpen);
     const hasSavedSizeGuide = Boolean(product?.sizeGuide);
     const [expandedVariantOptions, setExpandedVariantOptions] = useState<Record<number, boolean>>({});
     const [expandedTalleCbt, setExpandedTalleCbt] = useState<string | null>(null);
@@ -286,15 +290,15 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                 }));
                 // Color y Talle son permanentes: se muestran siempre; vacías = no se usan (se descartan al guardar).
                 setVariants(withPermanentVariantDrafts(savedVariants));
+                // Una guía guardada se abre tal cual (sin precargar filas encima); sin guía, arranca con la estructura.
                 setSizeGuide(formSource.sizeGuide
                     ? {
+                        ...formSource.sizeGuide,
                         type: formSource.sizeGuide.type ?? 'indumentaria',
                         columns: formSource.sizeGuide.columns
                             ?? [...DEFAULT_SIZE_COLUMNS[formSource.sizeGuide.type ?? 'indumentaria']],
-                        rows: formSource.sizeGuide.rows,
-                        columnSources: formSource.sizeGuide.columnSources,
                     }
-                    : { type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] }
+                    : defaultGuideForType('indumentaria', [])
                 );
                 setSpecifications(formSource.specifications ? [...formSource.specifications] : []);
                 setFaqs(formSource.faqs ? [...formSource.faqs] : []);
@@ -334,7 +338,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
         setReturnPolicy('');
         setVariants(createDefaultVariantDrafts());
         setExpandedVariantOptions({});
-        setSizeGuide({ type: 'indumentaria', columns: [...DEFAULT_SIZE_COLUMNS.indumentaria], rows: [] });
+        setSizeGuide(defaultGuideForType('indumentaria', []));
         setSpecifications([]);
         setFaqs([]);
         setCustomColorName('');
@@ -380,7 +384,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
             faqs: faqs.map(faq => ({ question: toSentenceCase(faq.question.trim()), answer: toSentenceCase(faq.answer.trim()) })),
             warranty: toSentenceCase(warranty.trim()),
             returnPolicy: toSentenceCase(returnPolicy.trim()),
-            sizeGuide: sizeGuide.rows.length > 0 ? pruneColumnSources(sizeGuide) : undefined,
+            sizeGuide: hasGuideContent(sizeGuide) ? cleanGuideInfo(pruneColumnSources(sizeGuide)) : undefined,
             status,
         };
     };
@@ -412,6 +416,13 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                 setActiveTab('Datos Básicos');
                 return;
             }
+        }
+
+        const sizeGuideProblem = findGuideProblem(sizeGuide, images.filter(url => url.trim() !== ''));
+        if (sizeGuideProblem) {
+            setFieldErrors({ sizeGuide: sizeGuideProblem });
+            setActiveTab('Variantes');
+            return;
         }
 
         // Foto, stock y color incompletos requieren confirmación explícita antes de
@@ -599,8 +610,29 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
         }));
     };
 
+    // El error de la guía se refiere a una versión anterior: cualquier edición lo descarta.
+    useEffect(() => {
+        setFieldErrors(prev => {
+            if (!prev.sizeGuide) return prev;
+            const next = { ...prev };
+            delete next.sizeGuide;
+            return next;
+        });
+    }, [sizeGuide]);
+
+    const sizeVariantOptions = useMemo(() => {
+        const talle = variants.find(variant => isSizeVariant(variant.name));
+        return talle ? getNormalizedVariantOptions(talle.name, talle.optionsText.split(',')) : [];
+    }, [variants]);
+
     const changeSizeGuideType = (type: SizeGuideType) => {
-        setSizeGuide(defaultGuideForType(type, sizeCatalog.sizes));
+        setSizeGuide(prev => ({
+            ...defaultGuideForType(type, sizeCatalog.sizes),
+            unit: prev.unit,
+            measurementBasis: prev.measurementBasis,
+            notes: prev.notes,
+            fitReference: prev.fitReference,
+        }));
     };
 
     const addSizeGuideRow = () => setSizeGuide(prev => ({
@@ -1506,6 +1538,17 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                             + Agregar medida
                                         </button>
                                     </>
+                                )}
+
+                                <SizeGuideInfoEditor
+                                    guide={sizeGuide}
+                                    onChange={setSizeGuide}
+                                    globalContent={sizeGuideContent}
+                                    productImages={images.filter(url => url.trim() !== '')}
+                                    variantSizes={sizeVariantOptions}
+                                />
+                                {fieldErrors.sizeGuide && (
+                                    <p className="size-guide-columns__error" role="alert">{fieldErrors.sizeGuide}</p>
                                 )}
                             </div>
                         </div>

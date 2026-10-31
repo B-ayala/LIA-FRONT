@@ -1,7 +1,7 @@
 import type { CheckoutItem, UnitVariants } from '../../../store/cartStore';
 import { INVALID_PRODUCT_PRICE_MESSAGE, type OrderLineItemPayload } from '../../../services/orderService';
 import { buildVariantLine, allUnitsShareVariants } from '../../../utils/formatters';
-import { roundToCents } from '../../../utils/pricing';
+import { getTransferUnitPrice, roundToCents } from '../../../utils/pricing';
 
 export type ShippingMethod = 'correo' | 'local';
 export type PaymentMethod = 'mp' | 'transfer';
@@ -34,8 +34,20 @@ export const TRANSFER_ALIAS = 'Liazapatos';
 export const formatAmount = (n: number): string =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/**
+ * Monto para pegar en la app del banco: sin "$" ni separador de miles, y con coma decimal solo
+ * si hay centavos ("128700" / "128700,50"). Los homebanking rechazan "$128.700,00".
+ */
+export const formatAmountForBank = (n: number): string =>
+  Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',');
+
 export interface CheckoutTotals {
+  /** Suma de las líneas a precio de lista. */
   itemsSubtotal: number;
+  /** Cuánto se ahorra pagando por transferencia (se calcula siempre, para ofrecerlo en la opción). */
+  transferSavings: number;
+  /** Descuento aplicado al total con el medio elegido: el ahorro si es transferencia, si no 0. */
+  paymentDiscount: number;
   shippingCost: number;
   grandTotal: number;
   hasValidPrice: boolean;
@@ -43,23 +55,32 @@ export interface CheckoutTotals {
 
 const isPositiveAmount = (n: number): boolean => Number.isFinite(n) && n > 0;
 
+const safeAmount = (n: number): number => (Number.isFinite(n) ? n : 0);
+
+/** Total de la línea con transferencia (mismo cálculo que hace el backend al reservar). */
+const transferLineTotal = (item: CheckoutItem): number =>
+  roundToCents(getTransferUnitPrice(item.unitPrice, item.product.transferPrice) * item.quantity);
+
 export const computeCheckoutTotals = (
   items: CheckoutItem[],
-  shipping: ShippingMethod
+  shipping: ShippingMethod,
+  payment: PaymentMethod
 ): CheckoutTotals => {
-  const itemsSubtotal = items.reduce(
-    (sum, item) => sum + (Number.isFinite(item.totalPrice) ? item.totalPrice : 0),
-    0
-  );
+  const itemsSubtotal = roundToCents(items.reduce((sum, item) => sum + safeAmount(item.totalPrice), 0));
+  const transferSubtotal = roundToCents(items.reduce((sum, item) => sum + safeAmount(transferLineTotal(item)), 0));
+  const transferSavings = Math.max(0, roundToCents(itemsSubtotal - transferSubtotal));
+  const paymentDiscount = payment === 'transfer' ? transferSavings : 0;
   const shippingCost = SHIPPING_COSTS[shipping];
   const hasValidPrice =
     items.length > 0 &&
     items.every((item) => isPositiveAmount(item.unitPrice) && isPositiveAmount(item.totalPrice));
 
   return {
-    itemsSubtotal: roundToCents(itemsSubtotal),
+    itemsSubtotal,
+    transferSavings,
+    paymentDiscount,
     shippingCost,
-    grandTotal: roundToCents(itemsSubtotal + shippingCost),
+    grandTotal: roundToCents(itemsSubtotal - paymentDiscount + shippingCost),
     hasValidPrice,
   };
 };
@@ -114,6 +135,7 @@ export const buildWhatsAppMessage = (
     `*Resumen:*`,
     '',
     `* Subtotal: $${formatAmount(totals.itemsSubtotal)}`,
+    ...(totals.paymentDiscount > 0 ? [`* Descuento por transferencia: -$${formatAmount(totals.paymentDiscount)}`] : []),
     shippingLine,
     `* Total: $${formatAmount(totals.grandTotal)}`,
     '',

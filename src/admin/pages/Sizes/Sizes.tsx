@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Plus, Ruler, RefreshCw, Pencil, Power } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, FileText, Plus, Ruler, RefreshCw, Pencil, Power } from 'lucide-react';
 import { MenuItem, TextField } from '@mui/material';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
@@ -187,9 +188,14 @@ const Sizes = () => {
                         Catálogo global de talles. Cada producto elige cuáles usar; nada se asigna solo.
                     </p>
                 </div>
-                <button type="button" className="admin-btn-primary admin-flex-center gap-2" onClick={() => setFormTarget({ size: null })}>
-                    <Plus size={16} aria-hidden="true" /> Nuevo talle
-                </button>
+                <div className="sizes-header-actions">
+                    <Link to="/admin/sizes/textos-guia" className="admin-btn-secondary admin-flex-center gap-2">
+                        <FileText size={16} aria-hidden="true" /> Textos de la guía
+                    </Link>
+                    <button type="button" className="admin-btn-primary admin-flex-center gap-2" onClick={() => setFormTarget({ size: null })}>
+                        <Plus size={16} aria-hidden="true" /> Nuevo talle
+                    </button>
+                </div>
             </div>
 
             <div className="admin-card sizes-toolbar">

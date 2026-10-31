@@ -199,7 +199,7 @@ const ThemesManager = () => {
     : SEASONS[storedSeason].label;
 
   return (
-    <div className="themes-manager">
+    <div className="themes-manager admin-site-theme">
       <div className="admin-page-header">
         <h1 className="admin-page-title">
           <Palette size={22} aria-hidden="true" /> Temas / Tipografía

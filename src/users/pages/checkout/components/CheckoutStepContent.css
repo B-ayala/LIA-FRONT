@@ -167,6 +167,40 @@
   color: var(--color-on-ink);
 }
 
+.checkout-step__savings {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-full);
+  background: var(--color-success-bg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-success-ink);
+  transition: background-color var(--transition-fast) var(--transition-ease),
+    color var(--transition-fast) var(--transition-ease);
+}
+
+.checkout-step__savings--selected {
+  background: var(--color-success-ink);
+  color: var(--color-success-bg);
+}
+
+.checkout-step__transfer-amount {
+  display: block;
+  overflow: hidden;
+}
+
+.checkout-step__transfer-amount-inner {
+  display: block;
+  padding-top: var(--space-1);
+  font-size: 0.9375rem;
+  color: var(--color-ink);
+}
+
+.checkout-step__transfer-amount-inner strong {
+  font-size: 1.0625rem;
+}
+
 .checkout-step__alias {
   align-self: flex-start;
   margin: var(--space-1) 0;
@@ -186,4 +220,17 @@
 /* Contenedor enfocable del panel "Pedido creado" (recibe el foco al aparecer). */
 .checkout-step__created:focus {
   outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkout-step__savings {
+    transition: none;
+  }
+}
+
+/* Alias y monto del pedido creado: una tarjeta por dato, apiladas (la columna es angosta también en desktop). */
+.checkout-step__transfer-data {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
 }

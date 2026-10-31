@@ -203,7 +203,7 @@ const ProductPreview = () => {
         id="preview-panel"
         role="tabpanel"
         aria-labelledby={`preview-tab-${view}`}
-        className={`product-preview__stage product-preview__stage--${view}`}
+        className={`product-preview__stage product-preview__stage--${view} admin-site-theme`}
         style={userLayoutStyle}
       >
         {view === 'card' ? (

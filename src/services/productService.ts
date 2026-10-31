@@ -487,7 +487,7 @@ export const fetchProductById = async (id: string, activeOnly = true) => {
 
 // Columnas que el checkout necesita para reconciliar el carrito (precio, stock y talles).
 const CHECKOUT_PRODUCT_COLUMNS =
-  'id, name, price, original_price, image_url, images, discount, stock, hover_image_enabled, variants';
+  'id, name, price, original_price, transfer_price, image_url, images, discount, stock, hover_image_enabled, variants';
 
 /**
  * Productos activos por id, siempre contra la base (sin caché): el checkout los usa para

@@ -102,6 +102,8 @@ src/
 │   ├── sizeMeasurements.ts     # medidas de los talles del catálogo: sanitizar, filas del editor, duplicados (puras)
 │   ├── sizeGarment.ts          # prenda de los talles globales: normalizar, agrupar, filtrar y rotular "M · Camisa" (puras)
 │   ├── sizeGuideColumns.ts     # columnas globales/propias de la guía de talles: agregar, quitar, precarga, columnas base, poda de columnSources (puras)
+│   ├── sizeGuideInfo.ts        # bloques informativos de la guía: estado de la tabla, aclaraciones, calce, validación (puras)
+│   ├── sizeGuideContent.ts     # textos globales de la guía por defecto y normalización (puras)
 │   ├── cloudinary.ts           # helpers de URLs/transformaciones Cloudinary
 │   ├── formatters.ts           # formateo (precios, fechas, etc.)
 │   ├── labels.ts               # labels/textos
@@ -399,9 +401,22 @@ Nada de tokens en `localStorage`/`sessionStorage`. Todo pasa por `services/authS
   nueva arranca sin columnas; si no, con las de siempre (XS–XXL / 35–42, como propias). Una guía nueva intacta pasa a vacía cuando el catálogo termina de
   cargar; nunca se altera una guía editada ni una ya guardada. Si el catálogo falla se muestra "Reintentar" y se pueden seguir usando talles propios.
   Código: `utils/sizeGuideColumns.ts` (lógica pura) y `admin/components/SizeGuideEditor/` (UI).
-  La guía pública ("📏 Ver guía de talles" en el detalle) muestra `product.sizeGuide` con `VariantTable` y, si no hay, cae en las opciones
-  de la variante Talle (el botón aparece en todo producto con variantes). El backend conserva `/api/sizes` y acepta `optionMeta` opcional en
-  `variants`, pero el front no lo usa.
+  Estructura precargada: una guía nueva de indumentaria trae las filas Busto, Cintura, Cadera y Entrepierna **sin valores** (calzado, sin filas);
+  si quedan intactas no se guarda guía. Debajo de la tabla, `SizeGuideInfoEditor` agrega: unidad (`unit`: cm/mm, ausente = cm), a qué corresponden
+  las medidas (`measurementBasis`: `body`/`garment`, ausente = "Sin indicar"), aclaraciones (`notes`: ausente = usa las globales; presente = propias
+  del producto, también vacías) y referencia de calce opcional (`fitReference`: altura en cm 100–230, talles de arriba/abajo/ajustadas, calce, info
+  adicional y una foto que tiene que ser una de las imágenes del producto). Avisa si la tabla está vacía o incompleta y si la guía muestra talles que la
+  variante Talle no vende. Antes de la vista previa `findGuideProblem` frena valores sin número, filas con valores sin nombre, medidas repetidas,
+  altura inválida, foto ajena y aclaraciones vacías. Cambiar indumentaria/calzado reinicia la tabla pero conserva esos bloques.
+  `/admin/sizes/textos-guia` ("Textos de la guía" en Talles): instrucciones de cómo medirse y aclaraciones por defecto (`site_content` clave
+  `size_guide_content`; `{medidas}` se reemplaza por "medidas corporales"/"medidas de la prenda"). Un talle global nuevo de indumentaria precarga los
+  nombres de esas medidas; las que quedan sin valor no se guardan.
+  La guía pública ("📏 Ver guía de talles" en el detalle, botón en todo producto con variantes) es `components/common/SizeGuide/SizeGuideView`:
+  tabla (`VariantTable`, celdas vacías como "Pendiente" y unidad explícita; sin ningún valor no hay tabla, solo "pendientes de completar"),
+  "¿Cómo tomar tus medidas?" con ilustración SVG propia (solo las medidas estándar que tiene la tabla; si no tiene ninguna, las cuatro; nunca en calzado
+  ni sin guía), aclaraciones (la de `{medidas}` solo si la guía indica la base y tiene valores) y referencia de calce (solo campos cargados; sin datos de
+  texto no se muestra, y la foto solo si sigue en el producto). Lógica pura en `utils/sizeGuideInfo.ts` y `utils/sizeGuideContent.ts`.
+  El backend conserva `/api/sizes` y acepta `optionMeta` opcional en `variants`, pero el front no lo usa.
 - `Sales` (`salesQueries.ts`, `SaleStatusCell`, `useSaleActions`): lee `ventas` de Supabase
   (incluye `oversold` y `review_reason`; si la columna falta, error con "Reintentar"). Estado
   efectivo: MP `pendiente` <15 min = "Pendiente", 15 min–24 h = "Pago en proceso", >24 h =
@@ -533,7 +548,7 @@ Tablas que el frontend toca directamente con la `anon key`:
 
 | Tabla | Operaciones desde el front | Notas |
 |---|---|---|
-| `productos` | read (público: `status='active'`; admin: todos) | mapeada a `Product` por `mapDbRowToProduct`. Campos snake_case: `image_url`, `original_price`, `transfer_price` (informativo, se muestra en el detalle), `free_shipping`, `return_policy`, `featured`, `status`. |
+| `productos` | read (público: `status='active'`; admin: todos) | mapeada a `Product` por `mapDbRowToProduct`. Campos snake_case: `image_url`, `original_price`, `transfer_price` (precio con transferencia: se muestra en card y detalle y se cobra al pagar por transferencia; ver `getTransferUnitPrice` en `utils/pricing.ts` y `computeCheckoutTotals`), `free_shipping`, `return_policy`, `featured`, `status`. |
 | `categories` | read/write | árbol por `parent_id` + `level`; con fallback a categorías derivadas de `productos`. |
 | `carousel_images` | read/write | filtrable por `device_type` (`desktop`/`mobile`), `is_active`, `order`. `kind` = `image` (usa `url`) o `banner` (usa `design` jsonb, `url` = `''`). `navbar_color` (hex o NULL) = color del menú sobre ese slide. |
 | `site_content` | read/write/delete | clave-valor (`key`/`value` JSON) para about, footer, banner, temas. Requiere UNIQUE en `key`. |

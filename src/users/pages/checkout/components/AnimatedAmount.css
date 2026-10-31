@@ -1,0 +1,17 @@
+/* Dígitos de ancho fijo: el monto no "baila" mientras cuenta. */
+.animated-amount {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  transform-origin: right center;
+  transition: color var(--transition-base) var(--transition-ease);
+}
+
+.animated-amount--drop {
+  color: var(--color-success-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-amount {
+    transition: none;
+  }
+}

@@ -23,6 +23,31 @@ export interface SizeGuide {
    * ausente ⇒ talle propio de este producto. Una guía sin este campo tiene todas las columnas propias.
    */
   columnSources?: Record<string, { sizeId: string }>;
+  /** Unidad de los valores de la tabla. Ausente en guías anteriores: se muestra como cm. */
+  unit?: SizeGuideUnit;
+  /** Si los valores son del cuerpo o de la prenda. Ausente = sin indicar (la tienda no afirma ninguna). */
+  measurementBasis?: SizeGuideMeasurementBasis;
+  /** Aclaraciones propias de este producto. Ausente = usa las globales (Admin > Talles > Textos de la guía). */
+  notes?: string[];
+  /** Referencia de calce con datos reales de la modelo. Los campos vacíos no se muestran. */
+  fitReference?: SizeGuideFitReference;
+}
+
+export type SizeGuideUnit = 'cm' | 'mm';
+
+export type SizeGuideMeasurementBasis = 'body' | 'garment';
+
+export interface SizeGuideFitReference {
+  modelHeightCm?: number;
+  topSize?: string;
+  bottomSize?: string;
+  /** Calzas, shorts, bermudas y otras prendas ajustadas. */
+  fittedSize?: string;
+  /** Calce de la prenda: ajustado, regular, holgado u otra descripción. */
+  fit?: string;
+  notes?: string;
+  /** Debe ser una de las imágenes del producto; si deja de serlo, la tienda no la muestra. */
+  image?: string;
 }
 
 export interface Specification {

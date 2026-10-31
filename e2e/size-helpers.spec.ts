@@ -193,8 +193,10 @@ test.describe('columnas de la guía de talles (globales vs propias)', () => {
   });
 
   test('defaultGuideForType: sin columnas con globales activos; con las de siempre si no hay', () => {
-    expect(defaultGuideForType('indumentaria', [mGlobal])).toEqual({ type: 'indumentaria', columns: [], rows: [] });
-    expect(defaultGuideForType('indumentaria', [])).toEqual({ type: 'indumentaria', columns: DEFAULT_SIZE_COLUMNS.indumentaria, rows: [] });
+    const standardRows = ['Busto', 'Cintura', 'Cadera', 'Entrepierna'].map((label) => ({ label, values: {} }));
+    expect(defaultGuideForType('indumentaria', [mGlobal])).toEqual({ type: 'indumentaria', columns: [], rows: standardRows });
+    expect(defaultGuideForType('indumentaria', [])).toEqual({ type: 'indumentaria', columns: DEFAULT_SIZE_COLUMNS.indumentaria, rows: standardRows });
+    expect(defaultGuideForType('calzado', []).rows).toEqual([]);
     const onlyInactive = makeSize({ id: 'i', name: 'S', active: false });
     expect(defaultGuideForType('indumentaria', [onlyInactive]).columns).toEqual(DEFAULT_SIZE_COLUMNS.indumentaria);
     expect(defaultGuideForType('calzado', [mGlobal]).columns).toEqual(DEFAULT_SIZE_COLUMNS.calzado);
@@ -202,6 +204,10 @@ test.describe('columnas de la guía de talles (globales vs propias)', () => {
 
   test('isUntouchedFallbackGuide distingue la guía intacta de una editada', () => {
     expect(isUntouchedFallbackGuide(defaultGuideForType('calzado', []))).toBe(true);
+    expect(isUntouchedFallbackGuide(defaultGuideForType('indumentaria', []))).toBe(true);
+    const withValue = defaultGuideForType('indumentaria', []);
+    withValue.rows[0] = { label: 'Busto', values: { S: '86' } };
+    expect(isUntouchedFallbackGuide(withValue)).toBe(false);
     expect(isUntouchedFallbackGuide({ type: 'calzado', columns: [], rows: [] })).toBe(false);
     const edited = must(addCustomColumn(defaultGuideForType('indumentaria', []), 'XXXL'));
     expect(isUntouchedFallbackGuide(edited)).toBe(false);

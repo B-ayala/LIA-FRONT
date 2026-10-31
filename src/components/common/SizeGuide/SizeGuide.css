@@ -1,0 +1,199 @@
+.size-guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  color: var(--color-ink);
+}
+
+.size-guide__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.size-guide__title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.size-guide__caption {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-ink-muted);
+}
+
+.size-guide__pending {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-ink);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.size-guide__pending a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.size-guide__pending a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.size-guide__notes {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--color-ink-muted);
+}
+
+/* ── ¿Cómo tomar tus medidas? ── */
+.size-guide-howto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.measure-figure {
+  width: 100%;
+  max-width: 200px;
+  height: auto;
+}
+
+.measure-figure__body {
+  fill: var(--color-surface-muted);
+  stroke: var(--color-ink-subtle);
+  stroke-width: 1.2;
+}
+
+.measure-figure__line {
+  fill: none;
+  stroke: var(--primary-accent);
+  stroke-width: 1.6;
+  stroke-dasharray: 4 3;
+}
+
+.measure-figure__leader {
+  stroke: var(--primary-accent);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.measure-figure__dot {
+  fill: var(--primary-accent);
+}
+
+.measure-figure__label {
+  fill: var(--color-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.size-guide-howto__list {
+  width: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.size-guide-howto__item dt {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.size-guide-howto__item dd {
+  margin: var(--space-1) 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--color-ink-muted);
+}
+
+/* ── Referencia de calce ── */
+.size-guide-fit {
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.size-guide-fit__image {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+.size-guide-fit__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.size-guide-fit__height,
+.size-guide-fit__text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.size-guide-fit__sizes {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.size-guide-fit__size dt {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.size-guide-fit__size dd {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-ink-muted);
+}
+
+@media (min-width: 480px) {
+  .size-guide-howto {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .measure-figure {
+    flex: 0 0 170px;
+  }
+
+  .size-guide-fit {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .size-guide-fit__image {
+    flex: 0 0 160px;
+    width: 160px;
+    max-height: 220px;
+  }
+}

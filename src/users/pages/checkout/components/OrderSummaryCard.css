@@ -156,6 +156,12 @@
   color: var(--color-success-ink);
 }
 
+.order-summary__row--discount {
+  overflow: hidden;
+  font-weight: 600;
+  color: var(--color-success-ink);
+}
+
 .order-summary__row--total {
   align-items: baseline;
   margin-top: var(--space-2);

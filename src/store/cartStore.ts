@@ -165,6 +165,7 @@ const mergeFreshProduct = (current: Product, fresh: Product | undefined): Produc
   price: fresh.price,
   originalPrice: fresh.originalPrice,
   discount: fresh.discount,
+  transferPrice: fresh.transferPrice,
   stock: fresh.stock,
   variants: fresh.variants,
 } : current);

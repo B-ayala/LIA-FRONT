@@ -17,6 +17,13 @@ const CENTS_FACTOR = 100;
 export const roundToCents = (value: number): number =>
   Math.round((value + Number.EPSILON) * CENTS_FACTOR) / CENTS_FACTOR;
 
+/**
+ * Precio unitario pagando por transferencia: el `transferPrice` publicado en la card, salvo que
+ * el precio vigente ya sea menor. Replica `resolvePaymentUnitPrice` del backend.
+ */
+export const getTransferUnitPrice = (listUnitPrice: number, transferPrice?: number): number =>
+  transferPrice !== undefined && transferPrice > 0 ? Math.min(listUnitPrice, transferPrice) : listUnitPrice;
+
 /** IVA general de Argentina. Los precios del catálogo se cargan con IVA incluido. */
 export const VAT_RATE = 0.21;
 

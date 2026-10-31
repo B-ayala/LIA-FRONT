@@ -120,3 +120,9 @@
     padding: 8px 12px;
   }
 }
+
+.variant-value-cell--pending {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--color-warning-ink);
+}

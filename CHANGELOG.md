@@ -6,6 +6,20 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Added
+- Checkout: al elegir "Transferencia por alias" se aplica el precio con transferencia de cada producto. La opción muestra "Ahorrás $X", el resumen agrega la línea "Descuento por transferencia" y el total baja con una animación corta (respeta "reducir movimiento"); debajo del alias aparece "Total a transferir". Volver a Mercado Pago restablece el precio de lista. El mensaje de WhatsApp incluye el descuento. Requiere el backend que cobra `transfer_price` en `POST /orders/transfer`.
+- Checkout (transferencia): el panel "Pedido creado" muestra el alias y el monto a transferir, cada uno con botón "Copiar" (tilde animado y aviso para lectores de pantalla). El monto se copia listo para el banco ("128700", sin "$" ni puntos). Si el navegador no deja copiar, avisa "Copialo a mano" y deja el dato seleccionado.
+- Checkout: si el precio cambió entre el carrito y la confirmación (409 `PRICE_CHANGED`), se avisa "El precio de tu pedido cambió", se recargan los precios y se muestra el total nuevo antes de volver a confirmar.
+
+### Changed
+- El precio "con transferencia" deja de ser solo informativo: es lo que se cobra al pagar por transferencia.
+- Panel admin: los colores del tema publicado (Temas / estaciones / personalizado) dejan de aplicarse al panel, que queda siempre en blanco y negro (incluye modales y scrollbars). El editor de Temas y la vista previa de producto siguen mostrando el tema real de la tienda. La tipografía ya no afectaba al panel.
+
+### Added
+- Guía de talles con estructura predeterminada: una guía nueva de indumentaria precarga Busto/Cintura/Cadera/Entrepierna sin valores; se agregan unidad (cm/mm), a qué corresponden las medidas (corporales / de la prenda / sin indicar), aclaraciones propias del producto y referencia de calce opcional (altura, talles que usa la modelo, calce, info y una foto del propio producto). Son campos opcionales de `size_guide`; las guías existentes no se modifican.
+- Detalle de producto > "Ver guía de talles": tabla con unidad explícita y celdas "Pendiente", "¿Cómo tomar tus medidas?" con ilustración, "Aclaraciones importantes" y "Referencia de calce". Sin valores no se muestra tabla (aviso de medidas pendientes) y los campos vacíos no se publican.
+- Admin > Talles > "Textos de la guía" (`/admin/sizes/textos-guia`): instrucciones para medirse y aclaraciones por defecto (`site_content` clave `size_guide_content`).
+- Admin > Talles > Nuevo talle: el formulario de indumentaria precarga los nombres Busto, Cintura, Cadera y Entrepierna; las que quedan sin valor no se guardan.
+- Validación de la guía antes de la vista previa: valores sin número, filas sin nombre, medidas repetidas, altura de la modelo fuera de rango y foto que no es del producto.
 - Admin > Productos > Datos Básicos: campo opcional "En transferencia ($)" (en rojo). Si se carga, el detalle del producto muestra debajo del precio, en rojo, "$X con Transferencia". Es solo informativo: el checkout cobra el precio normal. Requiere el script SQL `2026-10-30_add_transfer_price_to_productos.sql` del backend (ya aplicado en producción).
 - Detalle de producto: línea "Precio sin impuestos $X" bajo el precio, calculada automáticamente como precio final ÷ 1,21 (IVA 21 % incluido). Estilos de la línea de precios nuevos en mobile first.
 - Admin > Editor de banner: botón "Enderezar (0°)" en el panel de cualquier elemento girado, para volver el giro a 0 sin ajustar el slider a mano.

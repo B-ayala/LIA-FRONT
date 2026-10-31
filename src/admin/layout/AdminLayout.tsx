@@ -4,9 +4,11 @@ import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import AssistantWidget from '../components/Assistant/AssistantWidget';
 import '../styles/adminShared.css';
+import '../styles/adminTheme.css';
 import './AdminLayout.css';
 
 const PRODUCT_PREVIEW_PATH = '/admin/products/preview';
+const ADMIN_THEME_SCOPE_CLASS = 'admin-theme-scope';
 
 const AdminLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,6 +24,12 @@ const AdminLayout = () => {
             setSidebarOpen(false);
         }
     }, [location]);
+
+    // Paleta fija del panel: el tema publicado es para la tienda (ver adminTheme.css).
+    useEffect(() => {
+        document.body.classList.add(ADMIN_THEME_SCOPE_CLASS);
+        return () => document.body.classList.remove(ADMIN_THEME_SCOPE_CLASS);
+    }, []);
 
     // MUI bloquea el scroll del body (overflow: hidden) mientras hay un Dialog
     // abierto, y lo libera cuando se cierra. Con dialogs anidados (ej: modal de

@@ -1,0 +1,104 @@
+/* Mobile first: etiqueta arriba; valor y botón en una fila que se apila si no entra (320 px). */
+.copy-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition: border-color var(--transition-fast) var(--transition-ease);
+}
+
+.copy-field--copied {
+  border-color: var(--color-success-border);
+}
+
+.copy-field__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.copy-field__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.copy-field__value {
+  min-width: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.copy-field__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-ink);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--transition-fast) var(--transition-ease),
+    color var(--transition-fast) var(--transition-ease),
+    border-color var(--transition-fast) var(--transition-ease),
+    transform 120ms var(--transition-ease);
+}
+
+.copy-field__button:hover {
+  background: var(--color-surface-muted);
+}
+
+.copy-field__button:active {
+  transform: scale(0.96);
+}
+
+.copy-field__button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.copy-field--copied .copy-field__button {
+  border-color: var(--color-success-ink);
+  background: var(--color-success-ink);
+  color: var(--color-success-bg);
+}
+
+.copy-field__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.copy-field__icon-inner {
+  display: inline-flex;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copy-field,
+  .copy-field__button {
+    transition: none;
+  }
+
+  .copy-field__button:active {
+    transform: none;
+  }
+}

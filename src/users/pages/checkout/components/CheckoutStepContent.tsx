@@ -34,6 +34,7 @@ const CheckoutStepContent = ({ flow }: CheckoutStepContentProps) => {
       buyerEmail={buyer.email}
       shipping={flow.shipping}
       payment={flow.payment}
+      totals={flow.totals}
       onPaymentChange={flow.setPayment}
       submitting={pay.submitting}
       error={pay.mpError || blockReason}

@@ -11,6 +11,7 @@ import {
     type MeasurementRow,
 } from '../../../utils/sizeMeasurements';
 import { normalizeGarment } from '../../../utils/sizeGarment';
+import { STANDARD_MEASURES } from '../../../utils/sizeGuideInfo';
 import MeasurementsEditor from './MeasurementsEditor';
 import './SizeFormModal.css';
 
@@ -36,15 +37,29 @@ interface SizeFormBodyProps {
     garmentSuggestions: string[];
 }
 
+/** Talle nuevo de indumentaria: precarga los nombres de las medidas estándar, sin valores (los carga el admin). */
+const initialRows = (type: SizeType): MeasurementRow[] =>
+    type === 'indumentaria' ? STANDARD_MEASURES.map(({ label }) => ({ key: label, value: '' })) : [];
+
+const isUntouchedInitialRows = (rows: MeasurementRow[], type: SizeType): boolean => {
+    const initial = initialRows(type);
+    return rows.length === initial.length && rows.every((row, i) => row.key === initial[i].key && !row.value.trim());
+};
+
 // Se monta al abrir el modal (MUI desmonta el contenido al cerrar), así el estado arranca limpio.
 const SizeFormBody = ({ size, onClose, onSaved, garmentSuggestions }: SizeFormBodyProps) => {
     const [name, setName] = useState(size?.name ?? '');
     const [garment, setGarment] = useState(size?.garment ?? '');
     const [type, setType] = useState<SizeType>(size?.type ?? 'indumentaria');
-    const [rows, setRows] = useState<MeasurementRow[]>(() => measurementsToRows(size?.measurements));
+    const [rows, setRows] = useState<MeasurementRow[]>(() => (size ? measurementsToRows(size.measurements) : initialRows('indumentaria')));
     const [nameError, setNameError] = useState('');
     const [formError, setFormError] = useState('');
     const [saving, setSaving] = useState(false);
+
+    const changeType = (next: SizeType) => {
+        if (!size && isUntouchedInitialRows(rows, type)) setRows(initialRows(next));
+        setType(next);
+    };
 
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
@@ -65,7 +80,9 @@ const SizeFormBody = ({ size, onClose, onSaved, garmentSuggestions }: SizeFormBo
         setNameError('');
         setFormError('');
         try {
-            const payload = { name: normalizedName, type, garment: normalizeGarment(garment), measurements: rowsToMeasurements(rows) };
+            // Las medidas precargadas que quedaron sin valor no se guardan: serían celdas vacías en cada producto.
+            const filledRows = size ? rows : rows.filter((row) => row.value.trim() || !initialRows(type).some((initial) => initial.key === row.key));
+            const payload = { name: normalizedName, type, garment: normalizeGarment(garment), measurements: rowsToMeasurements(filledRows) };
             const saved = size ? await updateSize(size.id, payload) : await createSize(payload);
             onSaved(saved);
         } catch (err) {
@@ -78,7 +95,7 @@ const SizeFormBody = ({ size, onClose, onSaved, garmentSuggestions }: SizeFormBo
         <form className="size-form" onSubmit={handleSubmit} noValidate>
             <div className="size-form__field">
                 <label htmlFor="size-form-type">Tipo</label>
-                <select id="size-form-type" autoFocus value={type} onChange={(e) => setType(e.target.value as SizeType)}>
+                <select id="size-form-type" autoFocus value={type} onChange={(e) => changeType(e.target.value as SizeType)}>
                     {TYPE_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
                     ))}

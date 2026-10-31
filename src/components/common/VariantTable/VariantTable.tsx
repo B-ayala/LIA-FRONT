@@ -8,7 +8,7 @@ interface VariantTableProps {
 }
 
 const VariantTable: React.FC<VariantTableProps> = ({ sizeGuide, sizes = [] }) => {
-  const rows = sizeGuide?.rows ?? [];
+  const rows = (sizeGuide?.rows ?? []).filter(row => row.label.trim());
   const cols = sizeGuide?.columns ?? sizes;
 
   if (rows.length === 0) {
@@ -27,21 +27,25 @@ const VariantTable: React.FC<VariantTableProps> = ({ sizeGuide, sizes = [] }) =>
         <table className="variant-table">
           <thead>
             <tr>
-              <th className="variant-col-header first-col">Medida</th>
+              <th scope="col" className="variant-col-header first-col">Medida</th>
               {cols.map(size => (
-                <th key={size} className="variant-col-header">{size}</th>
+                <th scope="col" key={size} className="variant-col-header">{size}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, idx) => (
               <tr key={idx} className="variant-row">
-                <td className="variant-cell variant-label-cell">{row.label}</td>
-                {cols.map(size => (
-                  <td key={size} className="variant-cell variant-value-cell">
-                    {row.values[size] ?? '—'}
-                  </td>
-                ))}
+                <th scope="row" className="variant-cell variant-label-cell">{row.label}</th>
+                {cols.map(size => {
+                  const value = row.values[size]?.trim();
+                  // Una celda vacía es un dato que falta, no un "no aplica": se dice explícitamente.
+                  return (
+                    <td key={size} className={`variant-cell variant-value-cell${value ? '' : ' variant-value-cell--pending'}`}>
+                      {value || 'Pendiente'}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

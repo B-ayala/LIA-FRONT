@@ -47,7 +47,7 @@ export const useCheckoutFlow = (user: AuthUser, items: CheckoutItem[], isDirectP
   // (Mis compras, cancelación MP y nudge comparan buyer_email con el usuario logueado).
   const buyerName = sessionName || nameDraft;
   const buyerEmail = user.email;
-  const totals = computeCheckoutTotals(items, shipping);
+  const totals = computeCheckoutTotals(items, shipping, payment);
   // Solo datos del comprador/precio: decide si se puede ENTRAR al paso Pago (no rebota la URL
   // mientras se verifica el stock).
   const blockReason = getCheckoutBlockReason(totals, buyerName, buyerEmail);

@@ -38,6 +38,16 @@ export class CheckoutStockError extends Error {
   }
 }
 
+/** El total que vio el comprador ya no es el que se cobraría: cambió un precio en el medio. */
+export class CheckoutPriceChangedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CheckoutPriceChangedError';
+  }
+}
+
+const PRICE_CHANGED_CODE = 'PRICE_CHANGED';
+
 interface OrderErrorBody {
   code?: unknown;
   message?: unknown;
@@ -140,6 +150,7 @@ const buildOrderError = async (res: Response): Promise<Error> => {
   const message = normalizeOrderErrorMessage(asOptionalString(body.message));
   const code = asOptionalString(body.code);
   const productId = asOptionalString(body.productId);
+  if (code === PRICE_CHANGED_CODE) return new CheckoutPriceChangedError(message);
   if (code && productId && STOCK_ERROR_CODES.has(code)) {
     return new CheckoutStockError(message, code as CheckoutStockErrorCode, productId, asOptionalString(body.size));
   }

@@ -1,12 +1,20 @@
 import { buildCloudinaryUrl } from '../../../../utils/cloudinary';
 import { useId, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import type { CheckoutItem } from '../../../../store/cartStore';
 import { formatAmount, type CheckoutTotals } from '../checkoutUtils';
+import AnimatedAmount from './AnimatedAmount';
 import VariantTags from './VariantTags';
 import './OrderSummaryCard.css';
 
 const THUMB_SIZE = 64;
+// El `gap` de la lista de totales (--space-2) aparece de golpe al montar la fila: el margen
+// negativo lo compensa mientras la fila crece.
+const TOTALS_GAP_PX = 8;
+const ROW_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
+const ROW_HIDDEN = { opacity: 0, height: 0, marginTop: -TOTALS_GAP_PX, y: -6 };
+const ROW_SHOWN = { opacity: 1, height: 'auto', marginTop: 0, y: 0 };
 
 const SummaryItem = ({ item, hasIssue }: { item: CheckoutItem; hasIssue: boolean }) => (
   <li className={`order-summary__item${hasIssue ? ' order-summary__item--issue' : ''}`}>
@@ -40,7 +48,7 @@ interface OrderSummaryCardProps {
 const OrderSummaryCard = ({ items, totals, issueIds }: OrderSummaryCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const bodyId = useId();
-  const total = `$${formatAmount(totals.grandTotal)}`;
+  const reduceMotion = useReducedMotion();
 
   return (
     <section className={`order-summary${expanded ? ' order-summary--expanded' : ''}`} aria-labelledby={`${bodyId}-title`}>
@@ -54,7 +62,7 @@ const OrderSummaryCard = ({ items, totals, issueIds }: OrderSummaryCardProps) =>
       >
         <span>{expanded ? 'Ocultar resumen' : 'Ver resumen'}</span>
         <ChevronDown size={18} aria-hidden="true" className="order-summary__chevron" />
-        <span className="order-summary__toggle-total">{total}</span>
+        <AnimatedAmount value={totals.grandTotal} className="order-summary__toggle-total" />
       </button>
 
       <div id={bodyId} className="order-summary__body">
@@ -68,6 +76,25 @@ const OrderSummaryCard = ({ items, totals, issueIds }: OrderSummaryCardProps) =>
             <dt>Subtotal</dt>
             <dd>${formatAmount(totals.itemsSubtotal)}</dd>
           </div>
+          <AnimatePresence initial={false}>
+            {totals.paymentDiscount > 0 && (
+              <motion.div
+                key="transfer-discount"
+                className="order-summary__row order-summary__row--discount"
+                initial={ROW_HIDDEN}
+                animate={ROW_SHOWN}
+                exit={ROW_HIDDEN}
+                transition={reduceMotion ? { duration: 0 } : ROW_TRANSITION}
+              >
+                <dt>Descuento por transferencia</dt>
+                <dd>
+                  <span aria-hidden="true">−</span>
+                  <span className="sr-only">menos </span>
+                  <AnimatedAmount value={totals.paymentDiscount} />
+                </dd>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="order-summary__row">
             <dt>Envío</dt>
             <dd className={totals.shippingCost === 0 ? 'order-summary__free' : undefined}>
@@ -76,7 +103,7 @@ const OrderSummaryCard = ({ items, totals, issueIds }: OrderSummaryCardProps) =>
           </div>
           <div className="order-summary__row order-summary__row--total">
             <dt>Total</dt>
-            <dd>{total}</dd>
+            <dd><AnimatedAmount value={totals.grandTotal} /></dd>
           </div>
         </dl>
       </div>

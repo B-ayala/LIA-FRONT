@@ -1,30 +1,88 @@
 import type { ReactNode, RefObject } from 'react';
 import { Link } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import DataProtectionNotice from '../../../../components/common/DataProtectionNotice/DataProtectionNotice';
 import OptionList, { type OptionItem } from './OptionList';
 import PrimaryPillButton from './PrimaryPillButton';
 import type { CheckoutTerms } from '../hooks/useCheckoutTerms';
-import { SHIPPING_LABEL, TRANSFER_ALIAS, type PaymentMethod, type ShippingMethod } from '../checkoutUtils';
+import AnimatedAmount from './AnimatedAmount';
+import {
+  SHIPPING_LABEL, TRANSFER_ALIAS, formatAmount, type CheckoutTotals, type PaymentMethod, type ShippingMethod,
+} from '../checkoutUtils';
 
-const PAYMENT_OPTIONS: OptionItem<PaymentMethod>[] = [
-  {
-    value: 'mp',
-    title: 'Pagar con Mercado Pago',
-    aside: <span className="checkout-step__badge">Recomendado</span>,
-    description: <span>Pagá con tarjeta de crédito, débito, dinero en cuenta o cuotas.</span>,
-  },
-  {
-    value: 'transfer',
-    title: 'Transferencia por alias',
-    description: (
-      <>
-        <span>Realizá una transferencia bancaria por alias y coordiná el pago con el vendedor.</span>
-        <span className="checkout-step__alias">Alias: <strong>{TRANSFER_ALIAS}</strong></span>
-        <span>Una vez realizada la transferencia, mandanos el comprobante.</span>
-      </>
-    ),
-  },
-];
+const SPRING_POP = { type: 'spring', stiffness: 420, damping: 22 } as const;
+const REVEAL_TRANSITION = { duration: 0.25, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
+
+/** "Ahorrás $X": entra con un rebote corto y se rellena de verde cuando la opción está elegida. */
+const SavingsBadge = ({ amount, selected }: { amount: number; selected: boolean }) => {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.span
+      className={`checkout-step__savings${selected ? ' checkout-step__savings--selected' : ''}`}
+      initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={SPRING_POP}
+    >
+      Ahorrás ${formatAmount(amount)}
+    </motion.span>
+  );
+};
+
+/** Monto a transferir, visible solo con la transferencia elegida: es lo que la persona copia en su banco. */
+const TransferAmount = ({ total, visible }: { total: number; visible: boolean }) => {
+  const reduceMotion = useReducedMotion();
+  return (
+    <AnimatePresence initial={false}>
+      {visible && (
+        <motion.span
+          key="transfer-amount"
+          className="checkout-step__transfer-amount"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={reduceMotion ? { duration: 0 } : REVEAL_TRANSITION}
+        >
+          <span className="checkout-step__transfer-amount-inner">
+            Total a transferir: <strong><AnimatedAmount value={total} /></strong>
+          </span>
+        </motion.span>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const buildPaymentOptions = (totals: CheckoutTotals, payment: PaymentMethod): OptionItem<PaymentMethod>[] => {
+  const transferSelected = payment === 'transfer';
+  return [
+    {
+      value: 'mp',
+      title: 'Pagar con Mercado Pago',
+      aside: <span className="checkout-step__badge">Recomendado</span>,
+      description: <span>Pagá con tarjeta de crédito, débito, dinero en cuenta o cuotas.</span>,
+    },
+    {
+      value: 'transfer',
+      title: 'Transferencia por alias',
+      aside: totals.transferSavings > 0
+        ? <SavingsBadge amount={totals.transferSavings} selected={transferSelected} />
+        : undefined,
+      description: (
+        <>
+          <span>Realizá una transferencia bancaria por alias y coordiná el pago con el vendedor.</span>
+          <span className="checkout-step__alias">Alias: <strong>{TRANSFER_ALIAS}</strong></span>
+          <TransferAmount total={totals.grandTotal} visible={transferSelected} />
+          <span>Una vez realizada la transferencia, mandanos el comprobante.</span>
+        </>
+      ),
+    },
+  ];
+};
+
+/** Anuncia a lectores de pantalla el descuento aplicado al cambiar de medio de pago. */
+const paymentAnnouncement = (totals: CheckoutTotals): string =>
+  totals.paymentDiscount > 0
+    ? `Descuento por transferencia aplicado: ahorrás $${formatAmount(totals.paymentDiscount)}. Total: $${formatAmount(totals.grandTotal)}.`
+    : '';
 
 const ctaLabel = (payment: PaymentMethod, submitting: boolean): string => {
   if (submitting) return payment === 'transfer' ? 'Enviando pedido...' : 'Redirigiendo a Mercado Pago...';
@@ -36,6 +94,7 @@ interface PaymentStepProps {
   buyerEmail: string;
   shipping: ShippingMethod;
   payment: PaymentMethod;
+  totals: CheckoutTotals;
   onPaymentChange: (method: PaymentMethod) => void;
   submitting: boolean;
   error: string | null;
@@ -106,10 +165,11 @@ const PaymentStep = (props: PaymentStepProps) => {
       <OptionList
         name="payment"
         labelledBy="payment-options-title"
-        options={PAYMENT_OPTIONS}
+        options={buildPaymentOptions(props.totals, payment)}
         value={payment}
         onChange={props.onPaymentChange}
       />
+      <p className="sr-only" role="status">{paymentAnnouncement(props.totals)}</p>
 
       <TermsNotice terms={props.terms} disabled={submitting} />
       <DataProtectionNotice />

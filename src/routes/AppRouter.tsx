@@ -63,6 +63,7 @@ const AdminSales = lazy(() => import('../admin/pages/Sales/Sales'));
 const AdminDispatches = lazy(() => import('../admin/pages/Dispatches/Dispatches'));
 const AdminStock = lazy(() => import('../admin/pages/Stock/Stock'));
 const AdminSizes = lazy(() => import('../admin/pages/Sizes/Sizes'));
+const AdminSizeGuideContent = lazy(() => import('../admin/pages/SizeGuideContentEditor/SizeGuideContentEditor'));
 const AdminWithdrawals = lazy(() => import('../admin/pages/Withdrawals/Withdrawals'));
 const AdminTerms = lazy(() => import('../admin/pages/TermsEditor/TermsEditor'));
 const AdminReturns = lazy(() => import('../admin/pages/ReturnsEditor/ReturnsEditor'));
@@ -104,6 +105,7 @@ const AppRouter = () => {
               <Route path="dispatches" element={<AdminDispatches />} />
               <Route path="stock" element={<AdminStock />} />
               <Route path="sizes" element={<AdminSizes />} />
+              <Route path="sizes/textos-guia" element={<AdminSizeGuideContent />} />
               <Route path="arrepentimientos" element={<AdminWithdrawals />} />
               <Route path="arrepentimientos/cambios-y-devoluciones" element={<AdminReturns />} />
               <Route path="arrepentimientos/mail" element={<AdminWithdrawalFollowUp />} />

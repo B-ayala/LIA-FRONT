@@ -3,7 +3,6 @@ import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../../types/product';
 import SEO from '../../../components/common/SEO/SEO';
-import VariantTable from '../../../components/common/VariantTable/VariantTable';
 import PurchaseVariantModal from '../../components/PurchaseVariantModal/PurchaseVariantModal';
 import { parseColorOption } from '../../../utils/constants';
 import { getPriceWithoutTax, getProductPricing } from '../../../utils/pricing';
@@ -29,6 +28,7 @@ import './ProductDetail.css';
 // Modal arrastra MUI/Emotion. Solo se abre al tocar "Guía de talles", así que su
 // chunk no tiene por qué estar en el camino crítico del primer render.
 const Modal = lazy(() => import('../../../components/common/Modal/Modal'));
+const SizeGuideView = lazy(() => import('../../../components/common/SizeGuide/SizeGuideView'));
 
 interface ProductDetailViewProps {
   product: Product;
@@ -631,10 +631,7 @@ const ProductDetailView = ({ product, preview = false }: ProductDetailViewProps)
           onClose={() => setIsSizeGuideOpen(false)}
           title="Guía de Talles"
         >
-          <VariantTable
-            sizeGuide={product.sizeGuide}
-            sizes={product.variants?.find(v => isSizeVariant(v.name))?.options ?? []}
-          />
+          <SizeGuideView guide={product.sizeGuide} productImages={images} />
         </Modal>
       </Suspense>
 

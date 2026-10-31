@@ -1,6 +1,7 @@
 import type { SizeGuide, SizeGuideRow, SizeGuideType } from '../types/product';
 import type { Size } from '../types/size';
 import { sanitizeMeasurements, toSizeKey } from './sizeMeasurements';
+import { defaultMeasureRows, isUntouchedDefaultRows } from './sizeGuideInfo';
 
 export type GuideChange = { ok: true; guide: SizeGuide } | { ok: false; error: string };
 
@@ -111,17 +112,21 @@ export const removeColumn = (guide: SizeGuide, column: string): SizeGuide => {
   return withSources({ ...guide, columns: columnsOf(guide).filter((c) => c !== stored), rows }, sources);
 };
 
-/** Guía vacía para un tipo: sin columnas si el catálogo ya tiene talles activos de ese tipo; si no, las de siempre. */
+/**
+ * Guía nueva para un tipo: sin columnas si el catálogo ya tiene talles activos de ese tipo; si no, las de siempre.
+ * En indumentaria trae precargadas las filas Busto/Cintura/Cadera/Entrepierna, sin valores.
+ */
 export const defaultGuideForType = (type: SizeGuideType, catalogSizes: Size[]): SizeGuide => {
   const hasGlobals = catalogSizes.some((size) => size.active && size.type === type);
-  return { type, columns: hasGlobals ? [] : [...DEFAULT_SIZE_COLUMNS[type]], rows: [] };
+  return { type, columns: hasGlobals ? [] : [...DEFAULT_SIZE_COLUMNS[type]], rows: defaultMeasureRows(type) };
 };
 
 /** Guía intacta con las columnas de respaldo: el admin todavía no la tocó. */
 export const isUntouchedFallbackGuide = (guide: SizeGuide): boolean => {
   const columns = columnsOf(guide);
-  const defaults = DEFAULT_SIZE_COLUMNS[guide.type ?? 'indumentaria'];
-  return guide.rows.length === 0
+  const type = guide.type ?? 'indumentaria';
+  const defaults = DEFAULT_SIZE_COLUMNS[type];
+  return isUntouchedDefaultRows(guide.rows, type)
     && !guide.columnSources
     && columns.length === defaults.length
     && columns.every((column, index) => column === defaults[index]);

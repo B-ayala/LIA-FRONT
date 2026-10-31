@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { CheckoutItem } from '../../../../store/cartStore';
 import { extractErrorMessage } from '../../../../utils/errorMessage';
 import {
+  CheckoutPriceChangedError,
   CheckoutStockError,
   createOrder,
   createMpPreference,
@@ -31,7 +32,7 @@ interface CheckoutPaymentInput {
   /** Hay un motivo para no enviar (verificando stock, reserva anterior en curso, ítems inválidos). */
   submitBlocked: boolean;
   onTransferCreated: (orderIds: string[]) => void;
-  /** El backend rechazó una línea por stock/talle: conviene recargar precio y stock. */
+  /** El backend rechazó el pedido por stock/talle o por un precio cambiado: conviene recargar precio y stock. */
   onStockError: () => void;
   /** Deja constancia de la aceptación de los términos antes de crear el pedido (lanza si no se pudo). */
   ensureTermsAccepted: () => Promise<void>;
@@ -39,6 +40,8 @@ interface CheckoutPaymentInput {
 
 export interface TransferCreated {
   orderIds: string[];
+  /** Total que hay que transferir (el mismo que registró el backend: el control de precio es exacto). */
+  amount: number;
   whatsappUrl: string;
   /** false si el navegador bloqueó la ventana: hay que ofrecer el botón "Abrir WhatsApp". */
   windowOpened: boolean;
@@ -131,6 +134,9 @@ export const useCheckoutPayment = (input: CheckoutPaymentInput): CheckoutPayment
       setStockFailure({ error: err, fingerprint: itemsFingerprint });
       onStockError();
     }
+    // Recarga precios: el resumen muestra el total nuevo y el aviso "Actualizamos precios".
+    // El intento siguiente lleva otro total, así que usa otra Idempotency-Key.
+    if (err instanceof CheckoutPriceChangedError) onStockError();
     setMpError(extractErrorMessage(err, fallback));
   };
 
@@ -145,7 +151,7 @@ export const useCheckoutPayment = (input: CheckoutPaymentInput): CheckoutPayment
       const orderIds = await createOrder({ ...orderBase, paymentMethod: 'transfer' }, idempotencyKeyFor('transfer'));
       const whatsappUrl = buildWhatsAppUrl(buildWhatsAppMessage(items, shipping, totals));
       const windowOpened = navigatePendingWindow(popup, whatsappUrl);
-      setTransferCreated({ orderIds, whatsappUrl, windowOpened });
+      setTransferCreated({ orderIds, amount: totals.grandTotal, whatsappUrl, windowOpened });
       onTransferCreated(orderIds);
     } catch (err) {
       closePendingWindow(popup);

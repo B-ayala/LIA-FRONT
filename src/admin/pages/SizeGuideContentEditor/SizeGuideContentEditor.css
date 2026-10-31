@@ -1,0 +1,75 @@
+.admin-guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.guide-content__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  align-self: flex-start;
+  color: var(--color-link);
+  font-size: 0.9rem;
+}
+
+.guide-content__back:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.guide-content-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.guide-content-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.guide-content-form__legend {
+  float: left;
+  width: 100%;
+  margin-bottom: var(--space-2);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-ink);
+}
+
+.guide-content-form__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.guide-content-form__ok {
+  color: var(--color-success-ink);
+  font-weight: 600;
+}
+
+.guide-content-form__error {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.guide-content-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  color: var(--color-ink);
+}
+
+@media (min-width: 768px) {
+  .guide-content-form__actions {
+    flex-direction: row;
+    align-items: center;
+  }
+}
