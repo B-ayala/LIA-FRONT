@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useImperativeHandle, useState, type Ref } from 'react';
 import { Reorder } from 'framer-motion';
 import ConfirmationModal from '../../../components/common/Modal/ConfirmationModal';
 import CardOptionIconPicker from '../CardOptionIconPicker/CardOptionIconPicker';
@@ -12,10 +12,18 @@ import {
 } from '../../../types/productCardOption';
 import './ProductCardOptionsEditor.css';
 
+export type PendingOptionResult = { ok: true; value: ProductCardOptionsValue } | { ok: false };
+
+export interface ProductCardOptionsEditorHandle {
+    /** Añade el texto escrito en "Nueva opción" que no se confirmó con "Añadir opción". */
+    flushPending: () => PendingOptionResult;
+}
+
 interface ProductCardOptionsEditorProps {
     /** null = usar las opciones globales. */
     value: ProductCardOptionsValue;
     onChange: (value: ProductCardOptionsValue) => void;
+    ref?: Ref<ProductCardOptionsEditorHandle>;
 }
 
 // uid estable por fila: el orden del array es la única identidad que tiene la opción.
@@ -27,7 +35,7 @@ const toRows = (value: ProductCardOptionsValue): CardOptionRowData[] =>
 const toValue = (rows: CardOptionRowData[]) =>
     rows.map(({ label, icon, isActive }) => ({ label, icon, isActive }));
 
-const ProductCardOptionsEditor = ({ value, onChange }: ProductCardOptionsEditorProps) => {
+const ProductCardOptionsEditor = ({ value, onChange, ref }: ProductCardOptionsEditorProps) => {
     const [rows, setRows] = useState<CardOptionRowData[]>(() => toRows(value));
     const [newLabel, setNewLabel] = useState('');
     const [newIcon, setNewIcon] = useState(DEFAULT_CARD_OPTION_ICON);
@@ -60,17 +68,33 @@ const ProductCardOptionsEditor = ({ value, onChange }: ProductCardOptionsEditorP
 
     const labelsExcept = (uid?: string) => rows.filter((row) => row.uid !== uid).map((row) => row.label);
 
-    const handleAdd = () => {
+    /** Devuelve la lista con la opción nueva, o null si el texto no es válido (y muestra el error). */
+    const addNewOption = (): CardOptionRowData[] | null => {
         const validation = validateCardOptionLabel(newLabel, labelsExcept());
         if (validation) {
             setAddError(validation);
-            return;
+            return null;
         }
-        commit([...rows, { uid: nextUid(), label: newLabel.trim(), icon: newIcon, isActive: true }]);
+        const next = [...rows, { uid: nextUid(), label: newLabel.trim(), icon: newIcon, isActive: true }];
+        commit(next);
         setNewLabel('');
         setNewIcon(DEFAULT_CARD_OPTION_ICON);
         setAddError(null);
+        return next;
     };
+
+    const handleAdd = () => {
+        addNewOption();
+    };
+
+    // Sin esto, un texto escrito sin tocar "Añadir opción" se perdía en silencio al ir a la vista previa.
+    useImperativeHandle(ref, () => ({
+        flushPending: () => {
+            if (useGlobals || !newLabel.trim()) return { ok: true, value };
+            const next = addNewOption();
+            return next ? { ok: true, value: toValue(next) } : { ok: false };
+        },
+    }));
 
     const handleMove = (uid: string, direction: -1 | 1) => {
         const from = rows.findIndex((row) => row.uid === uid);

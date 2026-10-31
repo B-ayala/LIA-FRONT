@@ -19,7 +19,7 @@ import { Folder, FolderOpen, Dot, Plus, X, Images, CircleHelp } from 'lucide-rea
 import { useVariantsTutorial } from '../VariantsTutorial/useVariantsTutorial';
 import VariantsTutorialModal from '../VariantsTutorial/VariantsTutorialModal';
 import CloudinaryImagePicker from '../CloudinaryImagePicker/CloudinaryImagePicker';
-import ProductCardOptionsEditor from '../ProductCardOptionsEditor/ProductCardOptionsEditor';
+import ProductCardOptionsEditor, { type ProductCardOptionsEditorHandle } from '../ProductCardOptionsEditor/ProductCardOptionsEditor';
 import type { ProductCardOptionsValue } from '../../../types/productCardOption';
 import './ProductModal.css';
 import './ProductModalStylesExtension.css';
@@ -68,6 +68,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
     const [pickerOpen, setPickerOpen] = useState(false);
     const [hoverImageEnabled, setHoverImageEnabled] = useState(true);
     const [cardOptions, setCardOptions] = useState<ProductCardOptionsValue>(null);
+    const cardOptionsEditorRef = useRef<ProductCardOptionsEditorHandle>(null);
 
     // Promociones
     const [originalPrice, setOriginalPrice] = useState('');
@@ -385,6 +386,11 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
     };
 
     const handlePreview = () => {
+        // Primero, antes de que otra validación cambie de pestaña y desmonte el editor: un texto
+        // escrito en "Nueva opción" sin tocar "Añadir opción" se añade (o muestra su error y frena).
+        const pendingOption = cardOptionsEditorRef.current?.flushPending();
+        if (pendingOption && !pendingOption.ok) return;
+
         // Validación de borde en el cliente (el backend revalida nombre y precio).
         if (!name.trim()) {
             setFieldErrors({ name: 'El nombre es requerido' });
@@ -410,7 +416,8 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
 
         // Foto, stock y color incompletos requieren confirmación explícita antes de
         // seguir (cubre también el caso "Activo" sin stock).
-        const payload = buildPayload();
+        // El estado `cardOptions` recién se actualiza en el próximo render: se usa lo que devolvió el editor.
+        const payload = pendingOption ? { ...buildPayload(), cardOptions: pendingOption.value } : buildPayload();
         const missing = getMissingProductFields({
             imageUrls: payload.images,
             stock: payload.stock ?? payload.unmanagedStock ?? 0,
@@ -1563,7 +1570,7 @@ const ProductModal = ({ isOpen, onClose, product, draft = null, onPreview }: Pro
                                 </div>
                                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                                     <label>Opciones de la card</label>
-                                    <ProductCardOptionsEditor value={cardOptions} onChange={setCardOptions} />
+                                    <ProductCardOptionsEditor ref={cardOptionsEditorRef} value={cardOptions} onChange={setCardOptions} />
                                 </div>
                             </div>
                         </div>

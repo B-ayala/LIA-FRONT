@@ -28,6 +28,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - Alta, recuperación y cambio de contraseña: contraseña de 8 a 64 caracteres con mayúscula, minúscula, número y símbolo (coincide con "Password requirements" de Supabase) (antes mínimo 6 sin más reglas); se rechaza lo que superaría 72 bytes en vez de truncarlo en silencio. Nombre de 2 a 60 caracteres (solo letras, espacios, apóstrofes, puntos y guiones), email hasta 254 y celular de 7 a 20. Los formularios muestran el límite como ayuda y frenan la escritura al llegar al máximo. Reglas en `utils/validation.ts`.
 
 ### Fixed
+- Editar Producto > Promociones: un texto escrito en "Nueva opción" sin tocar "Añadir opción" se perdía al ir a la vista previa; ahora se añade solo (o muestra su error y no avanza).
+- Editar Producto > Promociones: al editar una opción, el campo de texto quedaba aplastado por los íconos en la misma línea; ahora el texto ocupa todo el ancho y los íconos van debajo, en cualquier tamaño de pantalla.
 - Los cambios del admin (carrusel, banners, footer, About, WhatsApp, envíos, textos legales, productos, categorías, talles) llegan a las pestañas públicas ya abiertas: se revalidan al volver a la pestaña (cada 60 s como máximo) y el contenido del sitio también por Realtime. Ya no hace falta F5.
 - El carrusel guardado desde el admin se ve al instante: las mutaciones invalidan su caché, que además baja de 2 min a 30 s.
 - Tras un deploy, una pestaña abierta con archivos viejos se recarga sola una vez (`vite:preloadError` y error de chunk en el `AppErrorBoundary`, con tope anti-bucle) en vez de mostrar "Algo salió mal".

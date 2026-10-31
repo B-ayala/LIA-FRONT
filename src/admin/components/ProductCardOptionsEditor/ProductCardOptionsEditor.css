@@ -81,6 +81,32 @@
     width: 100%;
 }
 
+/* El manager global pone texto e íconos en fila desde 768px de viewport, pero en el modal la columna
+   es angosta y los 11 íconos aplastaban el input. Acá la edición siempre se apila: texto, íconos. */
+.card-options-editor .card-option-item.is-editing {
+    align-items: flex-start;
+}
+
+.card-options-editor .card-option-item.is-editing .drag-handle {
+    min-height: 44px;
+}
+
+.card-options-editor .card-option-edit {
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+}
+
+.card-options-editor .card-option-edit input {
+    flex: none;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 8px;
+}
+
 .admin-action-btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;

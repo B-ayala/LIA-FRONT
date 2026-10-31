@@ -58,7 +58,7 @@ const CardOptionRow = ({ option, canMoveUp, canMoveDown, validateLabel, onSave, 
     const previewIcon = getCardOptionIcon(option.icon);
 
     return (
-        <Reorder.Item value={option} dragListener={false} dragControls={dragControls} className="card-option-item">
+        <Reorder.Item value={option} dragListener={false} dragControls={dragControls} className={`card-option-item${editing ? ' is-editing' : ''}`}>
             <div
                 className="drag-handle"
                 onPointerDown={(event) => dragControls.start(event)}
