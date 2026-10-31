@@ -266,7 +266,7 @@ export const fetchCategories = async (): Promise<string[]> => {
 export const fetchFeaturedProducts = async (limit?: number) => {
   let query = supabase
     .from('productos')
-    .select('id, name, price, original_price, image_url, images, discount, stock, hover_image_enabled, card_options, variants')
+    .select('id, name, price, original_price, transfer_price, image_url, images, discount, stock, hover_image_enabled, card_options, variants')
     .eq('featured', true)
     .eq('status', 'active')
     .order('created_at', { ascending: false });
@@ -379,7 +379,7 @@ export const fetchCatalogProductsPage = async (options: CatalogPageOptions = {})
 
   let query = supabase
     .from('productos')
-    .select('id, name, price, original_price, image_url, images, category, discount, stock, hover_image_enabled, card_options, variants')
+    .select('id, name, price, original_price, transfer_price, image_url, images, category, discount, stock, hover_image_enabled, card_options, variants')
     .eq('status', 'active')
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -551,6 +551,19 @@ const HTTP_CONFLICT = 409;
 export type NewProductInput = Omit<AdminProduct, 'id' | 'stock'> & { stock?: number };
 
 // Create product via backend API
+interface ProductApiError {
+  code?: string;
+  message?: string;
+  details?: { field?: string; message?: string }[];
+}
+
+// El 400 genérico ("Los datos enviados no son válidos.") no le dice al admin qué corregir; los
+// mensajes de los sellos de la card están en castellano y sí lo dicen (ej. sello de transferencia).
+const productApiErrorMessage = (error: ProductApiError, fallback: string): string =>
+  error.details?.find((detail) => detail.field?.startsWith('cardOptions'))?.message
+  || error.message
+  || fallback;
+
 export const createProduct = async (
   product: NewProductInput,
   token: string
@@ -562,8 +575,8 @@ export const createProduct = async (
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to create product');
+    const error = (await response.json().catch(() => ({}))) as ProductApiError;
+    throw new Error(productApiErrorMessage(error, 'Failed to create product'));
   }
 
   adminProductsCache.invalidate();
@@ -603,11 +616,11 @@ export const updateProduct = async (
   });
 
   if (!response.ok) {
-    const error = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
+    const error = (await response.json().catch(() => ({}))) as ProductApiError;
     if (response.status === HTTP_CONFLICT && error.code === PRODUCT_CHANGED_CODE) {
       throw new ProductChangedError(error.message || PRODUCT_CHANGED_FALLBACK);
     }
-    throw new Error(error.message || 'Failed to update product');
+    throw new Error(productApiErrorMessage(error, 'Failed to update product'));
   }
 
   adminProductsCache.invalidate();

@@ -1,3 +1,5 @@
+import { mentionsTransfer, TRANSFER_LABEL_ERROR } from '../../../utils/productCardOptions';
+
 export const EMPTY_LABEL_ERROR = 'Escribí el texto de la opción.';
 export const DUPLICATE_LABEL_ERROR = 'Ya existe una opción con ese texto.';
 
@@ -7,6 +9,7 @@ const normalize = (label: string) => label.trim().toLowerCase();
 export const validateCardOptionLabel = (label: string, otherLabels: string[]): string | null => {
   const normalized = normalize(label);
   if (!normalized) return EMPTY_LABEL_ERROR;
+  if (mentionsTransfer(normalized)) return TRANSFER_LABEL_ERROR;
   if (otherLabels.some((other) => normalize(other) === normalized)) return DUPLICATE_LABEL_ERROR;
   return null;
 };

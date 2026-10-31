@@ -6,7 +6,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 ## [Unreleased]
 
 ### Added
-- Admin > Productos > Datos Básicos: campo opcional "En transferencia ($)" (en rojo). Si se carga, el detalle del producto muestra debajo del precio, en rojo, "$X con Transferencia". Es solo informativo: el checkout cobra el precio normal. Requiere el script SQL `2026-10-30_add_transfer_price_to_productos.sql` del backend (PENDIENTE de aplicar).
+- Admin > Productos > Datos Básicos: campo opcional "En transferencia ($)" (en rojo). Si se carga, el detalle del producto muestra debajo del precio, en rojo, "$X con Transferencia". Es solo informativo: el checkout cobra el precio normal. Requiere el script SQL `2026-10-30_add_transfer_price_to_productos.sql` del backend (ya aplicado en producción).
 - Detalle de producto: línea "Precio sin impuestos $X" bajo el precio, calculada automáticamente como precio final ÷ 1,21 (IVA 21 % incluido). Estilos de la línea de precios nuevos en mobile first.
 - Admin > Editor de banner: botón "Enderezar (0°)" en el panel de cualquier elemento girado, para volver el giro a 0 sin ajustar el slider a mano.
 - Admin > Opciones de la card (global y por producto): botón "Sin ícono" para mostrar el sello solo con texto.
@@ -34,6 +34,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com) y el proyecto ad
 - `vercel.json`: el rewrite SPA ya no devuelve `index.html` para `/assets/` (un chunk viejo da 404 real); HTML con `no-cache` y `/assets` con `immutable`.
 
 ### Changed
+- Card de producto: el sello "$X con transferencia" sale del campo "En transferencia ($)" del producto (el mismo que usa el detalle), ya no de un sello escrito a mano. Los sellos de Promociones y los globales no aceptan textos que mencionen transferencia y la card oculta los viejos. Requiere correr antes el script SQL `2026-10-30_move_transfer_badge_to_transfer_price.sql` del backend, que pasa los montos ya cargados al campo.
 - Caché en memoria de categorías, opciones de card y talles: de 5 min a 60 s.
 - Carrusel del home: se quitan las flechas anterior/siguiente; la navegación queda con los puntos y el avance automático.
 - Registro: las recomendaciones de cada campo (nombre, celular, contraseña) ya no se muestran de entrada; aparecen junto al error al salir del input o al presionar "Registrarse", y el error se limpia en vivo al corregirlo.

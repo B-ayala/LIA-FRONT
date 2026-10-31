@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../../types/product';
 import type { ProductCardOption } from '../../../types/productCardOption';
 import { getProductPricing } from '../../../utils/pricing';
+import { formatPrice } from '../../../utils/formatters';
 import { productImageSrc } from '../../../utils/cloudinary';
 import { getCardOptionIcon } from '../../../utils/cardOptionIcons';
 import { resolveCardOptions } from '../../../utils/productCardOptions';
@@ -34,6 +35,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
 
   const hoverImageEnabled = product.hoverImageEnabled ?? true;
   const badges = resolveCardOptions(product.cardOptions, cardOptions);
+  // Sale del mismo campo que el detalle del producto, así card y detalle no se desincronizan.
+  const transferPrice = product.transferPrice && product.transferPrice > 0 ? product.transferPrice : undefined;
   const rotationImages = (product.images && product.images.length > 0
     ? product.images
     : [product.image]
@@ -128,8 +131,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onReadMore, cardOpti
           </p>
         </div>
         
-        {badges.length > 0 && (
+        {(transferPrice || badges.length > 0) && (
           <ul className="product-card__badges">
+            {transferPrice && (
+              <li className="product-card__badge" title={`${formatPrice(transferPrice)} con transferencia`}>
+                <span className="product-card__badge-label">{formatPrice(transferPrice)} con transferencia</span>
+              </li>
+            )}
             {badges.map((option) => {
               const Icon = getCardOptionIcon(option.icon);
               return (

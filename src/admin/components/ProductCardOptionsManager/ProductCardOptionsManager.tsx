@@ -10,6 +10,7 @@ import {
 } from '../../../services/productService';
 import type { ProductCardOption } from '../../../types/productCardOption';
 import { DEFAULT_CARD_OPTION_ICON, getCardOptionIcon } from '../../../utils/cardOptionIcons';
+import { mentionsTransfer, TRANSFER_LABEL_ERROR } from '../../../utils/productCardOptions';
 import CardOptionIconPicker from '../CardOptionIconPicker/CardOptionIconPicker';
 import LiaLoader from '../../../components/common/LiaLoader/LiaLoader';
 import './ProductCardOptionsManager.css';
@@ -36,6 +37,10 @@ const ProductCardOptionsManager = () => {
         e.preventDefault();
         const label = newLabel.trim();
         if (!label) return;
+        if (mentionsTransfer(label)) {
+            setError(TRANSFER_LABEL_ERROR);
+            return;
+        }
         setSaving(true);
         setError('');
         try {
@@ -89,11 +94,19 @@ const ProductCardOptionsManager = () => {
         setEditIcon(option.icon);
     };
 
-    const cancelEdit = () => setEditingId(null);
+    const cancelEdit = () => {
+        setEditingId(null);
+        setError('');
+    };
 
     const saveEdit = async (id: string) => {
         const label = editLabel.trim();
         if (!label) return;
+        if (mentionsTransfer(label)) {
+            setError(TRANSFER_LABEL_ERROR);
+            return;
+        }
+        setError('');
         const previous = options;
         setOptions(prev => prev.map(o => (o.id === id ? { ...o, label, icon: editIcon } : o)));
         setEditingId(null);
@@ -115,14 +128,14 @@ const ProductCardOptionsManager = () => {
             </p>
 
             {error && (
-                <p style={{ color: 'var(--error, #ef4444)', marginBottom: '12px', fontSize: '14px' }}>{error}</p>
+                <p role="alert" style={{ color: 'var(--error, #ef4444)', marginBottom: '12px', fontSize: '14px' }}>{error}</p>
             )}
 
             <form onSubmit={handleAdd} className="add-card-option-form">
                 <input
                     type="text"
                     value={newLabel}
-                    onChange={(e) => setNewLabel(e.target.value)}
+                    onChange={(e) => { setNewLabel(e.target.value); setError(''); }}
                     placeholder="Texto de la opción (ej: Envío gratis)"
                     maxLength={40}
                     required
@@ -157,7 +170,7 @@ const ProductCardOptionsManager = () => {
                                         <input
                                             type="text"
                                             value={editLabel}
-                                            onChange={(e) => setEditLabel(e.target.value)}
+                                            onChange={(e) => { setEditLabel(e.target.value); setError(''); }}
                                             maxLength={40}
                                             autoFocus
                                         />
